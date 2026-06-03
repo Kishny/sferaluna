@@ -572,7 +572,7 @@ export default function ExplorerPage() {
                       <span className="text-xs font-medium bg-green-500/30 text-green-300 border border-green-400/30 rounded-full px-2 py-0.5">✓ Vérifiée</span>
                     )}
                     <button
-                      onClick={() => router.push(`/profil/${currentProfile._id}`)}
+                      onClick={() => router.push(`/profil/${currentProfile._id}?from=explorer`)}
                       className="text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30 hover:opacity-90 hover:scale-105 transition-all duration-200"
                     >
                       Voir le profil ✨

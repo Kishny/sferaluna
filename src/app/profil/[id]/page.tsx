@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Flag, MapPin, Heart, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
@@ -31,9 +31,17 @@ const orientationLabels: Record<string, string> = {
   other: "Autre",
 };
 
-export default function ProfilPage() {
+function ProfilContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
+
+  const handleBack = () => {
+    if (from === "connexions") router.push("/mon-compte?tab=connexions");
+    else if (from === "explorer") router.push("/explorer");
+    else router.back();
+  };
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,7 +68,7 @@ export default function ProfilPage() {
           {/* Bouton retour + signaler */}
           <div className="flex items-center justify-between mb-6">
             <button
-              onClick={() => router.back()}
+              onClick={handleBack}
               className="group flex items-center gap-2 text-white/50 hover:text-white transition text-sm"
             >
               <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
@@ -188,5 +196,13 @@ export default function ProfilPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProfilPage() {
+  return (
+    <Suspense>
+      <ProfilContent />
+    </Suspense>
   );
 }

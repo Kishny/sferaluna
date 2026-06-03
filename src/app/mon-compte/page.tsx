@@ -319,6 +319,11 @@ function MonCompteContent() {
   }, [status, fetchProfile]);
 
   useEffect(() => {
+    const tab = searchParams.get("tab") as TabId | null;
+    if (tab && status === "authenticated") setActiveTab(tab);
+  }, [searchParams, status]);
+
+  useEffect(() => {
     const payment = searchParams.get("payment");
     if (status === "authenticated" && payment === "success") {
       setPaymentSuccess(true);
@@ -1612,7 +1617,7 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                         <MessageCircle className="h-3.5 w-3.5" /> Message
                       </Link>
                       <Link
-                        href={`/profil/${u._id}`}
+                        href={`/profil/${u._id}?from=connexions`}
                         className="text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-md shadow-pink-500/20 hover:opacity-90 hover:scale-105 transition-all duration-200"
                       >
                         Voir ✨
