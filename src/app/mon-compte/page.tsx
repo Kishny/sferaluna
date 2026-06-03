@@ -309,7 +309,11 @@ function MonCompteContent() {
   }, [session?.user]);
 
   useEffect(() => {
-    if (status === "authenticated") fetchProfile();
+    if (status === "authenticated") {
+      fetchProfile();
+      // Marquer les notifications comme lues à l'ouverture de Mon Compte
+      fetch("/api/notifications", { method: "POST" }).catch(() => {});
+    }
   }, [status, fetchProfile]);
 
   useEffect(() => {
