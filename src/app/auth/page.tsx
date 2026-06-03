@@ -568,12 +568,12 @@ function PremiumAuthContent() {
           <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-900/40 to-pink-900/40 backdrop-blur-sm border border-purple-500/30">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="text-3xl font-bold">50,000+</div>
+                <div className="text-3xl font-bold">—</div>
                 <div className="text-gray-300 text-sm">Rencontres réussies</div>
               </div>
 
               <div>
-                <div className="text-3xl font-bold">95%</div>
+                <div className="text-3xl font-bold">—</div>
                 <div className="text-gray-300 text-sm">Satisfaction</div>
               </div>
 
@@ -592,7 +592,7 @@ function PremiumAuthContent() {
               ))}
 
               <span className="text-sm text-gray-300">
-                4.9/5 sur l'App Store
+                Bientôt sur l'App Store
               </span>
             </div>
           </div>
