@@ -1092,7 +1092,7 @@ function ProfilTab({
         </Field>
 
         <Field label="Réponse secrète 🤫" className="sm:col-span-2">
-          <input disabled={!isEditing} type="password" value={user.reponse || ""} onChange={(e) => updateDraft("reponse", e.target.value)} className="input-luna" placeholder="••••••••" />
+          <input disabled={!isEditing} type="text" value={user.reponse || ""} onChange={(e) => updateDraft("reponse", e.target.value)} className="input-luna" placeholder="Votre réponse secrète" />
         </Field>
       </div>
     </div>
