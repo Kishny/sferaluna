@@ -301,7 +301,7 @@ export default function Home() {
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
               {values.map((value, index) => (
                 <motion.div
                   key={index}
@@ -310,9 +310,9 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                   whileHover={{ y: -10, transition: { duration: 0.2 } }}
-                  className="group relative"
+                  className="group relative h-full"
                 >
-                  <div className="relative p-4 md:p-6 rounded-2xl bg-white border border-[#F0F0F0] shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                  <div className="relative p-4 md:p-6 rounded-2xl bg-white border border-[#F0F0F0] shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden h-full flex flex-col">
                     {/* Effet de fond au hover */}
                     <div className="absolute inset-0 bg-gradient-to-br from-white to-[#F9F7FC] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
