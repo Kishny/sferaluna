@@ -483,7 +483,6 @@ const UserSchema = new Schema<IUser>(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.password;
-        delete ret.reponse;
         delete (ret as Record<string, any>).__v;
         return ret;
       },
@@ -493,7 +492,6 @@ const UserSchema = new Schema<IUser>(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.password;
-        delete ret.reponse;
         delete (ret as Record<string, any>).__v;
         return ret;
       },
