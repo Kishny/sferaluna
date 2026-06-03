@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import Image from "next/image";
@@ -111,7 +111,7 @@ const starsStyles = `
 }
 `;
 
-export default function PremiumAuthPage() {
+function PremiumAuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -974,6 +974,14 @@ export default function PremiumAuthPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function PremiumAuthPage() {
+  return (
+    <Suspense>
+      <PremiumAuthContent />
+    </Suspense>
   );
 }
 
