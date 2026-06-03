@@ -177,13 +177,6 @@ export async function POST(req: NextRequest) {
           runValidators: true,
         }
       ).select("-password -reponse -__v");
-
-        email: updatedUser?.email,
-        plan: updatedUser?.plan,
-        isPremium: updatedUser?.isPremium,
-        subscriptionStatus: updatedUser?.subscriptionStatus,
-        stripeSubscriptionId: updatedUser?.stripeSubscriptionId,
-      });
     }
 
     /**
