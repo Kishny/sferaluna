@@ -104,16 +104,20 @@ function getSubscriptionStatusLabel(status?: string) {
  * Ça évite de dupliquer la logique dans GET et PUT.
  */
 function buildPremiumPayload(user: any) {
+  const hasPaidPlan = user.plan && user.plan !== "free";
+  // Si le plan est payant mais que le webhook n'a pas encore confirmé, on corrige l'affichage
+  const effectiveStatus = hasPaidPlan && (!user.subscriptionStatus || user.subscriptionStatus === "inactive")
+    ? "active"
+    : user.subscriptionStatus || "inactive";
+
   return {
     plan: user.plan || "free",
     planLabel: getPlanLabel(user.plan),
 
-    isPremium: Boolean(user.isPremium),
+    isPremium: hasPaidPlan ? true : Boolean(user.isPremium),
 
-    subscriptionStatus: user.subscriptionStatus || "inactive",
-    subscriptionStatusLabel: getSubscriptionStatusLabel(
-      user.subscriptionStatus
-    ),
+    subscriptionStatus: effectiveStatus,
+    subscriptionStatusLabel: getSubscriptionStatusLabel(effectiveStatus),
 
     premiumStartedAt: user.premiumStartedAt || null,
     premiumExpiresAt: user.premiumExpiresAt || null,
@@ -165,7 +169,7 @@ export async function GET() {
     await connectDB();
 
     const user = await User.findOne({ email: sessionEmail }).select(
-      "-password -__v"
+      "-password -__v +reponse"
     );
 
     if (!user) {
