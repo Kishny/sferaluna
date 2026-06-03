@@ -196,12 +196,6 @@ export async function POST(req: NextRequest) {
         subscription.status
       );
 
-        userId,
-        plan,
-        subscriptionId: subscription.id,
-        status: subscription.status,
-      });
-
       if (userId) {
         await User.findByIdAndUpdate(
           userId,
@@ -249,12 +243,6 @@ export async function POST(req: NextRequest) {
         subscription.status
       );
 
-        userId,
-        plan,
-        subscriptionId: subscription.id,
-        status: subscription.status,
-      });
-
       if (userId) {
         const isPremium = isStripeSubscriptionPremiumActive(
           subscription.status
@@ -294,11 +282,6 @@ export async function POST(req: NextRequest) {
       const subscription = event.data.object as Stripe.Subscription;
 
       const userId = subscription.metadata?.userId;
-
-        userId,
-        subscriptionId: subscription.id,
-        status: subscription.status,
-      });
 
       if (userId) {
         await User.findByIdAndUpdate(
