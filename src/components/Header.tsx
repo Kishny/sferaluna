@@ -21,6 +21,25 @@ export default function Header() {
     const { data: session, status } = useSession();
     const isLoggedIn = status === 'authenticated' && !!session?.user;
 
+    // Polling notifications toutes les 30s
+    useEffect(() => {
+        if (!isLoggedIn) return;
+
+        const fetchNotifs = async () => {
+            try {
+                const res = await fetch('/api/notifications');
+                if (res.ok) {
+                    const data = await res.json();
+                    setNotifCount(data.total || 0);
+                }
+            } catch {}
+        };
+
+        fetchNotifs();
+        const interval = setInterval(fetchNotifs, 30_000);
+        return () => clearInterval(interval);
+    }, [isLoggedIn]);
+
     // Abonnement Pusher — notifications temps réel (nouveaux matches)
     useEffect(() => {
         if (!isLoggedIn) return;

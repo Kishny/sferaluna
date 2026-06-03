@@ -314,11 +314,6 @@ export default function FonctionnalitesPage() {
                                                 <ChevronRight className="group-hover:translate-x-1 transition-transform" />
                                             </Link>
 
-                                            {selectedFeature.id === 'circle' && (
-                                                <button className="px-6 py-3 rounded-full border border-[#8E7AB5] text-[#8E7AB5] font-medium hover:bg-[#8E7AB5]/10 transition-colors">
-                                                    Voir la démo
-                                                </button>
-                                            )}
                                         </div>
                                     )}
                                 </div>

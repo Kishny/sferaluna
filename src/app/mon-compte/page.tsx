@@ -17,6 +17,7 @@ import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
+  ArrowLeft,
   BadgeCheck,
   CheckCircle2,
   Crown,
@@ -62,6 +63,7 @@ interface LunaUser {
   image?: string;
   password?: string;
   provider?: AuthProvider;
+  bio?: string;
   age?: number;
   orientation?: string;
   intentions: string[];
@@ -104,6 +106,7 @@ const emptyUser: LunaUser = {
   image: "",
   provider: "credentials",
   age: 28,
+  bio: "",
   orientation: "",
   intentions: [],
   localisation: "",
@@ -322,7 +325,7 @@ function MonCompteContent() {
       user.pseudonyme, user.email, user.age, user.orientation,
       user.intentions?.length, user.localisation, user.rayon,
       user.question, user.reponse, user.interets?.length,
-      user.visibilite, user.consentement, isPremiumActive(user),
+      user.visibilite, user.consentement,
     ];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
   }, [user]);
@@ -459,10 +462,11 @@ function MonCompteContent() {
         >
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 text-white/60 hover:text-white transition text-sm"
+            className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-400/40 transition-all duration-200"
           >
-            <Moon className="h-5 w-5 text-purple-300" />
-            <span className="font-semibold text-white">SferaLuna</span>
+            <img src="/logo-sferaluna.png" alt="SferaLuna" className="h-6 w-6 rounded-full object-cover" />
+            <span className="font-semibold text-white text-sm group-hover:text-purple-200 transition-colors">SferaLuna</span>
+            <ArrowLeft className="h-3.5 w-3.5 text-white/40 group-hover:text-purple-300 group-hover:-translate-x-0.5 transition-all duration-200" />
           </button>
 
           <div className="flex items-center gap-2">
@@ -1034,6 +1038,18 @@ function ProfilTab({
         </div>
       </div>
 
+      <Field label="Bio ✨" className="mb-4">
+        <textarea
+          disabled={!isEditing}
+          value={user.bio || ""}
+          onChange={(e) => updateDraft("bio", e.target.value)}
+          className="input-luna resize-none h-24"
+          placeholder="Décrivez-vous en quelques mots… vos passions, ce que vous recherchez…"
+          maxLength={500}
+        />
+        <p className="text-xs text-white/30 text-right mt-1">{(user.bio || "").length}/500</p>
+      </Field>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Pseudonyme 🌸">
           <input disabled={!isEditing} value={user.pseudonyme || ""} onChange={(e) => updateDraft("pseudonyme", e.target.value)} className="input-luna" />
@@ -1240,12 +1256,21 @@ function PremiumTab({ user, router }: { user: LunaUser; router: ReturnType<typeo
           {user.lastPaymentAt && <p>💳 Dernier paiement le {formatDate(user.lastPaymentAt)}</p>}
         </div>
 
-        <button
-          onClick={() => router.push("/paiement")}
-          className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 ${active ? "bg-gradient-to-r from-green-600 to-emerald-600" : "bg-gradient-to-r from-yellow-500 to-orange-500"}`}
-        >
-          {active ? "Changer d'offre" : "🚀 Finaliser le paiement"}
-        </button>
+        {active ? (
+          <button
+            onClick={() => router.push("/paiement")}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 bg-gradient-to-r from-green-600 to-emerald-600"
+          >
+            Changer d&apos;offre
+          </button>
+        ) : (
+          <button
+            onClick={() => router.push("/paiement")}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition hover:opacity-90 bg-gradient-to-r from-yellow-500 to-orange-500"
+          >
+            🚀 Finaliser le paiement
+          </button>
+        )}
       </div>
 
       {/* Fonctionnalités incluses */}

@@ -80,6 +80,7 @@ export interface IUser extends Document {
   provider: AuthProvider;
 
   // Informations de profil
+  bio?: string;
   age?: number;
   orientation?: string;
   intentions: string[];
@@ -149,6 +150,13 @@ const UserSchema = new Schema<IUser>(
      * - MongoDB
      * - Stripe customer
      */
+    bio: {
+      type: String,
+      default: "",
+      maxlength: [500, "La bio ne peut pas dépasser 500 caractères."],
+      trim: true,
+    },
+
     email: {
       type: String,
       required: [true, "L'email est obligatoire."],
