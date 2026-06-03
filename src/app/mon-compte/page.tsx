@@ -1349,10 +1349,10 @@ function IdentityVerificationBlock({ user }: { user: LunaUser }) {
       {status === "failed" && (
         <p className="text-sm text-red-300/80">❌ Vérification échouée. Réessayez.</p>
       )}
-      {!user.identityVerified && (
+      {!user.identityVerified && status !== "pending" && (
         <button
           onClick={handleVerify}
-          disabled={loading || status === "pending"}
+          disabled={loading}
           className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
         >
           {loading ? "Chargement…" : "Vérifier mon identité"}
@@ -1367,9 +1367,9 @@ function SecurityTab({ user }: { user: LunaUser }) {
   const checks = [
     { ok: !!user.email, label: "Adresse email enregistrée", emoji: "📧" },
     { ok: user.provider === "google" || !!user.question, label: "Question de sécurité définie", emoji: "🔑" },
-    { ok: user.provider === "google", label: "Connexion Google sécurisée (OAuth)", emoji: "🔐" },
+    ...(user.provider === "google" ? [{ ok: true, label: "Connexion Google sécurisée (OAuth)", emoji: "🔐" }] : []),
     { ok: !!user.stripeCustomerId, label: "Compte Stripe enregistré", emoji: "💳" },
-    { ok: user.hasCompletedProfile, label: "Profil vérifié", emoji: "✅" },
+    { ok: user.hasCompletedProfile, label: "Profil complété", emoji: "✅" },
   ];
 
   return (
