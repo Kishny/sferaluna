@@ -108,7 +108,7 @@ export default function ValeursPage() {
             icon: <Globe className="w-8 h-8" />,
             title: "🌈 Inclusivité Absolue",
             description: "Toutes les femmes, toutes les relations, toutes les histoires.",
-            details: "Un espace où chaque identité est respectée. Lesbienne, bi, pan, trans, queer... toutes sont les bienvenues.",
+            details: "Un espace où chaque femme est respectée. Hétérosexuelle, lesbienne, bisexuelle, pansexuelle... toutes sont les bienvenues.",
             gradient: "from-[#FF6B6B] to-[#FF8E8E]",
             color: "text-[#FF6B6B]",
             features: ["Communauté LGBTQ+", "Espaces sûrs", "Ressources éducatives"]

@@ -106,7 +106,7 @@ export default function Home() {
     {
       title: '🌈 Inclusivité',
       description: 'Toutes les femmes, toutes les histoires.',
-      details: 'Que tu sois queer, bi, pan, trans, ou en questionnement.'
+      details: 'Que tu sois hétérosexuelle, lesbienne, bisexuelle, pansexuelle ou en questionnement.'
     },
     {
       title: '💜 Bienveillance',
