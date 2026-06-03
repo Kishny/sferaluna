@@ -916,7 +916,7 @@ function PremiumAuthContent() {
 
                 <SocialButton
                   label="Continuer avec Apple"
-                  imageSrc="/apple-icon.svg"
+                  imageSrc="/Apple-icon.svg"
                   onClick={() => handleSocialLogin("apple")}
                   disabled={isLoading}
                   fullWidth
