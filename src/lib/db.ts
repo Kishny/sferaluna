@@ -1,0 +1,75 @@
+// src/lib/db.ts
+
+import mongoose from "mongoose";
+
+/**
+ * URI MongoDB Atlas.
+ * Elle doit être présente dans .env.local :
+ *
+ * MONGODB_URI=mongodb+srv://...
+ */
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error("❌ MONGODB_URI est manquante dans le fichier .env.local");
+}
+
+/**
+ * Cache global pour éviter de créer plusieurs connexions MongoDB
+ * à chaque refresh ou recompilation de Next.js.
+ */
+const globalForMongoose = global as typeof globalThis & {
+  mongoose?: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
+};
+
+/**
+ * Initialisation du cache si nécessaire.
+ */
+if (!globalForMongoose.mongoose) {
+  globalForMongoose.mongoose = {
+    conn: null,
+    promise: null,
+  };
+}
+
+/**
+ * Connexion MongoDB réutilisable.
+ *
+ * Important :
+ * - En développement, Next.js recharge souvent les fichiers.
+ * - Sans cache, MongoDB peut ouvrir trop de connexions.
+ * - Cette fonction réutilise donc la connexion existante si elle existe.
+ */
+export async function connectDB() {
+  /**
+   * Si une connexion existe déjà, on la réutilise.
+   */
+  if (globalForMongoose.mongoose?.conn) {
+    return globalForMongoose.mongoose.conn;
+  }
+
+  /**
+   * Si une promesse de connexion est déjà en cours,
+   * on attend cette même promesse.
+   */
+  if (!globalForMongoose.mongoose?.promise) {
+    globalForMongoose.mongoose!.promise = mongoose.connect(MONGODB_URI as string, {
+      dbName: "sferaluna",
+      bufferCommands: false,
+    });
+  }
+
+  /**
+   * On stocke la connexion finale dans le cache global.
+   */
+  globalForMongoose.mongoose!.conn =
+    await globalForMongoose.mongoose!.promise;
+
+  if (process.env.NODE_ENV === "development") {
+  }
+
+  return globalForMongoose.mongoose!.conn;
+}

@@ -1,0 +1,25 @@
+{
+  "name": "SferaLuna",
+  "short_name": "SferaLuna",
+  "description": "Site de rencontres premium pour femmes — France",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0b2e",
+  "theme_color": "#2d1b69",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-sferaluna.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "social"],
+  "lang": "fr-FR",
+  "dir": "ltr"
+}

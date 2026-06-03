@@ -1,0 +1,346 @@
+'use client';
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, ChevronDown, HelpCircle, Shield, Lock, Users, Heart, MessageCircle } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+
+export default function FAQPage() {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [openQuestions, setOpenQuestions] = useState<number[]>([0]);
+    const [activeCategory, setActiveCategory] = useState<string>('all');
+
+    const toggleQuestion = (index: number) => {
+        setOpenQuestions(prev =>
+            prev.includes(index)
+                ? prev.filter(i => i !== index)
+                : [...prev, index]
+        );
+    };
+
+    const categories = [
+        { id: 'all', label: 'Toutes', icon: <HelpCircle size={18} /> },
+        { id: 'security', label: 'Sécurité', icon: <Shield size={18} /> },
+        { id: 'account', label: 'Compte', icon: <Lock size={18} /> },
+        { id: 'matching', label: 'Rencontres', icon: <Users size={18} /> },
+        { id: 'premium', label: 'Premium', icon: <Heart size={18} /> },
+    ];
+
+    const allFAQs = [
+        {
+            question: "Comment fonctionne le Circle of Six ?",
+            answer: "Le Circle of Six est notre système de matching unique. Chaque semaine, notre algorithme te présente 6 profils qui correspondent à tes valeurs, intérêts et préférences. Tu peux interagir avec ces 6 personnes toute la semaine, sans la pression des applications de swipe traditionnelles.",
+            category: 'matching',
+            popular: true
+        },
+        {
+            question: "Mes données sont-elles vraiment sécurisées ?",
+            answer: "Absolument. Nous utilisons un chiffrement de bout en bout pour toutes les communications. Tes photos sont stockées de manière sécurisée et tu peux utiliser le Mode Fantôme pour flouter tes images. Notre équipe de modération vérifie manuellement chaque profil et surveille les interactions 24h/24.",
+            category: 'security',
+            popular: true
+        },
+        {
+            question: "Puis-je utiliser SferaLuna de manière anonyme ?",
+            answer: "Oui, grâce au Mode Fantôme. Tu peux créer un profil avec un pseudonyme, flouter tes photos et contrôler précisément qui voit tes informations. Tu décides quand et à qui révéler ton identité.",
+            category: 'security',
+            popular: true
+        },
+        {
+            question: "Comment annuler mon abonnement premium ?",
+            answer: "Tu peux annuler ton abonnement à tout moment depuis la section 'Abonnement' de tes paramètres. L'accès premium reste actif jusqu'à la fin de la période payée, puis ton compte revient gratuitement sans interruption.",
+            category: 'premium'
+        },
+        {
+            question: "Que faire en cas de comportement inapproprié ?",
+            answer: "Signale immédiatement le profil ou le message via le bouton de signalement. Notre équipe de modération traite les signalements en moins de 2 heures. Tu peux également bloquer la personne pour qu'elle ne puisse plus te contacter.",
+            category: 'security'
+        },
+        {
+            question: "Comment fonctionne le VibePlanner ?",
+            answer: "Le VibePlanner te suggère des idées de rendez-vous créatives basées sur les intérêts communs. Propose une activité, fixe une date et laisse l'autre personne accepter. C'est un excellent moyen de briser la glace avec des plans originaux.",
+            category: 'matching'
+        },
+        {
+            question: "Puis-je modifier mes préférences de matching ?",
+            answer: "Oui, tu peux ajuster tes préférences à tout moment dans 'Paramètres > Préférences'. Notre algorithme s'adapte automatiquement à tes nouveaux critères pour tes prochains Circle of Six.",
+            category: 'account'
+        },
+        {
+            question: "Quelle est la différence entre le compte gratuit et premium ?",
+            answer: "Le compte gratuit est limité : 5 likes/jour, 3 matchs max, 10 messages/jour, pas de Circle of Six. L'offre Essentiel (9,99€/mois) lève ces limites et ajoute le Circle of Six hebdomadaire, le VibePlanner et les filtres avancés. Premium (19,99€/mois) débloque le Mode Fantôme, les visiteurs du profil et les filtres premium. Elite (34,99€/mois) ajoute coaching VibeMentor et accès VIP.",
+            category: 'premium'
+        },
+        {
+            question: "Comment supprimer mon compte définitivement ?",
+            answer: "Dans 'Paramètres > Compte', tu trouveras l'option 'Supprimer mon compte'. Toutes tes données seront effacées de nos serveurs dans les 30 jours, conformément au RGPD.",
+            category: 'account'
+        },
+        {
+            question: "Le VibeSphere est-il inclus dans l'offre gratuite ?",
+            answer: "Oui, chaque membre a accès au VibeSphere de base. Les plans Essentiel et supérieurs débloquent des fonctionnalités avancées comme les statistiques détaillées et les playlists personnalisées.",
+            category: 'premium'
+        },
+        {
+            question: "Comment participer aux événements LunaGather ?",
+            answer: "Consulte la section 'Événements' dans l'application. Tu peux t'inscrire aux événements en ligne ou en présentiel. Les membres premium ont un accès anticipé aux inscriptions.",
+            category: 'matching'
+        },
+        {
+            question: "Puis-je mettre mon compte en pause ?",
+            answer: "Oui, dans 'Paramètres > Compte', tu trouveras l'option 'Mettre en pause'. Ton profil sera temporairement caché et tu ne recevras pas de nouvelles suggestions pendant cette période.",
+            category: 'account'
+        }
+    ];
+
+    const filteredFAQs = activeCategory === 'all'
+        ? allFAQs
+        : allFAQs.filter(faq => faq.category === activeCategory);
+
+    const searchResults = searchTerm
+        ? filteredFAQs.filter(faq =>
+            faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        : filteredFAQs;
+
+    return (
+        <>
+            <Header />
+
+            <main className="min-h-screen bg-gradient-to-b from-[#F5F3F7] to-[#FFFFFF] text-[#1C1C1C] overflow-hidden">
+                {/* Hero Section */}
+                <section className="relative pt-20 pb-8 md:pt-28 md:pb-12 px-4 md:px-4 md:px-5 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
+
+                    <div className="relative z-10 max-w-6xl mx-auto text-center text-white">
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6"
+                        >
+                            Centre d'aide
+                        </motion.h1>
+
+                        <p className="text-base md:text-xl max-w-3xl mx-auto mb-8 opacity-90">
+                            Trouve rapidement les réponses à tes questions sur SferaLuna
+                        </p>
+
+                        {/* Barre de recherche */}
+                        <div className="max-w-2xl mx-auto relative">
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#8E7AB5]" />
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Rechercher une question..."
+                                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
+                                />
+                            </div>
+                            <p className="text-sm text-white/80 mt-4">
+                                {searchResults.length} résultat{searchResults.length !== 1 ? 's' : ''} trouvé{searchResults.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Catégories */}
+                <section className="py-5 md:py-4 px-4 md:px-4 md:px-5 bg-white border-b border-[#F0F0F0]">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="flex flex-wrap gap-3 justify-center">
+                            {categories.map((category) => (
+                                <button
+                                    key={category.id}
+                                    onClick={() => setActiveCategory(category.id)}
+                                    className={`flex items-center gap-2 px-5 py-3 rounded-full border transition-all ${activeCategory === category.id
+                                        ? 'bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white border-transparent'
+                                        : 'bg-white border-[#E8E0FF] text-[#666] hover:border-[#8E7AB5]'
+                                        }`}
+                                >
+                                    {category.icon}
+                                    <span className="font-medium">{category.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Questions populaires */}
+                <section className="py-3 md:py-4 px-4 md:px-4 md:px-5">
+                    <div className="max-w-4xl mx-auto">
+                        <h2 className="text-3xl font-bold text-[#1C1C1C] mb-8">
+                            Questions <span className="text-[#8E7AB5]">populaires</span>
+                        </h2>
+
+                        <div className="space-y-4 mb-8 md:mb-5 md:mb-8">
+                            {allFAQs
+                                .filter(faq => faq.popular)
+                                .map((faq, index) => (
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: index * 0.1 }}
+                                    >
+                                        <button
+                                            onClick={() => toggleQuestion(index)}
+                                            className="w-full text-left p-4 md:p-5 rounded-2xl bg-gradient-to-r from-[#F9F7FC] to-white border border-[#E8E0FF] hover:border-[#8E7AB5]/30 transition-all flex justify-between items-center group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] flex items-center justify-center text-white">
+                                                    ?
+                                                </div>
+                                                <div className="text-left">
+                                                    <h3 className="text-lg font-semibold text-[#1C1C1C] group-hover:text-[#8E7AB5] transition-colors">
+                                                        {faq.question}
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <div className="px-2 py-1 rounded-full bg-[#8E7AB5]/10 text-[#8E7AB5] text-xs font-medium">
+                                                            Populaire
+                                                        </div>
+                                                        <span className="text-xs text-[#666]">
+                                                            {faq.category === 'security' ? '🔒 Sécurité' :
+                                                                faq.category === 'matching' ? '👥 Rencontres' :
+                                                                    '💎 Premium'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <ChevronDown className={`transition-transform ${openQuestions.includes(index) ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {openQuestions.includes(index) && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="p-4 md:p-5 pt-4 bg-white/50 rounded-b-2xl border border-t-0 border-[#F0F0F0]">
+                                                        <p className="text-[#666]">{faq.answer}</p>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </motion.div>
+                                ))}
+                        </div>
+
+                        {/* Toutes les questions */}
+                        <h2 className="text-3xl font-bold text-[#1C1C1C] mb-8">
+                            Toutes les <span className="text-[#8E7AB5]">questions</span>
+                        </h2>
+
+                        <div className="space-y-4">
+                            {searchResults.length > 0 ? (
+                                searchResults.map((faq, index) => (
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <button
+                                            onClick={() => toggleQuestion(index + 10)} // Offset pour éviter les conflits
+                                            className="w-full text-left p-4 md:p-5 rounded-2xl bg-white border border-[#F0F0F0] hover:border-[#8E7AB5]/30 transition-all flex justify-between items-center group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-8 h-8 rounded-full ${faq.category === 'security' ? 'bg-gradient-to-r from-[#FF6B6B] to-[#FF8E8E]' :
+                                                    faq.category === 'matching' ? 'bg-gradient-to-r from-[#4ECDC4] to-[#44A08D]' :
+                                                        faq.category === 'premium' ? 'bg-gradient-to-r from-[#FFD166] to-[#FF9A3C]' :
+                                                            'bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]'
+                                                    } flex items-center justify-center text-white`}>
+                                                    {faq.category === 'security' ? '🔒' :
+                                                        faq.category === 'matching' ? '👥' :
+                                                            faq.category === 'premium' ? '💎' : '⚙️'}
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-[#1C1C1C] group-hover:text-[#8E7AB5] transition-colors">
+                                                    {faq.question}
+                                                </h3>
+                                            </div>
+                                            <ChevronDown className={`transition-transform ${openQuestions.includes(index + 10) ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {openQuestions.includes(index + 10) && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="p-4 md:p-5 pt-4 bg-white/50 rounded-b-2xl border border-t-0 border-[#F0F0F0]">
+                                                        <p className="text-[#666]">{faq.answer}</p>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="text-center py-5 md:py-4">
+                                    <HelpCircle size={48} className="mx-auto text-[#8E7AB5]/50 mb-4" />
+                                    <h3 className="text-xl font-semibold text-[#1C1C1C] mb-2">
+                                        Aucun résultat trouvé
+                                    </h3>
+                                    <p className="text-[#666]">
+                                        Essaye d'autres mots-clés ou explore les catégories
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Contact rapide */}
+                <section className="py-3 md:py-4 px-4 md:px-4 md:px-5 bg-gradient-to-b from-white to-[#F9F7FC]">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="p-4 md:p-4 md:p-5 rounded-3xl bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white">
+                            <h2 className="text-3xl font-bold mb-4">
+                                Tu n'as pas trouvé ta réponse ?
+                            </h2>
+                            <p className="text-lg opacity-90 mb-8">
+                                Notre équipe de support est là pour t'aider 7j/7
+                            </p>
+
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <a
+                                    href="mailto:support@sferaluna.com"
+                                    className="p-4 md:p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all text-center"
+                                >
+                                    <MessageCircle className="w-8 h-8 mx-auto mb-3" />
+                                    <div className="font-semibold">Email</div>
+                                    <div className="text-sm opacity-80">Réponse sous 24h</div>
+                                </a>
+
+                                <a
+                                    href="/guide"
+                                    className="p-4 md:p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all text-center"
+                                >
+                                    <HelpCircle className="w-8 h-8 mx-auto mb-3" />
+                                    <div className="font-semibold">Guide complet</div>
+                                    <div className="text-sm opacity-80">Toutes les ressources</div>
+                                </a>
+
+                                <a
+                                    href="/contact"
+                                    className="p-4 md:p-5 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all text-center"
+                                >
+                                    <Users className="w-8 h-8 mx-auto mb-3" />
+                                    <div className="font-semibold">Contact</div>
+                                    <div className="text-sm opacity-80">Formulaire détaillé</div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <Footer />
+        </>
+    );
+}

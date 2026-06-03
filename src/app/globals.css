@@ -1,26 +1,251 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* 
+  Variables globales du thème.
+  Elles servent de base générale, même si certaines pages LunaVibe
+  utilisent leurs propres backgrounds en Tailwind.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0614;
+  --foreground: #f8f5ff;
+  --lunavibe-purple: #8e7ab5;
+  --lunavibe-pink: #ec4899;
+  --lunavibe-dark: #1a0b2e;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+  Style global du document.
+  On garde un fond sombre par défaut pour éviter les flashs blancs
+  lors des changements de page.
+*/
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/*
+  Sélection de texte personnalisée.
+*/
+::selection {
+  background: rgba(236, 72, 153, 0.35);
+  color: white;
+}
+
+/*
+  Améliore légèrement le rendu des inputs sur iOS / Safari.
+*/
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+/*
+  Classe input simple utilisée sur certaines anciennes pages.
+  Pour les pages sombres LunaVibe, préfère .input-luna.
+*/
+.input {
+  @apply w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8E7AB5];
+}
+
+/*
+  Message d'erreur générique.
+*/
+.error {
+  @apply text-sm text-red-500;
+}
+
+/*
+  Tag clair générique pour les pages à fond clair.
+*/
+.tag {
+  @apply px-4 py-2 border border-gray-300 rounded-full text-sm cursor-pointer transition hover:bg-[#f5f3f7];
+}
+
+/*
+  Input spécial LunaVibe pour les pages sombres :
+  /mon-compte, /inscription, /paiement, etc.
+*/
+.input-luna {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 1rem;
+  color: white;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.input-luna::placeholder {
+  color: rgba(209, 213, 219, 0.7);
+}
+
+.input-luna:focus {
+  border-color: rgba(244, 114, 182, 0.8);
+  box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.25);
+}
+
+.input-luna:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/*
+  Pour les options de select sur fond sombre.
+*/
+.input-luna option {
+  background: #111827;
+  color: white;
+}
+
+/*
+  Animation fade-in simple.
+*/
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+  Animation fade + slide down.
+*/
+.animate-fade-slide-down {
+  animation: fadeSlideDown 1s ease-out forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+@keyframes fadeSlideDown {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+  Animation pulse alternative.
+*/
+.animate-pulse-alt {
+  animation: pulseAlt 3s ease-in-out infinite;
+}
+
+@keyframes pulseAlt {
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 1;
+  }
+}
+
+/*
+  Animation flottante douce.
+*/
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/*
+  Fond étoilé LunaVibe.
+  Utilisé avec :
+  <div className="stars" />
+*/
+.stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.65;
+}
+
+.stars::before,
+.stars::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+}
+
+.stars::before {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 50px 160px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 200px 200px;
+}
+
+.stars::after {
+  background-image:
+    radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 160px 120px, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 200px 60px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 240px 90px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 300px 300px;
+  animation: starsTwinkle 8s ease-in-out infinite alternate;
+}
+
+@keyframes starsTwinkle {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 0.9;
+  }
+}
+
+/*
+  Scrollbar custom discrète.
+*/
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #10091f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(142, 122, 181, 0.65);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(236, 72, 153, 0.75);
 }

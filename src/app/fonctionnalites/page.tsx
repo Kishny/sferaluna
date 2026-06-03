@@ -1,0 +1,612 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Sparkles, Ghost, Users, Calendar, Lightbulb, Brain,
+    Shield, Heart, Zap, Moon, Palette, Music, Target,
+    ChevronRight, Star, Check, Eye, MessageCircle
+} from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Link from 'next/link';
+import HexagonSix from '@/components/icons/HexagonSix';
+
+interface SiteStats { membres: number; matchs: number; messages: number; evenements: number; }
+
+function formatStat(n: number): string {
+    if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K+';
+    if (n === 0) return '—';
+    return n.toString();
+}
+
+export default function FonctionnalitesPage() {
+    const [activeFeature, setActiveFeature] = useState<string | null>('circle');
+    const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
+    const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+
+    useEffect(() => {
+        fetch('/api/stats').then(r => r.json()).then(d => { if (d.success) setSiteStats(d.stats); }).catch(() => {});
+    }, []);
+
+    const features = [
+        {
+            id: 'circle',
+            icon: <HexagonSix size={32} />,
+            title: 'Circle of Six',
+            description: 'Des liens choisis, pas des milliers de swipes.',
+            details: 'Chaque semaine, notre algorithme te présente 6 femmes qui correspondent à tes valeurs et intérêts. Une approche qualitative pour des rencontres authentiques.',
+            color: 'from-[#8E7AB5] to-[#D9B8FF]',
+            stats: ['6 personnes par semaine', 'Compatibilité optimisée', '3x plus de conversations'],
+            link: '/circle'
+        },
+        {
+            id: 'ghost',
+            icon: <Ghost className="w-8 h-8" />,
+            title: 'Mode Fantôme',
+            description: 'Discrétion assurée, photos floutées, pseudonymes.',
+            details: 'Protège ton intimité avec des photos floutées et un pseudonyme. Tu décides quand et à qui révéler ton identité.',
+            color: 'from-[#4ECDC4] to-[#44A08D]',
+            stats: ['Contrôle total', 'Anonymat garanti', 'Active/désactive en 1 clic'],
+            link: '/mode-fantome'
+        },
+        {
+            id: 'vibesphere',
+            icon: <Moon className="w-8 h-8" />,
+            title: 'VibeSphere',
+            description: 'Exprime ta vibe dans ton espace personnalisé.',
+            details: 'Crée ton univers digital avec des playlists personnalisées, un journal émotionnel et des avatars d\'humeur.',
+            color: 'from-[#FF6B6B] to-[#FF8E8E]',
+            stats: ['Journal émotionnel', 'Playlists personnalisées', 'Avatars d\'humeur'],
+            link: '/vibesphere'
+        },
+        {
+            id: 'vibeplanner',
+            icon: <Lightbulb className="w-8 h-8" />,
+            title: 'VibePlanner',
+            description: 'Des idées de rendez-vous qui vous rassemblent.',
+            details: 'Plus jamais de "On fait quoi ?". Des suggestions créatives basées sur vos intérêts communs.',
+            color: 'from-[#FFD166] to-[#FF9A3C]',
+            stats: ['Idées personnalisées', 'Adapté à tous les budgets', 'Planning intégré'],
+            link: '/vibeplanner'
+        },
+        {
+            id: 'events',
+            icon: <Calendar className="w-8 h-8" />,
+            title: 'Événements Luna',
+            description: 'Participe à des moments inoubliables.',
+            details: 'Rejoins notre communauté lors d\'événements exclusifs en ligne et en présentiel.',
+            color: 'from-[#9D4EDD] to-[#7B2CBF]',
+            stats: ['Événements mensuels', 'Communauté bienveillante', 'Rencontres organisées'],
+            link: '/evenements',
+            comingSoon: true,
+        },
+        {
+            id: 'coaching',
+            icon: <Brain className="w-8 h-8" />,
+            title: 'VibeMentor',
+            description: 'Sois guidée avec bienveillance et expertise.',
+            details: 'Accompagnement personnalisé pour naviguer dans tes relations et ton développement personnel.',
+            color: 'from-[#00B09B] to-[#96C93D]',
+            stats: ['Coaching individuel', 'Ateliers thématiques', 'Ressources exclusives'],
+            link: '/vibementor',
+            comingSoon: true,
+        },
+        {
+            id: 'security',
+            icon: <Shield className="w-8 h-8" />,
+            title: 'Sécurité Totale',
+            description: 'Un espace protégé et bienveillant.',
+            details: 'Modération 24/7, données cryptées et outils de contrôle pour ton bien-être numérique.',
+            color: 'from-[#667EEA] to-[#764BA2]',
+            stats: ['Modération 24/7', 'Données cryptées', 'Signalement rapide'],
+            link: '/securite'
+        },
+        {
+            id: 'community',
+            icon: <Heart className="w-8 h-8" />,
+            title: 'Communauté Luna',
+            description: 'Rejoins un réseau bienveillant de femmes.',
+            details: 'Échange, partage et grandis avec une communauté qui te comprend et te soutient.',
+            color: 'from-[#FF6B9D] to-[#FF8E53]',
+            stats: ['Groupes thématiques', 'Forum bienveillant', 'Support entre membres'],
+            link: '/communaute'
+        }
+    ];
+
+    const selectedFeature = features.find(f => f.id === activeFeature) || features[0];
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.2
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.5 }
+        }
+    };
+
+    return (
+        <>
+            <Header />
+
+            <main className="min-h-screen bg-gradient-to-b from-[#F5F3F7] to-[#FFFFFF] text-[#1C1C1C] overflow-hidden">
+                {/* Hero Section */}
+                <section className="relative pt-20 pb-8 md:pt-28 md:pb-12 px-4 md:px-6 overflow-hidden">
+                    <div className="absolute inset-0">
+                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#FDF7FA]/80 via-[#F5F0FF]/60 to-[#E8DFFF]/40" />
+
+                        {/* Orbes décoratives */}
+                        <motion.div
+                            animate={{
+                                x: [0, 100, 0],
+                                y: [0, 50, 0],
+                                rotate: [0, 180, 360]
+                            }}
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 rounded-full blur-3xl"
+                        />
+                        <motion.div
+                            animate={{
+                                x: [0, -100, 0],
+                                y: [0, -50, 0],
+                                rotate: [360, 180, 0]
+                            }}
+                            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-[#FDF7FA]/20 to-[#8E7AB5]/10 rounded-full blur-3xl"
+                        />
+                    </div>
+
+                    <div className="relative z-10 max-w-6xl mx-auto text-center">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                        >
+                            {/* Badge */}
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2, type: "spring" }}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 border border-[#8E7AB5]/20 mb-8"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-[#8E7AB5] animate-pulse" />
+                                <span className="text-sm font-medium text-[#5B4B8A]">
+                                    ✨ Découvre l'expérience complète
+                                </span>
+                            </motion.div>
+
+                            <motion.h1
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3, duration: 0.8 }}
+                                className="text-3xl sm:text-3xl sm:text-5xl md:text-7xl font-bold mb-6"
+                            >
+                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#5B4B8A] via-[#8E7AB5] to-[#D9B8FF]">
+                                    Fonctionnalités
+                                </span>
+                                <br />
+                                <span className="text-2xl sm:text-2xl sm:text-4xl md:text-6xl text-[#1C1C1C] font-light">
+                                    exclusives
+                                </span>
+                            </motion.h1>
+
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5, duration: 0.8 }}
+                                className="text-base md:text-xl text-[#4B4B4B] max-w-3xl mx-auto mb-8 leading-relaxed"
+                            >
+                                Conçues <span className="font-semibold text-[#8E7AB5]">pour toi</span>, pour ta liberté, pour ta vibe.
+                                Une expérience de rencontre repensée de A à Z.
+                            </motion.p>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Navigation des fonctionnalités */}
+                <section className="py-4 md:py-6 px-4 md:px-6 bg-white border-b border-[#F0F0F0] sticky top-20 z-10">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                            {features.map((feature) => (
+                                <button
+                                    key={feature.id}
+                                    onClick={() => setActiveFeature(feature.id)}
+                                    onMouseEnter={() => setHoveredFeature(feature.id)}
+                                    onMouseLeave={() => setHoveredFeature(null)}
+                                    className={`group relative flex items-center gap-2 px-4 py-3 rounded-full border transition-all ${activeFeature === feature.id
+                                        ? `bg-gradient-to-r ${feature.color} text-white border-transparent`
+                                        : 'bg-white border-[#E8E0FF] text-[#666] hover:border-[#8E7AB5]'
+                                        }`}
+                                >
+                                    <div className={`${activeFeature === feature.id ? 'text-white' : 'text-[#8E7AB5]'}`}>
+                                        {feature.icon}
+                                    </div>
+                                    <span className="font-medium">{feature.title}</span>
+
+                                    {/* Indicateur d'état actif */}
+                                    {activeFeature === feature.id && (
+                                        <motion.div
+                                            layoutId="activeFeature"
+                                            className="absolute inset-0 rounded-full border-2 border-white/30"
+                                        />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Détail de la fonctionnalité active */}
+                <section className="py-6 md:py-8 px-4 md:px-6">
+                    <div className="max-w-6xl mx-auto">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={selectedFeature.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                                className="grid lg:grid-cols-2 gap-12 items-center"
+                            >
+                                {/* Colonne gauche - Détails */}
+                                <div>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className={`p-4 rounded-2xl bg-gradient-to-r ${selectedFeature.color}`}>
+                                            <div className="text-white">{selectedFeature.icon}</div>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-4xl font-bold text-[#1C1C1C]">
+                                                {selectedFeature.title}
+                                            </h2>
+                                            <p className="text-lg text-[#8E7AB5] font-medium">
+                                                {selectedFeature.description}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-lg text-[#666] mb-8 leading-relaxed">
+                                        {selectedFeature.details}
+                                    </p>
+
+                                    <div className="space-y-4 mb-8">
+                                        {selectedFeature.stats.map((stat, index) => (
+                                            <motion.div
+                                                key={index}
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: index * 0.1 }}
+                                                className="flex items-center gap-3"
+                                            >
+                                                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]" />
+                                                <span className="text-[#1C1C1C]">{stat}</span>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+
+                                    {(selectedFeature as { comingSoon?: boolean }).comingSoon ? (
+                                        <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50 border border-amber-200">
+                                            <span className="text-2xl mt-0.5">⏳</span>
+                                            <div>
+                                                <p className="font-semibold text-amber-800 mb-1">Bientôt disponible</p>
+                                                <p className="text-sm text-amber-700 leading-relaxed">
+                                                    Cette fonctionnalité est en cours de déploiement. Tout se met en place pour t&apos;offrir la meilleure expérience possible — reste connectée, ça arrive très vite !
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-4">
+                                            <Link
+                                                href={selectedFeature.link}
+                                                className="group relative px-6 py-3 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white font-semibold hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                                            >
+                                                <span>Découvrir</span>
+                                                <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+                                            </Link>
+
+                                            {selectedFeature.id === 'circle' && (
+                                                <button className="px-6 py-3 rounded-full border border-[#8E7AB5] text-[#8E7AB5] font-medium hover:bg-[#8E7AB5]/10 transition-colors">
+                                                    Voir la démo
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Colonne droite - Visuel */}
+                                <div className="relative">
+                                    <div className={`absolute -inset-4 bg-gradient-to-r ${selectedFeature.color} rounded-3xl blur-xl opacity-20`} />
+                                    <div className="relative rounded-2xl overflow-hidden border border-[#F0F0F0] shadow-2xl">
+                                        {/* Simulation d'interface */}
+                                        <div className="bg-gradient-to-br from-[#1a1529] to-[#2d2750] p-6">
+                                            {/* En-tête */}
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]" />
+                                                    <div>
+                                                        <div className="h-2 w-32 bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]/50 rounded" />
+                                                        <div className="h-1 w-24 bg-gradient-to-r from-[#8E7AB5]/30 to-transparent rounded mt-1" />
+                                                    </div>
+                                                </div>
+                                                <div className="text-white/60">{selectedFeature.id === 'ghost' ? '👻 Mode' : '✨ Premium'}</div>
+                                            </div>
+
+                                            {/* Contenu spécifique */}
+                                            <div className="space-y-4">
+                                                {selectedFeature.id === 'circle' && (
+                                                    <>
+                                                        <div className="text-center text-white">
+                                                            <div className="text-6xl mb-4">👥</div>
+                                                            <h3 className="text-2xl font-bold mb-2">Ton Circle of Six</h3>
+                                                            <p className="text-white/80">6 femmes qui partagent tes valeurs</p>
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                                                <div key={i} className="aspect-square rounded-xl bg-white/10 flex items-center justify-center">
+                                                                    <div className="text-2xl">{['🎨', '📚', '🌿', '🎵', '🍳', '🧳'][i - 1]}</div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                {selectedFeature.id === 'ghost' && (
+                                                    <div className="text-center text-white">
+                                                        <div className="text-6xl mb-4">👻</div>
+                                                        <h3 className="text-2xl font-bold mb-2">Mode Fantôme activé</h3>
+                                                        <p className="text-white/80 mb-4">Ton profil est flouté pour protéger ton intimité</p>
+                                                        <div className="flex justify-center gap-2">
+                                                            <div className="px-3 py-1 rounded-full bg-white/10 text-sm">Photos floutées</div>
+                                                            <div className="px-3 py-1 rounded-full bg-white/10 text-sm">Pseudonyme</div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {selectedFeature.id === 'vibesphere' && (
+                                                    <div className="text-center text-white">
+                                                        <div className="text-6xl mb-4">🌌</div>
+                                                        <h3 className="text-2xl font-bold mb-2">Ton VibeSphere</h3>
+                                                        <p className="text-white/80">Exprime ton humeur du jour</p>
+                                                        <div className="flex justify-center gap-3 mt-4">
+                                                            {['🌿', '⚡️', '💭'].map((emoji, i) => (
+                                                                <div key={i} className="text-3xl p-2 rounded-lg bg-white/10">
+                                                                    {emoji}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Contenu par défaut pour les autres */}
+                                                {!['circle', 'ghost', 'vibesphere'].includes(selectedFeature.id) && (
+                                                    <div className="text-center text-white">
+                                                        <div className="text-6xl mb-4">✨</div>
+                                                        <h3 className="text-2xl font-bold mb-2">{selectedFeature.title}</h3>
+                                                        <p className="text-white/80">{selectedFeature.description}</p>
+                                                        <div className="mt-6 p-4 rounded-xl bg-white/5">
+                                                            <div className="flex items-center justify-center gap-4">
+                                                                <Eye className="text-white/60" />
+                                                                <MessageCircle className="text-white/60" />
+                                                                <Heart className="text-white/60" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
+                </section>
+
+                {/* Toutes les fonctionnalités en grille */}
+                <section className="py-6 md:py-8 px-4 md:px-6 bg-gradient-to-b from-white to-[#F9F7FC]">
+                    <div className="max-w-6xl mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-center mb-8 md:mb-5 md:mb-8"
+                        >
+                            <h2 className="text-4xl font-bold text-[#1C1C1C] mb-6">
+                                Une expérience <span className="text-[#8E7AB5]">complète</span>
+                            </h2>
+                            <p className="text-xl text-[#666] max-w-3xl mx-auto">
+                                Tout ce dont tu as besoin pour créer des connexions authentiques
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            variants={containerVariants}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true }}
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                        >
+                            {features.map((feature, index) => {
+                                const isActive = activeFeature === feature.id;
+                                const isInactive = activeFeature !== null && !isActive;
+                                return (
+                                <motion.div
+                                    key={feature.id}
+                                    variants={itemVariants}
+                                    onMouseEnter={() => setHoveredFeature(feature.id)}
+                                    onMouseLeave={() => setHoveredFeature(null)}
+                                    onClick={() => setActiveFeature(feature.id)}
+                                    animate={{ opacity: isInactive ? 0.22 : 1, scale: isActive ? 1.02 : 1 }}
+                                    whileHover={{ opacity: isInactive ? 0.65 : 1, scale: isActive ? 1.02 : 1.01 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="group relative cursor-pointer"
+                                >
+                                    <div className={`relative h-full p-6 rounded-2xl bg-white border transition-all duration-300 overflow-hidden ${
+                                        isActive
+                                            ? 'ring-2 ring-[#8E7AB5] border-[#8E7AB5]/30 shadow-xl shadow-[#8E7AB5]/20'
+                                            : 'border-[#F0F0F0] shadow-lg hover:shadow-xl'
+                                    }`}>
+                                        {/* Fond gradient actif */}
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} transition-opacity duration-300 ${isActive ? 'opacity-5' : 'opacity-0 group-hover:opacity-3'}`} />
+
+                                        {/* Icone */}
+                                        <div className={`mb-4 transition-colors duration-200 ${isActive ? `text-transparent bg-gradient-to-r ${feature.color} bg-clip-text` : 'text-[#8E7AB5]'}`}>
+                                            {feature.icon}
+                                        </div>
+
+                                        <h3 className={`text-xl font-semibold mb-2 transition-colors duration-200 ${isActive ? 'text-[#1C1C1C]' : 'text-[#1C1C1C]'}`}>
+                                            {feature.title}
+                                        </h3>
+
+                                        <p className="text-[#666] mb-4">
+                                            {feature.description}
+                                        </p>
+
+                                        {/* Badge bientôt disponible */}
+                                        {(feature as { comingSoon?: boolean }).comingSoon && (
+                                            <div className="absolute top-4 right-4">
+                                                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-medium shadow-sm">
+                                                    <span>⏳</span>
+                                                    <span>Bientôt</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Badge actif */}
+                                        {isActive && !(feature as { comingSoon?: boolean }).comingSoon && (
+                                            <div className="absolute top-4 right-4">
+                                                <div className="px-2 py-1 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white text-xs font-medium">
+                                                    Actif
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                                );
+                            })}
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Statistiques */}
+                <section className="py-6 md:py-8 px-4 md:px-6 bg-white">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="grid md:grid-cols-3 gap-8">
+                            {[
+                                {
+                                    value: siteStats ? formatStat(siteStats.membres) : '…',
+                                    label: "Membres inscrites",
+                                    description: "Une communauté active et bienveillante",
+                                    icon: "👩‍❤️‍👩"
+                                },
+                                {
+                                    value: siteStats ? formatStat(siteStats.matchs) : '…',
+                                    label: "Matchs créés",
+                                    description: "Des connexions mutuelles créées chaque jour",
+                                    icon: "💜"
+                                },
+                                {
+                                    value: "24/7",
+                                    label: "Modération active",
+                                    description: "Un espace sécurisé à toute heure",
+                                    icon: "🛡️"
+                                }
+                            ].map((stat, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 30 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.2 }}
+                                    className="text-center p-4 md:p-6 rounded-3xl bg-gradient-to-b from-[#F9F7FC] to-white border border-[#E8E0FF]"
+                                >
+                                    <div className="text-4xl mb-4">{stat.icon}</div>
+                                    <div className="text-5xl font-bold text-[#5B4B8A] mb-2">{stat.value}</div>
+                                    <div className="text-xl font-semibold text-[#1C1C1C] mb-2">{stat.label}</div>
+                                    <div className="text-[#666]">{stat.description}</div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Call to Action */}
+                <section className="md:py-8 px-4 md:px-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
+
+                    {/* Effets de fond */}
+                    <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                        className="absolute -top-1/2 -left-1/2 w-full h-full bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"
+                    />
+
+                    <div className="relative z-10 max-w-4xl mx-auto text-center text-white">
+                        <motion.h2
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-2xl sm:text-4xl md:text-5xl font-bold mb-6"
+                        >
+                            Prête à découvrir toutes nos <span className="text-white">fonctionnalités</span> ?
+                        </motion.h2>
+
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.2 }}
+                            className="text-xl opacity-90 max-w-2xl mx-auto mb-10"
+                        >
+                            Rejoins des milliers de femmes qui utilisent déjà SferaLuna pour créer des connexions authentiques
+                        </motion.p>
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.4 }}
+                            className="flex flex-col sm:flex-row gap-4 justify-center"
+                        >
+                            <Link
+                                href="/auth?mode=register"
+                                className="px-5 md:px-8 py-4 rounded-full bg-white text-[#8E7AB5] font-semibold text-lg shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3"
+                            >
+                                <span>Essayer gratuitement</span>
+                                <Sparkles />
+                            </Link>
+
+                            <Link
+                                href="/tarifs"
+                                className="px-5 md:px-8 py-4 rounded-full border-2 border-white text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300"
+                            >
+                                Voir les forfaits
+                            </Link>
+                        </motion.div>
+
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.6 }}
+                            className="mt-8 text-white/80"
+                        >
+                            <span className="font-semibold">30 jours d'essai premium</span> · Aucune carte requise · Annulation à tout moment
+                        </motion.p>
+                    </div>
+                </section>
+            </main>
+
+            <Footer />
+        </>
+    );
+}

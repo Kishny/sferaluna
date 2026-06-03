@@ -1,0 +1,325 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Heart, Shield, Sparkles, Star, Moon, Zap, MessageCircle, Users } from 'lucide-react';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Link from 'next/link';
+
+interface SiteStats { membres: number; matchs: number; messages: number; evenements: number; }
+
+function formatStat(n: number): string {
+    if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K+';
+    if (n === 0) return '—';
+    return n.toString();
+}
+
+export default function HistoirePage() {
+    const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+
+    useEffect(() => {
+        fetch('/api/stats').then(r => r.json()).then(d => { if (d.success) setSiteStats(d.stats); }).catch(() => {});
+    }, []);
+
+    const timeline = [
+        {
+            period: "Printemps 2024",
+            title: "Le déclic",
+            description: "Tout part d'un constat simple et douloureux : les applications de rencontres ne sont pas conçues pour les femmes. Elles sont pensées pour le volume, pas pour la qualité. Pour la vitesse, pas pour la profondeur. SferaLuna naît de cette frustration — et de la conviction qu'on peut faire bien mieux.",
+            icon: "💡",
+            color: "from-[#8E7AB5] to-[#D9B8FF]"
+        },
+        {
+            period: "Été 2024",
+            title: "La construction",
+            description: "Des mois de travail, de réflexion, de tests. Chaque fonctionnalité est pensée avec une seule question en tête : est-ce que ça aide vraiment les femmes à rencontrer des personnes qui leur correspondent ? Le Circle of Six, le VibeSphere, le Mode Fantôme — tout est conçu pour mettre la femme au centre.",
+            icon: "🔨",
+            color: "from-[#FF6B6B] to-[#FF8E8E]"
+        },
+        {
+            period: "Automne 2024",
+            title: "Les premières vagues",
+            description: "Les premières utilisatrices arrivent. Leurs retours sont précieux, parfois brutaux, toujours utiles. On écoute, on ajuste, on améliore. La messagerie se perfectionne. Les matchs commencent à se former. Les premières histoires d'amour naissent sur SferaLuna.",
+            icon: "🌊",
+            color: "from-[#4ECDC4] to-[#44A08D]"
+        },
+        {
+            period: "Hiver 2024 – 2025",
+            title: "La communauté s'éveille",
+            description: "SferaLuna grandit au-delà des rencontres. VibeMentor, les Événements Luna, la Communauté — autant d'espaces où les femmes échangent, s'entraident et construisent quelque chose ensemble. Ce n'est plus seulement une app de rencontres. C'est un refuge.",
+            icon: "✨",
+            color: "from-[#FFD166] to-[#FF9A3C]"
+        },
+        {
+            period: "Aujourd'hui",
+            title: "Le voyage continue",
+            description: "SferaLuna évolue chaque jour. Notifications en temps réel, upload de photos, vérification des profils, nouvelles fonctionnalités premium — chaque mise à jour a un seul objectif : vous offrir l'expérience de rencontres que vous méritez vraiment.",
+            icon: "🌙",
+            color: "from-[#5B4B8A] to-[#8E7AB5]"
+        }
+    ];
+
+    const values = [
+        {
+            icon: <Shield className="w-7 h-7" />,
+            title: "La sécurité d'abord",
+            description: "Modération active, signalement, Mode Fantôme, vérification email — chaque décision technique est guidée par la sécurité des femmes sur la plateforme.",
+            color: "text-[#8E7AB5]",
+            bg: "bg-purple-50"
+        },
+        {
+            icon: <Heart className="w-7 h-7" />,
+            title: "L'authenticité toujours",
+            description: "Pas de swipe frénétique. Pas de filtre artificiel. SferaLuna valorise ce que tu es vraiment — tes valeurs, tes envies, ta vibe.",
+            color: "text-[#FF6B6B]",
+            bg: "bg-red-50"
+        },
+        {
+            icon: <Users className="w-7 h-7" />,
+            title: "Une communauté réelle",
+            description: "SferaLuna n'est pas qu'une app. C'est un espace où les femmes s'entraident, échangent et se retrouvent — même au-delà des rencontres romantiques.",
+            color: "text-[#4ECDC4]",
+            bg: "bg-teal-50"
+        },
+        {
+            icon: <Sparkles className="w-7 h-7" />,
+            title: "L'expérience féminine",
+            description: "Conçu par et pour les femmes. Chaque parcours, chaque couleur, chaque mot a été pensé pour que tu te sentes enfin à ta place.",
+            color: "text-[#FFD166]",
+            bg: "bg-yellow-50"
+        }
+    ];
+
+    return (
+        <>
+            <Header />
+
+            <main className="min-h-screen bg-[#faf9ff] text-[#1C1C1C] overflow-hidden">
+
+                {/* Hero */}
+                <section className="relative pt-24 md:pt-32 pb-10 md:pb-16 px-4 md:px-6 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82]" />
+                    {/* Orbes */}
+                    <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 8, repeat: Infinity }}
+                        className="absolute top-20 left-1/4 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl" />
+                    <motion.div animate={{ scale: [1.1, 1, 1.1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 10, repeat: Infinity }}
+                        className="absolute bottom-10 right-1/4 w-96 h-96 bg-pink-500/15 rounded-full blur-3xl" />
+
+                    <div className="relative z-10 max-w-4xl mx-auto text-center text-white">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+                            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm mb-8">
+                                <Moon className="h-4 w-4 text-purple-300" />
+                                <span className="text-purple-200">Née en 2024 · Made in France</span>
+                            </div>
+
+                            <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mb-6 leading-tight">
+                                Notre{' '}
+                                <span className="bg-gradient-to-r from-[#D9B8FF] to-[#FFB3D9] bg-clip-text text-transparent">
+                                    histoire
+                                </span>
+                            </h1>
+
+                            <p className="text-base md:text-xl opacity-80 max-w-2xl mx-auto leading-relaxed">
+                                Tout a commencé par une question : pourquoi les femmes méritent-elles moins bien dans les rencontres en ligne ?
+                            </p>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Intro — la vraie histoire */}
+                <section className="py-4 md:py-14 px-4 md:px-6">
+                    <div className="max-w-4xl mx-auto">
+                        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                            className="grid md:grid-cols-2 gap-12 items-center">
+                            <div>
+                                <h2 className="text-xl sm:text-3xl md:text-4xl font-bold text-[#1C1C1C] mb-6 leading-tight">
+                                    Pourquoi <span className="text-[#8E7AB5]">SferaLuna</span> existe
+                                </h2>
+                                <p className="text-[#555] leading-relaxed mb-4">
+                                    En 2024, on a regardé le paysage des applications de rencontres et on a vu la même chose encore et encore : des plateformes pensées pour maximiser le temps passé sur l'écran, pas pour créer de vraies connexions.
+                                </p>
+                                <p className="text-[#555] leading-relaxed mb-4">
+                                    Les femmes y subissent des interactions non désirées, un manque de sécurité criard, des algorithmes qui valorisent les photos sur tout le reste. Elles méritent tellement mieux.
+                                </p>
+                                <p className="text-[#555] leading-relaxed">
+                                    SferaLuna est la réponse à ce manque. Une plateforme premium, pensée à 100% pour l'expérience féminine — sécurisée, authentique, et belle.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {[
+                                    { emoji: "🛡️", text: "Conçue pour la sécurité des femmes avant tout" },
+                                    { emoji: "💜", text: "Connexions basées sur les valeurs, pas les photos" },
+                                    { emoji: "🌙", text: "Un espace bienveillant, sans jugement" },
+                                    { emoji: "✨", text: "Une communauté qui grandit ensemble" },
+                                ].map((item, i) => (
+                                    <motion.div key={i} initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1 }}
+                                        className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-[#f0ecff] shadow-sm">
+                                        <span className="text-2xl">{item.emoji}</span>
+                                        <span className="text-[#444] font-medium">{item.text}</span>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Timeline */}
+                <section className="py-4 md:py-14 px-4 md:px-6 bg-white">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="text-center mb-8 md:mb-5 md:mb-8">
+                            <h2 className="text-4xl font-bold text-[#1C1C1C] mb-4">
+                                Le <span className="text-[#8E7AB5]">parcours</span>
+                            </h2>
+                            <p className="text-[#666] text-lg">De l'idée à la plateforme — en moins d'un an</p>
+                        </div>
+
+                        <div className="relative">
+                            {/* Ligne verticale */}
+                            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-[#D9B8FF] via-[#8E7AB5] to-[#D9B8FF] -translate-x-1/2" />
+
+                            {timeline.map((item, index) => (
+                                <motion.div key={index}
+                                    initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.15 }}
+                                    className={`relative flex flex-col md:flex-row items-center mb-5 md:mb-8 gap-6 ${index % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}
+                                >
+                                    {/* Point central */}
+                                    <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-gradient-to-br items-center justify-center text-lg z-10 shadow-md"
+                                        style={{ background: 'white', border: '2px solid #8E7AB5' }}>
+                                        {item.icon}
+                                    </div>
+
+                                    {/* Carte */}
+                                    <div className={`md:w-5/12 ${index % 2 === 0 ? 'md:text-right md:pr-12' : 'md:text-left md:pl-12'}`}>
+                                        <div className="bg-[#faf9ff] rounded-2xl p-6 border border-[#f0ecff] shadow-sm hover:shadow-md transition-shadow">
+                                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-gradient-to-r ${item.color} text-white`}>
+                                                {item.period}
+                                            </div>
+                                            <h3 className="text-xl font-bold text-[#1C1C1C] mb-3">{item.title}</h3>
+                                            <p className="text-[#666] text-sm leading-relaxed">{item.description}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Espace */}
+                                    <div className="hidden md:block md:w-5/12" />
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Valeurs */}
+                <section className="py-4 md:py-14 px-4 md:px-6 bg-[#faf9ff]">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="text-center mb-8 md:mb-5 md:mb-8">
+                            <h2 className="text-4xl font-bold text-[#1C1C1C] mb-4">
+                                Ce qui nous <span className="text-[#8E7AB5]">guide</span>
+                            </h2>
+                            <p className="text-[#666] text-lg">Les valeurs au cœur de chaque décision</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {values.map((val, i) => (
+                                <motion.div key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="bg-white rounded-2xl p-6 border border-[#f0ecff] shadow-sm text-center hover:shadow-md transition-shadow">
+                                    <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl ${val.bg} ${val.color} mb-4`}>
+                                        {val.icon}
+                                    </div>
+                                    <h3 className="font-bold text-[#1C1C1C] mb-2">{val.title}</h3>
+                                    <p className="text-sm text-[#666] leading-relaxed">{val.description}</p>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Citation forte */}
+                <section className="py-4 md:py-14 px-4 md:px-6 bg-gradient-to-br from-[#1a0b2e] to-[#2d1b69]">
+                    <div className="max-w-3xl mx-auto text-center">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
+                            <div className="text-5xl mb-8">🌙</div>
+                            <blockquote className="text-xl md:text-2xl font-light text-white leading-relaxed mb-8 italic">
+                                "SferaLuna n'est pas juste une application. C'est la conviction que les femmes méritent un espace où elles peuvent rencontrer, vibrer et s'épanouir — à leur rythme, selon leurs termes."
+                            </blockquote>
+                            <p className="text-purple-300 text-sm">— L'équipe SferaLuna</p>
+                        </motion.div>
+                    </div>
+                </section>
+
+                {/* Impact — stats dynamiques */}
+                <section className="py-4 md:py-14 px-4 md:px-6 bg-white">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="text-center mb-5 md:mb-8">
+                            <h2 className="text-4xl font-bold text-[#1C1C1C] mb-4">
+                                Notre <span className="text-[#8E7AB5]">impact</span> en chiffres
+                            </h2>
+                            <p className="text-[#666]">Données réelles, mises à jour en continu</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-4 gap-6">
+                            {[
+                                { stat: siteStats ? formatStat(siteStats.membres) : '…', label: "Membres inscrites", icon: <Users className="h-5 w-5" /> },
+                                { stat: siteStats ? formatStat(siteStats.matchs) : '…', label: "Matchs créés", icon: <Heart className="h-5 w-5" /> },
+                                { stat: siteStats ? formatStat(siteStats.messages) : '…', label: "Messages échangés", icon: <MessageCircle className="h-5 w-5" /> },
+                                { stat: siteStats ? formatStat(siteStats.evenements) : '…', label: "Événements Luna", icon: <Star className="h-5 w-5" /> },
+                            ].map((item, i) => (
+                                <motion.div key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="text-center p-6 rounded-2xl bg-gradient-to-b from-[#faf9ff] to-white border border-[#f0ecff] shadow-sm">
+                                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-[#8E7AB5] mb-3">
+                                        {item.icon}
+                                    </div>
+                                    <div className="text-4xl font-bold text-[#5B4B8A] mb-1">{item.stat}</div>
+                                    <div className="text-sm text-[#666]">{item.label}</div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* CTA final */}
+                <section className="py-5 md:py-8 py-6 md:py-8 px-4 md:px-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
+                    <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 8, repeat: Infinity }}
+                        className="absolute inset-0 bg-gradient-to-tr from-pink-500/10 to-transparent" />
+
+                    <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
+                        <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-6">
+                            Écris ta propre{' '}
+                            <span className="text-[#FFD166]">histoire</span>
+                        </h2>
+                        <p className="text-xl opacity-90 mb-10 leading-relaxed">
+                            SferaLuna n'est pas que notre histoire — c'est la tienne aussi. Rejoins une communauté qui te ressemble.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <Link href="/auth?mode=register"
+                                className="px-5 md:px-8 py-4 rounded-full bg-white text-[#8E7AB5] font-bold text-lg shadow-xl hover:scale-105 transition-all duration-300 inline-flex items-center justify-center gap-2">
+                                <Sparkles className="h-5 w-5" />
+                                Rejoindre SferaLuna
+                            </Link>
+                            <Link href="/valeurs"
+                                className="px-5 md:px-8 py-4 rounded-full border-2 border-white text-white font-semibold text-lg hover:bg-white/10 transition-all duration-300">
+                                Nos valeurs
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+            <Footer />
+        </>
+    );
+}

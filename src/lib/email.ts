@@ -1,0 +1,9 @@
+export async function sendProfileUpdateEmail(data: {
+  to: string;
+  name: string;
+  changes: string[];
+  timestamp: Date;
+}) {
+  // Implémentation d'envoi d'email
+  // Utiliser un service comme SendGrid, Resend, etc.
+}
