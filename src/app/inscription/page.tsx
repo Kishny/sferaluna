@@ -612,6 +612,36 @@ export default function InscriptionPage() {
                       ))}
                     </div>
 
+                    {/* Vérification d'identité */}
+                    <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-xl p-6 border border-purple-700/30">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center text-xl">
+                          🪪
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Vérification d&apos;identité</h3>
+                          <p className="text-xs text-white/40">Recommandé — obtenir le badge &quot;Profil vérifié&quot;</p>
+                        </div>
+                      </div>
+                      <p className="text-gray-300 text-sm mb-4">
+                        Vérifiez votre identité avec une pièce d&apos;identité officielle pour rassurer les autres utilisatrices et booster votre visibilité. Cette étape est optionnelle mais fortement recommandée.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/identity-verification", { method: "POST" });
+                            const data = await res.json();
+                            if (data.url) window.open(data.url, "_blank");
+                          } catch {}
+                        }}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition"
+                      >
+                        Vérifier mon identité maintenant
+                      </button>
+                      <p className="text-xs text-white/30 text-center mt-2">Vous pouvez aussi le faire plus tard depuis Mon Compte → Sécurité</p>
+                    </div>
+
                     {/* Bloc Stripe */}
                     <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-xl p-6 border border-blue-700/30">
                       <div className="flex items-center gap-3 mb-3">

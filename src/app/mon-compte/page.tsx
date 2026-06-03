@@ -134,9 +134,10 @@ const emptyUser: LunaUser = {
 };
 
 const orientationLabels: Record<string, string> = {
-  hetero: "Hétérosexuel(le)",
-  homo: "Homosexuel(le)",
-  bi: "Bisexuel(le)",
+  hetero: "Hétérosexuelle",
+  homo: "Lesbienne / Homosexuelle",
+  bi: "Bisexuelle",
+  curieuse: "Curieuse — je souhaite découvrir",
   pan: "Pansexuel(le)",
   other: "Autre",
 };
@@ -188,11 +189,12 @@ function isValidVisibility(value: unknown): value is ProfileVisibility {
   return value === "public" || value === "matches" || value === "premium" || value === "invisible";
 }
 function getPremiumLabel(user: LunaUser) {
-  if (user.isPremium && user.plan && user.plan !== "free") return planLabels[user.plan] || "Premium";
-  return planLabels[user.plan || "free"] || "Gratuit";
+  if (user.plan && user.plan !== "free") return planLabels[user.plan] || "Premium";
+  return "Gratuit";
 }
 function isPremiumActive(user: LunaUser) {
-  return user.isPremium === true && (user.subscriptionStatus === "active" || user.subscriptionStatus === "trialing") && user.plan !== "free";
+  // Considérer active si le plan est payant (même si webhook pas encore reçu)
+  return user.plan !== "free" && user.plan != null;
 }
 function formatDate(date?: string | null) {
   if (!date) return "—";

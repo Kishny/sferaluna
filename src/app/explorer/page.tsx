@@ -55,10 +55,11 @@ const INTENTIONS_OPTIONS = [
 ];
 
 const ORIENTATION_OPTIONS = [
-  { value: "hetero", label: "Hétérosexuel(le)" },
-  { value: "homo", label: "Homosexuel(le)" },
-  { value: "bi", label: "Bisexuel(le)" },
-  { value: "pan", label: "Pansexuel(le)" },
+  { value: "hetero", label: "Hétérosexuelle" },
+  { value: "homo", label: "Lesbienne / Homosexuelle" },
+  { value: "bi", label: "Bisexuelle" },
+  { value: "pan", label: "Pansexuelle" },
+  { value: "curieuse", label: "Curieuse" },
   { value: "other", label: "Autre" },
 ];
 
@@ -562,13 +563,21 @@ export default function ExplorerPage() {
                 </button>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-5">
-                  <h2 className="text-2xl font-bold flex items-center gap-2">
-                    {currentProfile.pseudonyme}
-                    {currentProfile.age ? `, ${currentProfile.age} ans` : ""}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-2xl font-bold">
+                      {currentProfile.pseudonyme}
+                      {currentProfile.age ? `, ${currentProfile.age} ans` : ""}
+                    </h2>
                     {currentProfile.identityVerified && (
                       <span className="text-xs font-medium bg-green-500/30 text-green-300 border border-green-400/30 rounded-full px-2 py-0.5">✓ Vérifiée</span>
                     )}
-                  </h2>
+                    <button
+                      onClick={() => router.push(`/profil/${currentProfile._id}`)}
+                      className="text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-2.5 py-0.5 transition"
+                    >
+                      Voir le profil
+                    </button>
+                  </div>
                   {currentProfile.localisation && (
                     <p className="flex items-center gap-1 text-gray-300 text-sm mt-1">
                       <MapPin className="h-4 w-4" />

@@ -7,10 +7,11 @@ import { useFormContext } from "react-hook-form";
  * Les values sont celles envoyées dans MongoDB.
  */
 const orientations = [
-  { value: "hetero", label: "Hétérosexuel(le)" },
-  { value: "homo", label: "Homosexuel(le)" },
-  { value: "bi", label: "Bisexuel(le)" },
-  { value: "pan", label: "Pansexuel(le)" },
+  { value: "hetero", label: "Hétérosexuelle" },
+  { value: "homo", label: "Lesbienne / Homosexuelle" },
+  { value: "bi", label: "Bisexuelle" },
+  { value: "pan", label: "Pansexuelle" },
+  { value: "curieuse", label: "Curieuse — je souhaite découvrir" },
   { value: "other", label: "Autre" },
 ];
 
