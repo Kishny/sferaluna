@@ -573,9 +573,9 @@ export default function ExplorerPage() {
                     )}
                     <button
                       onClick={() => router.push(`/profil/${currentProfile._id}`)}
-                      className="text-xs bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-2.5 py-0.5 transition"
+                      className="text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white shadow-lg shadow-pink-500/30 hover:opacity-90 hover:scale-105 transition-all duration-200"
                     >
-                      Voir le profil
+                      Voir le profil ✨
                     </button>
                   </div>
                   {currentProfile.localisation && (
