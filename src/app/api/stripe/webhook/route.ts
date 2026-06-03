@@ -303,6 +303,39 @@ export async function POST(req: NextRequest) {
     }
 
     /**
+     * 5. Vérification d'identité réussie.
+     */
+    if (event.type === "identity.verification_session.verified") {
+      const verificationSession = event.data.object as Stripe.Identity.VerificationSession;
+      const userId = verificationSession.metadata?.userId;
+
+      if (userId) {
+        await User.findByIdAndUpdate(userId, {
+          $set: {
+            identityVerified: true,
+            identityVerificationStatus: "verified",
+          },
+        });
+      }
+    }
+
+    /**
+     * 6. Vérification d'identité échouée ou action requise.
+     */
+    if (event.type === "identity.verification_session.requires_input") {
+      const verificationSession = event.data.object as Stripe.Identity.VerificationSession;
+      const userId = verificationSession.metadata?.userId;
+
+      if (userId) {
+        await User.findByIdAndUpdate(userId, {
+          $set: {
+            identityVerificationStatus: "failed",
+          },
+        });
+      }
+    }
+
+    /**
      * Réponse obligatoire pour Stripe.
      * Si Stripe reçoit un 200, il considère que l'événement est traité.
      */

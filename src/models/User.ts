@@ -117,6 +117,11 @@ export interface IUser extends Document {
   resetPasswordToken?: string | null;
   resetPasswordExpiry?: Date | null;
 
+  // Vérification d'identité Stripe Identity
+  identityVerified: boolean;
+  identityVerificationStatus?: "unverified" | "pending" | "verified" | "failed";
+  stripeVerificationSessionId?: string | null;
+
   // Sécurité / suivi
   lastLoginAt?: Date | null;
   lastPaymentAt?: Date | null;
@@ -437,6 +442,15 @@ const UserSchema = new Schema<IUser>(
     // Reset mot de passe
     resetPasswordToken: { type: String, default: null, select: false },
     resetPasswordExpiry: { type: Date, default: null, select: false },
+
+    // Vérification d'identité Stripe Identity
+    identityVerified: { type: Boolean, default: false },
+    identityVerificationStatus: {
+      type: String,
+      enum: ["unverified", "pending", "verified", "failed"],
+      default: "unverified",
+    },
+    stripeVerificationSessionId: { type: String, default: null },
 
     lastLoginAt: {
       type: Date,

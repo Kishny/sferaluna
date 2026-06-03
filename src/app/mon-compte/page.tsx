@@ -85,6 +85,8 @@ interface LunaUser {
   stripeCheckoutSessionId?: string;
   lastLoginAt?: string | null;
   lastPaymentAt?: string | null;
+  identityVerified?: boolean;
+  identityVerificationStatus?: "unverified" | "pending" | "verified" | "failed";
   planLabel?: string;
   subscriptionStatusLabel?: string;
   createdAt?: string;
@@ -1276,6 +1278,64 @@ function PremiumTab({ user, router }: { user: LunaUser; router: ReturnType<typeo
 // Composant : Onglet Sécurité
 // ─────────────────────────────────────────────
 
+function IdentityVerificationBlock({ user }: { user: LunaUser }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleVerify = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/identity-verification", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || "Une erreur est survenue.");
+      }
+    } catch {
+      setError("Impossible de lancer la vérification.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const status = user.identityVerificationStatus || "unverified";
+
+  return (
+    <div className="rounded-2xl border border-purple-400/20 bg-purple-500/10 p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">🪪</span>
+        <h3 className="font-semibold text-white">Vérification d&apos;identité</h3>
+        {user.identityVerified && (
+          <span className="ml-auto text-xs bg-green-500/20 text-green-300 border border-green-400/20 rounded-full px-2 py-0.5 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Vérifiée
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-white/60">
+        Vérifiez votre identité avec une pièce d&apos;identité officielle pour obtenir le badge &quot;Profil vérifié&quot; sur SferaLuna.
+      </p>
+      {status === "pending" && (
+        <p className="text-sm text-yellow-300/80">⏳ Vérification en cours…</p>
+      )}
+      {status === "failed" && (
+        <p className="text-sm text-red-300/80">❌ Vérification échouée. Réessayez.</p>
+      )}
+      {!user.identityVerified && (
+        <button
+          onClick={handleVerify}
+          disabled={loading || status === "pending"}
+          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
+        >
+          {loading ? "Chargement…" : "Vérifier mon identité"}
+        </button>
+      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 function SecurityTab({ user }: { user: LunaUser }) {
   const checks = [
     { ok: !!user.email, label: "Adresse email enregistrée", emoji: "📧" },
@@ -1325,6 +1385,8 @@ function SecurityTab({ user }: { user: LunaUser }) {
           </>
         )}
       </div>
+
+      <IdentityVerificationBlock user={user} />
 
       {user.provider === "credentials" && (
         <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200 flex items-start gap-2">

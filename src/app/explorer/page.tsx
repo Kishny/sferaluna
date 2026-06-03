@@ -33,6 +33,7 @@ interface Profile {
   interets: string[];
   intentions: string[];
   image?: string;
+  identityVerified?: boolean;
 }
 
 interface Filters {
@@ -561,9 +562,12 @@ export default function ExplorerPage() {
                 </button>
 
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-5">
-                  <h2 className="text-2xl font-bold">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
                     {currentProfile.pseudonyme}
                     {currentProfile.age ? `, ${currentProfile.age} ans` : ""}
+                    {currentProfile.identityVerified && (
+                      <span className="text-xs font-medium bg-green-500/30 text-green-300 border border-green-400/30 rounded-full px-2 py-0.5">✓ Vérifiée</span>
+                    )}
                   </h2>
                   {currentProfile.localisation && (
                     <p className="flex items-center gap-1 text-gray-300 text-sm mt-1">
