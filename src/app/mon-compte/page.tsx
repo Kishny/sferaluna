@@ -3,6 +3,7 @@
 "use client";
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -261,7 +262,7 @@ const cardVariants = {
 // Page principale
 // ─────────────────────────────────────────────
 
-export default function MonComptePage() {
+function MonCompteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -1604,5 +1605,13 @@ function Field({ label, children, className = "" }: { label: string; children: R
       <span className="block text-xs font-semibold text-white/50 mb-1.5 uppercase tracking-wide">{label}</span>
       {children}
     </label>
+  );
+}
+
+export default function MonComptePage() {
+  return (
+    <Suspense>
+      <MonCompteContent />
+    </Suspense>
   );
 }
