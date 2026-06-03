@@ -109,11 +109,6 @@ export async function POST(req: NextRequest) {
 
     const newMatch = await Match.create({ user1Id, user2Id });
 
-      user1: user1Id.toString(),
-      user2: user2Id.toString(),
-      matchId: newMatch._id.toString(),
-    });
-
     // Notifier les deux utilisateurs via Pusher
     const matchId = newMatch._id.toString();
     try {

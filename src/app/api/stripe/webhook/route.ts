@@ -147,17 +147,7 @@ export async function POST(req: NextRequest) {
           ? checkoutSession.subscription
           : checkoutSession.subscription?.id;
 
-        userId,
-        plan,
-        subscriptionId,
-        checkoutSessionId: checkoutSession.id,
-      });
-
       if (!userId || !plan) {
-          userId,
-          rawPlan,
-          subscriptionId,
-        });
 
         return NextResponse.json(
           {
