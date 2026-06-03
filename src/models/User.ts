@@ -118,6 +118,9 @@ export interface IUser extends Document {
   resetPasswordToken?: string | null;
   resetPasswordExpiry?: Date | null;
 
+  // Modération
+  banned?: boolean;
+
   // Notifications
   lastSeenNotificationsAt?: Date | null;
 
@@ -453,6 +456,9 @@ const UserSchema = new Schema<IUser>(
     // Reset mot de passe
     resetPasswordToken: { type: String, default: null, select: false },
     resetPasswordExpiry: { type: Date, default: null, select: false },
+
+    // Modération
+    banned: { type: Boolean, default: false },
 
     // Notifications
     lastSeenNotificationsAt: { type: Date, default: null },

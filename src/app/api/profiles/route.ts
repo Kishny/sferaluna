@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {
       _id: { $ne: currentUserId, $nin: likedIds },
       hasCompletedProfile: true,
+      role: { $ne: "admin" }, // Exclure les comptes admin
     };
 
     // Filtrer les profils invisibles et premium-only selon le statut

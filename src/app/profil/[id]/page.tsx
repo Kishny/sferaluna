@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, MapPin, Heart, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Flag, MapPin, Heart, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ReportModal from "@/components/ReportModal";
 
 interface Profile {
   _id: string;
@@ -36,6 +37,7 @@ export default function ProfilPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reportId, setReportId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -55,14 +57,24 @@ export default function ProfilPage() {
 
       <main className="flex-1 pt-24 pb-16 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Bouton retour */}
-          <button
-            onClick={() => router.back()}
-            className="group flex items-center gap-2 mb-6 text-white/50 hover:text-white transition text-sm"
-          >
-            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-            Retour
-          </button>
+          {/* Bouton retour + signaler */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => router.back()}
+              className="group flex items-center gap-2 text-white/50 hover:text-white transition text-sm"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              Retour
+            </button>
+            {profile && (
+              <button
+                onClick={() => setReportId(profile._id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-400/20 text-red-300 text-xs hover:bg-red-500/20 transition"
+              >
+                <Flag className="h-3.5 w-3.5" /> Signaler
+              </button>
+            )}
+          </div>
 
           {loading && (
             <div className="flex justify-center py-20">
@@ -167,6 +179,14 @@ export default function ProfilPage() {
       </main>
 
       <Footer />
+
+      {reportId && (
+        <ReportModal
+          targetId={reportId}
+          targetType="user"
+          onClose={() => setReportId(null)}
+        />
+      )}
     </div>
   );
 }

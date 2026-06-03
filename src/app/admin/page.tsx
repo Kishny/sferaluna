@@ -132,6 +132,41 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Signalements
+  const [reports, setReports] = useState<AdminReport[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+
+  const fetchReports = useCallback(async () => {
+    setIsLoadingReports(true);
+    try {
+      const res = await fetch("/api/admin/reports");
+      const data = await res.json();
+      if (data.reports) setReports(data.reports);
+    } catch {}
+    finally { setIsLoadingReports(false); }
+  }, []);
+
+  const handleBan = async (userId: string, pseudonyme: string) => {
+    if (!confirm(`Bannir ${pseudonyme} ? Cette action désactivera son compte.`)) return;
+    setActionLoading("ban-" + userId);
+    try {
+      await fetch(`/api/admin/users/${userId}/ban`, { method: "POST" });
+      fetchReports();
+    } finally { setActionLoading(null); }
+  };
+
+  const handleResolveReport = async (reportId: string, action: "reviewed" | "dismissed") => {
+    setActionLoading(reportId + action);
+    try {
+      await fetch(`/api/admin/reports/${reportId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: action }),
+      });
+      fetchReports();
+    } finally { setActionLoading(null); }
+  };
+
   // Témoignages
   const [testimonials, setTestimonials] = useState<{
     _id: string; authorName: string; age?: number; content: string;
@@ -227,6 +262,7 @@ export default function AdminPage() {
   useEffect(() => { if (status === "authenticated") fetchStats(); }, [status, fetchStats]);
   useEffect(() => { if (status === "authenticated" && activeTab === "users") fetchUsers(); }, [status, activeTab, fetchUsers]);
   useEffect(() => { if (status === "authenticated" && activeTab === "testimonials") fetchTestimonials(); }, [status, activeTab, fetchTestimonials]);
+  useEffect(() => { if (status === "authenticated" && activeTab === "reports") fetchReports(); }, [status, activeTab, fetchReports]);
   useEffect(() => { setPage(1); }, [search, planFilter, statusFilter]);
 
   // ── Action sur utilisateur ──
@@ -330,6 +366,7 @@ export default function AdminPage() {
           {([
             { id: "stats", label: "📊 Statistiques" },
             { id: "users", label: "👥 Utilisateurs" },
+            { id: "reports", label: "🚨 Signalements" },
             { id: "testimonials", label: "💬 Témoignages" },
           ] as { id: TabId; label: string }[]).map((tab) => (
             <button
@@ -685,6 +722,84 @@ export default function AdminPage() {
                     {actionLoading === t._id + 'delete' ? '…' : '🗑 Supprimer'}
                   </button>
                 </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        {/* ── Onglet Signalements ── */}
+        {activeTab === "reports" && (
+          <motion.div key="reports" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-white/60 text-sm">{reports.length} signalement(s)</p>
+              <button onClick={fetchReports} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition">
+                <RefreshCw className="h-3 w-3" /> Actualiser
+              </button>
+            </div>
+
+            {isLoadingReports && (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 text-purple-300 animate-spin" />
+              </div>
+            )}
+
+            {!isLoadingReports && reports.length === 0 && (
+              <div className="text-center py-12 text-white/30">Aucun signalement</div>
+            )}
+
+            {reports.map((report) => (
+              <div key={report._id} className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                        report.status === "pending" ? "text-yellow-300 bg-yellow-400/10 border-yellow-400/20" :
+                        report.status === "reviewed" ? "text-green-300 bg-green-400/10 border-green-400/20" :
+                        "text-white/40 bg-white/5 border-white/10"
+                      }`}>
+                        {report.status === "pending" ? "En attente" : report.status === "reviewed" ? "Traité" : "Ignoré"}
+                      </span>
+                      <span className="text-xs text-white/40">{formatDate(report.createdAt)}</span>
+                    </div>
+                    <p className="text-sm font-semibold">
+                      Motif : <span className="text-red-300">{reasonLabel[report.reason] || report.reason}</span>
+                    </p>
+                    {report.details && <p className="text-xs text-white/50">{report.details}</p>}
+                    <p className="text-xs text-white/40">
+                      Signalé par : <span className="text-white/70">{report.reporterId?.pseudonyme || "Inconnu"}</span>
+                      {" → "}
+                      Visé : <span className="text-white/70">{report.targetId?.pseudonyme || report.targetType}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {report.status === "pending" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {report.targetId?._id && (
+                      <button
+                        onClick={() => handleBan(report.targetId!._id, report.targetId?.pseudonyme || "cette utilisatrice")}
+                        disabled={actionLoading === "ban-" + report.targetId._id}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:opacity-50"
+                      >
+                        🚫 Bannir
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleResolveReport(report._id, "reviewed")}
+                      disabled={actionLoading === report._id + "reviewed"}
+                      className="px-4 py-2 rounded-xl bg-green-600/20 border border-green-400/30 text-green-200 text-xs hover:bg-green-600/30 transition disabled:opacity-50"
+                    >
+                      ✓ Marquer traité
+                    </button>
+                    <button
+                      onClick={() => handleResolveReport(report._id, "dismissed")}
+                      disabled={actionLoading === report._id + "dismissed"}
+                      className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition disabled:opacity-50"
+                    >
+                      Ignorer
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </motion.div>

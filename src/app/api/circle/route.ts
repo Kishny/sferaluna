@@ -59,6 +59,7 @@ export async function GET() {
     const baseQuery: Record<string, unknown> = {
       _id: { $ne: currentUserId, $nin: likedIds },
       hasCompletedProfile: true,
+      role: { $ne: "admin" },
       visibilite: userIsPremium
         ? { $nin: ["invisible"] }
         : { $nin: ["invisible", "premium"] },

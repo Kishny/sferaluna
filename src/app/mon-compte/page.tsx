@@ -19,6 +19,7 @@ import {
   AlertCircle,
   ArrowLeft,
   BadgeCheck,
+  Flag,
   CheckCircle2,
   Crown,
   Eye,
@@ -42,6 +43,7 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
+import ReportModal from "@/components/ReportModal";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1460,6 +1462,7 @@ interface MatchItem {
 }
 
 function ConnexionsTab({ user }: { user: LunaUser }) {
+  const [reportUserId, setReportUserId] = useState<string | null>(null);
   const [matches, setMatches] = useState<MatchItem[]>([]);
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
@@ -1614,6 +1617,13 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                       >
                         Voir ✨
                       </Link>
+                      <button
+                        onClick={() => setReportUserId(u._id)}
+                        className="p-1.5 rounded-lg bg-red-500/10 border border-red-400/20 text-red-300 hover:bg-red-500/20 transition"
+                        title="Signaler"
+                      >
+                        <Flag className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </motion.div>
                 );
@@ -1690,6 +1700,14 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {reportUserId && (
+        <ReportModal
+          targetId={reportUserId}
+          targetType="user"
+          onClose={() => setReportUserId(null)}
+        />
+      )}
     </div>
   );
 }
