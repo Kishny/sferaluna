@@ -1,261 +1,347 @@
 // src/app/api/subscription/check/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { connectDB } from "@/lib/db";
-import { User } from "@/models/User";
 import {
-  canUseFeature,
-  getPlanLimits,
-  isPremiumActive,
-  normalizePremiumUser,
-  type LunaFeature,
-} from "@/lib/premium";
+  checkSubscriptionAccess,
+  getCurrentSubscriptionInfo,
+  requireSubscriptionAction,
+  requireSubscriptionFeature,
+  requireSubscriptionPlan,
+  type SubscriptionAction,
+} from "@/lib/subscription/subscription-check";
+
+import {
+  SUBSCRIPTION_PLANS,
+  type FeatureKey,
+  type PlanId,
+  isValidPlanId,
+} from "@/lib/subscription/config";
 
 /**
+ * Route de vérification abonnement SferaLuna.
+ *
+ * Cette API permet de vérifier :
+ * - le plan actuel de l'utilisatrice ;
+ * - les fonctionnalités disponibles ;
+ * - les limites du plan ;
+ * - si une action est autorisée ;
+ * - si une fonctionnalité premium est disponible ;
+ * - si un plan minimum est respecté.
+ *
+ * Elle ne consomme aucune action.
+ * Elle vérifie seulement les droits.
+ *
+ * Exemples :
+ *
  * POST /api/subscription/check
- *
- * Vérifie si l'utilisateur connecté peut effectuer une action.
- *
- * Body attendu :
  * {
- *   action: string,
- *   count?: number
+ *   "action": "profileVisits"
  * }
  *
- * Exemple :
+ * POST /api/subscription/check
  * {
- *   action: "invisible_mode"
+ *   "requiredFeature": "ghostMode"
  * }
  *
- * ou :
+ * POST /api/subscription/check
  * {
- *   action: "likes",
- *   count: 1
+ *   "requiredPlan": "premium-monthly"
  * }
  */
 
 export const runtime = "nodejs";
 
-/**
- * Actions reconnues.
- *
- * Certaines actions sont des features premium directes.
- * D'autres sont des quotas : likes, messages, boosts.
- */
-const FEATURE_ACTIONS: LunaFeature[] = [
-  "unlimited_likes",
-  "advanced_filters",
-  "invisible_mode",
-  "profile_visitors",
-  "priority_messages",
-  "read_receipts",
-  "premium_badge",
-  "elite_badge",
-  "vip_support",
-  "statistics",
-  "boost",
-  "coaching",
-];
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 
-type QuotaAction = "likes" | "messages" | "boosts" | "profileViews";
+type QuotaAction = "likes" | "messages" | "boosts" | "profileVisits";
 
-function isFeatureAction(action: string): action is LunaFeature {
-  return FEATURE_ACTIONS.includes(action as LunaFeature);
+interface SubscriptionCheckBody {
+  requiredPlan?: PlanId;
+  requiredFeature?: FeatureKey;
+  action?: SubscriptionAction | QuotaAction;
+  count?: number;
+  allowFree?: boolean;
 }
 
-function isQuotaAction(action: string): action is QuotaAction {
+// ─────────────────────────────────────────────
+// Helpers validation
+// ─────────────────────────────────────────────
+
+function isFeatureKey(value: unknown): value is FeatureKey {
+  if (typeof value !== "string") return false;
+
+  return value in SUBSCRIPTION_PLANS.free.features;
+}
+
+function isSubscriptionAction(value: unknown): value is SubscriptionAction {
   return (
-    action === "likes" ||
-    action === "messages" ||
-    action === "boosts" ||
-    action === "profileViews"
+    value === "like" ||
+    value === "send_message" ||
+    value === "use_super_like" ||
+    value === "use_boost" ||
+    value === "visit_profile" ||
+    value === "circle_of_six" ||
+    value === "vibeplanner"
   );
 }
 
-function getLimitForAction(
-  limits: ReturnType<typeof getPlanLimits>,
-  action: QuotaAction
-) {
+/**
+ * Alias acceptés par l'API.
+ *
+ * C'est pratique si le frontend envoie :
+ * - "likes" au lieu de "like"
+ * - "messages" au lieu de "send_message"
+ * - "boosts" au lieu de "use_boost"
+ * - "profileVisits" au lieu de "visit_profile"
+ */
+function normalizeAction(action?: SubscriptionCheckBody["action"]): SubscriptionAction | undefined {
   switch (action) {
     case "likes":
-      return limits.likes;
+      return "like";
 
     case "messages":
-      return limits.messages;
+      return "send_message";
 
     case "boosts":
-      return limits.boosts;
+      return "use_boost";
 
-    case "profileViews":
-      return limits.profileViews;
+    case "profileVisits":
+      return "visit_profile";
+
+    case "like":
+    case "send_message":
+    case "use_super_like":
+    case "use_boost":
+    case "visit_profile":
+    case "circle_of_six":
+    case "vibeplanner":
+      return action;
 
     default:
-      return 0;
+      return undefined;
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+function sanitizeCount(value: unknown) {
+  const count = Number(value ?? 1);
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        {
-          success: false,
-          allowed: false,
-          error: "Non autorisé.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401 }
-      );
-    }
+  if (!Number.isFinite(count) || count < 1) return 1;
 
-    const body = await req.json().catch(() => null);
+  return Math.floor(count);
+}
 
-    const action = String(body?.action || "").trim();
-    const count = Number(body?.count ?? 1);
+function serializeLimit(value: number) {
+  return value === Infinity ? null : value;
+}
 
-    if (!action) {
-      return NextResponse.json(
-        {
-          success: false,
-          allowed: false,
-          error: "Action manquante.",
-          code: "MISSING_ACTION",
-        },
-        { status: 400 }
-      );
-    }
+// ─────────────────────────────────────────────
+// GET /api/subscription/check
+// ─────────────────────────────────────────────
 
-    if (!Number.isFinite(count) || count < 1) {
-      return NextResponse.json(
-        {
-          success: false,
-          allowed: false,
-          error: "Compteur invalide.",
-          code: "INVALID_COUNT",
-        },
-        { status: 400 }
-      );
-    }
-
-    await connectDB();
-
-    const email = session.user.email.toLowerCase().trim();
-
-    const user = await User.findOne({ email }).select(
-      "_id plan isPremium subscriptionStatus banned"
-    );
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          allowed: false,
-          error: "Utilisateur introuvable.",
-          code: "USER_NOT_FOUND",
-        },
-        { status: 404 }
-      );
-    }
-
-    if (user.banned) {
-      return NextResponse.json(
-        {
-          success: false,
-          allowed: false,
-          error: "Compte suspendu.",
-          code: "ACCOUNT_BANNED",
-        },
-        { status: 403 }
-      );
-    }
-
-    const premiumUser = normalizePremiumUser({
-      isPremium: user.isPremium,
-      plan: user.plan,
-      subscriptionStatus: user.subscriptionStatus,
-    });
-
-    const active = isPremiumActive(premiumUser);
-    const limits = getPlanLimits(premiumUser.plan);
-
-    /**
-     * Cas 1 :
-     * l'action est une fonctionnalité premium.
-     */
-    if (isFeatureAction(action)) {
-      const allowed = canUseFeature(premiumUser, action);
-
-      return NextResponse.json(
-        {
-          success: true,
-          allowed,
-          action,
-          plan: premiumUser.plan,
-          isPremium: active,
-          reason: allowed
-            ? "FEATURE_ALLOWED"
-            : "FEATURE_REQUIRES_PREMIUM_OR_HIGHER_PLAN",
-        },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    /**
-     * Cas 2 :
-     * l'action est une action à quota.
-     *
-     * Pour l'instant, cette route vérifie seulement la limite théorique du plan.
-     * Plus tard, on pourra brancher des collections UsageDaily / UsageMonthly.
-     */
-    if (isQuotaAction(action)) {
-      const limit = getLimitForAction(limits, action);
-
-      /**
-       * null = illimité.
-       */
-      if (limit === null) {
+/**
+ * Retourne l'état complet de l'abonnement connecté.
+ *
+ * Utile pour :
+ * - afficher les badges premium ;
+ * - afficher les fonctionnalités disponibles ;
+ * - vérifier les limites côté frontend ;
+ * - debugger rapidement l'état premium.
+ */
+export async function GET() {
+    try {
+      const info = await getCurrentSubscriptionInfo();
+  
+      if (!info.allowed) {
+        return info.response;
+      }
+  
+      if (!("limits" in info) || !("features" in info)) {
         return NextResponse.json(
           {
-            success: true,
-            allowed: true,
-            action,
-            plan: premiumUser.plan,
-            isPremium: active,
-            limit: null,
-            remaining: null,
-            reason: "UNLIMITED",
+            success: false,
+            error: "Informations d'abonnement incomplètes.",
+            code: "SUBSCRIPTION_INFO_INCOMPLETE",
           },
-          {
-            status: 200,
-            headers: {
-              "Cache-Control": "no-store",
-            },
-          }
+          { status: 500 }
         );
       }
+  
+      const limits = info.limits;
+      const features = info.features;
+  
+      return NextResponse.json(
+        {
+          success: true,
+  
+          subscription: {
+            currentPlan: info.currentPlan,
+            hasActiveSubscription: info.currentPlan !== "free",
+            subscription: info.subscription
+              ? {
+                  id: info.subscription._id?.toString?.() ?? null,
+                  plan: info.subscription.plan ?? info.currentPlan,
+                  status: info.subscription.status ?? "inactive",
+                  currentPeriodEnd: info.subscription.currentPeriodEnd ?? null,
+                }
+              : null,
+          },
+  
+          features,
+  
+          limits: {
+            dailyLikes: serializeLimit(limits.dailyLikes),
+            dailyMessages: serializeLimit(limits.dailyMessages),
+            superLikesPerDay: serializeLimit(limits.superLikesPerDay),
+            boostsPerMonth: serializeLimit(limits.boostsPerMonth),
+            profileVisits: serializeLimit(limits.profileVisits),
+            maxMatches: serializeLimit(limits.maxMatches),
+            vibePlannerPerMonth: serializeLimit(limits.vibePlannerPerMonth),
+          },
+  
+          user: {
+            id: info.user?._id?.toString?.() ?? null,
+            email: info.user?.email ?? null,
+            pseudonyme: info.user?.pseudonyme ?? null,
+            plan: info.user?.plan ?? info.currentPlan,
+            isPremium: info.currentPlan !== "free",
+            subscriptionStatus: info.user?.subscriptionStatus ?? "inactive",
+          },
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Erreur GET /api/subscription/check :", error);
+  
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Erreur serveur lors de la vérification de l'abonnement.",
+          code: "SUBSCRIPTION_CHECK_ERROR",
+        },
+        { status: 500 }
+      );
+    }
+  }
 
-      const allowed = count <= limit;
+// ─────────────────────────────────────────────
+// POST /api/subscription/check
+// ─────────────────────────────────────────────
+
+/**
+ * Vérifie une règle précise :
+ * - requiredPlan
+ * - requiredFeature
+ * - action
+ *
+ * Cette route ne consomme pas le quota.
+ * Elle vérifie seulement si l'action est autorisée.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    let body: SubscriptionCheckBody;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Body JSON invalide.",
+          code: "INVALID_JSON_BODY",
+        },
+        { status: 400 }
+      );
+    }
+
+    const count = sanitizeCount(body.count);
+    const action = normalizeAction(body.action);
+
+    // ─────────────────────────────────────────────
+    // Validation du plan requis
+    // ─────────────────────────────────────────────
+
+    if (body.requiredPlan && !isValidPlanId(body.requiredPlan)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Plan requis invalide.",
+          code: "INVALID_REQUIRED_PLAN",
+          allowedPlans: Object.keys(SUBSCRIPTION_PLANS),
+        },
+        { status: 400 }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Validation de la feature requise
+    // ─────────────────────────────────────────────
+
+    if (body.requiredFeature && !isFeatureKey(body.requiredFeature)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Fonctionnalité requise invalide.",
+          code: "INVALID_REQUIRED_FEATURE",
+          allowedFeatures: Object.keys(SUBSCRIPTION_PLANS.free.features),
+        },
+        { status: 400 }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Validation de l'action
+    // ─────────────────────────────────────────────
+
+    if (body.action && !action) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Action invalide.",
+          code: "INVALID_ACTION",
+          allowedActions: [
+            "likes",
+            "messages",
+            "boosts",
+            "profileVisits",
+            "like",
+            "send_message",
+            "use_super_like",
+            "use_boost",
+            "visit_profile",
+            "circle_of_six",
+            "vibeplanner",
+          ],
+        },
+        { status: 400 }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Cas simple : vérifier un plan minimum
+    // ─────────────────────────────────────────────
+
+    if (body.requiredPlan && !body.requiredFeature && !action) {
+      const access = await requireSubscriptionPlan(body.requiredPlan);
+
+      if (!access.allowed) {
+        return access.response;
+      }
 
       return NextResponse.json(
         {
           success: true,
-          allowed,
-          action,
-          plan: premiumUser.plan,
-          isPremium: active,
-          limit,
-          remaining: Math.max(0, limit - count),
-          reason: allowed ? "WITHIN_LIMIT" : "LIMIT_EXCEEDED",
+          allowed: true,
+          type: "plan",
+          requiredPlan: body.requiredPlan,
+          currentPlan: access.currentPlan,
         },
         {
           status: 200,
@@ -266,31 +352,109 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ─────────────────────────────────────────────
+    // Cas simple : vérifier une fonctionnalité
+    // Exemple : ghostMode
+    // ─────────────────────────────────────────────
+
+    if (body.requiredFeature && !body.requiredPlan && !action) {
+      const access = await requireSubscriptionFeature(body.requiredFeature);
+
+      if (!access.allowed) {
+        return access.response;
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          allowed: true,
+          type: "feature",
+          requiredFeature: body.requiredFeature,
+          currentPlan: access.currentPlan,
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Cas simple : vérifier une action avec limite
+    // Exemple : profileVisits
+    // ─────────────────────────────────────────────
+
+    if (action && !body.requiredPlan && !body.requiredFeature) {
+      const access = await requireSubscriptionAction(action, count);
+
+      if (!access.allowed) {
+        return access.response;
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          allowed: true,
+          type: "action",
+          action,
+          originalAction: body.action,
+          count,
+          currentPlan: access.currentPlan,
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Cas combiné : plan + feature + action
+    // ─────────────────────────────────────────────
+
+    const access = await checkSubscriptionAccess({
+      requiredPlan: body.requiredPlan,
+      requiredFeature: body.requiredFeature,
+      action,
+      count,
+      allowFree: body.allowFree ?? true,
+    });
+
+    if (!access.allowed) {
+      return access.response;
+    }
+
     return NextResponse.json(
       {
-        success: false,
-        allowed: false,
-        error: "Action inconnue.",
-        code: "UNKNOWN_ACTION",
-        action,
+        success: true,
+        allowed: true,
+        type: "combined",
+        currentPlan: access.currentPlan,
+        requiredPlan: body.requiredPlan ?? null,
+        requiredFeature: body.requiredFeature ?? null,
+        action: action ?? null,
+        originalAction: body.action ?? null,
+        count,
       },
-      { status: 400 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Erreur POST /api/subscription/check :", error);
 
-    const err = error as { message?: string };
-
     return NextResponse.json(
       {
         success: false,
-        allowed: false,
-        error: "Erreur serveur lors de la vérification.",
+        error: "Erreur serveur lors de la vérification de l'abonnement.",
         code: "SUBSCRIPTION_CHECK_ERROR",
-        message:
-          process.env.NODE_ENV === "development"
-            ? err.message
-            : "Une erreur est survenue.",
       },
       { status: 500 }
     );

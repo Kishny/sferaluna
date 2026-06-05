@@ -16,14 +16,14 @@
  * Ce fichier utilise :
  * - getServerSession()
  * - MongoDB / Mongoose
- * - les modèles User, Subscription, Boost, ProfileView
+ * - les modèles User, Subscription, Boost, ProfileVisit
  *
  * Il ne doit donc PAS être utilisé dans le vrai middleware Edge de Next.js
  * placé à la racine du projet.
  *
  * Utilisation recommandée :
  * - dans une route API ;
- * - dans un server action ;
+ * - dans une server action ;
  * - dans un helper serveur.
  */
 
@@ -36,12 +36,14 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { Subscription } from "@/models/Subscription";
 import { Boost } from "@/models/Boost";
-import { ProfileView } from "@/models/ProfileView";
+import { ProfileVisit } from "@/models/ProfileVisit";
 
 import {
   SUBSCRIPTION_PLANS,
   type PlanId,
   type FeatureKey,
+  normalizePlanId,
+  isPlanAtLeast,
 } from "@/lib/subscription/config";
 
 // ─────────────────────────────────────────────
@@ -54,16 +56,18 @@ import {
  * Ces actions correspondent aux usages que l'on veut contrôler :
  * - likes quotidiens ;
  * - messages quotidiens ;
- * - super likes ;
+ * - super likes quotidiens ;
  * - boosts mensuels ;
- * - vues de profil.
+ * - visites de profils ;
+ * - accès Circle of Six ;
+ * - accès VibePlanner.
  */
 export type SubscriptionAction =
   | "like"
   | "send_message"
   | "use_super_like"
   | "use_boost"
-  | "view_profile"
+  | "visit_profile"
   | "circle_of_six"
   | "vibeplanner";
 
@@ -101,33 +105,54 @@ export interface AccessCheckResult {
 export interface SubscriptionGuardOptions {
   /**
    * Plan minimum requis.
-   * Exemple : "premium-monthly"
+   *
+   * Exemple :
+   * requiredPlan: "premium-monthly"
    */
   requiredPlan?: PlanId;
 
   /**
    * Fonctionnalité requise.
-   * Exemple : "ghostMode"
+   *
+   * Exemple :
+   * requiredFeature: "ghostMode"
    */
   requiredFeature?: FeatureKey;
 
   /**
    * Action à contrôler avec limite.
-   * Exemple : "send_message"
+   *
+   * Exemple :
+   * action: "send_message"
    */
   action?: SubscriptionAction;
 
   /**
-   * Nombre d'actions à consommer.
-   * Exemple : envoyer 1 message = 1.
+   * Nombre d'actions à vérifier.
+   *
+   * Exemple :
+   * envoyer 1 message = count: 1
    */
   count?: number;
 
   /**
    * Autorise ou non les comptes gratuits.
+   *
    * Par défaut : true.
    */
   allowFree?: boolean;
+}
+
+/**
+ * Retour de checkSubscriptionAccess().
+ */
+export interface SubscriptionAccessResult {
+  allowed: boolean;
+  user: any | null;
+  subscription: any | null;
+  currentPlan: PlanId;
+  checker?: SubscriptionChecker;
+  response: NextResponse | null;
 }
 
 // ─────────────────────────────────────────────
@@ -156,45 +181,32 @@ function getStartOfMonth() {
 }
 
 /**
- * Convertit une valeur quelconque en PlanId sûr.
- */
-function normalizePlan(plan?: string | null): PlanId {
-  if (plan && plan in SUBSCRIPTION_PLANS) {
-    return plan as PlanId;
-  }
-
-  return "free";
-}
-
-/**
- * Hiérarchie des plans.
- *
- * Plus le nombre est élevé, plus le plan est puissant.
- */
-function getPlanRank(plan: PlanId): number {
-  const ranks: Record<PlanId, number> = {
-    free: 0,
-    "essential-monthly": 1,
-    "premium-monthly": 2,
-    "elite-monthly": 3,
-  };
-
-  return ranks[plan] ?? 0;
-}
-
-/**
- * Vérifie si un plan utilisateur est suffisant
- * pour accéder à un plan requis.
- */
-function isPlanEnough(currentPlan: PlanId, requiredPlan: PlanId) {
-  return getPlanRank(currentPlan) >= getPlanRank(requiredPlan);
-}
-
-/**
  * URL standard d'upgrade.
  */
 function getUpgradeUrl() {
   return "/tarifs";
+}
+
+/**
+ * Convertit une valeur de limite en nombre exploitable.
+ *
+ * Note :
+ * - Infinity est accepté côté TypeScript ;
+ * - dans une réponse JSON, Infinity peut devenir null.
+ *
+ * Ici, on le garde dans le helper serveur.
+ */
+function getRemaining(limit: number, used: number) {
+  if (limit === Infinity) return Infinity;
+  return Math.max(0, limit - used);
+}
+
+/**
+ * Vérifie si une limite est dépassée.
+ */
+function isLimitExceeded(limit: number, used: number, count: number) {
+  if (limit === Infinity) return false;
+  return used + count > limit;
 }
 
 // ─────────────────────────────────────────────
@@ -229,6 +241,16 @@ export class SubscriptionChecker {
       throw new Error("Utilisateur introuvable.");
     }
 
+    /**
+     * On récupère le dernier abonnement actif ou en période d'essai.
+     *
+     * Important :
+     * Stripe webhook doit rester la source principale pour mettre à jour :
+     * - user.plan
+     * - user.isPremium
+     * - user.subscriptionStatus
+     * - Subscription.status
+     */
     this.subscription = await Subscription.findOne({
       userId: this.userId,
       status: { $in: ["active", "trialing"] },
@@ -242,7 +264,7 @@ export class SubscriptionChecker {
    *
    * Priorité :
    * 1. abonnement actif ;
-   * 2. champ user.plan si disponible ;
+   * 2. champ user.plan ;
    * 3. free.
    */
   async getCurrentPlan(): Promise<PlanId> {
@@ -251,7 +273,7 @@ export class SubscriptionChecker {
     const subscriptionPlan = this.subscription?.plan;
     const userPlan = this.user?.plan;
 
-    return normalizePlan(subscriptionPlan || userPlan || "free");
+    return normalizePlanId(subscriptionPlan || userPlan || "free");
   }
 
   /**
@@ -286,7 +308,11 @@ export class SubscriptionChecker {
   }
 
   /**
-   * Vérifie si l'abonnement actif est toujours valable.
+   * Vérifie si l'abonnement est actif.
+   *
+   * Important :
+   * - free est toujours considéré comme utilisable ;
+   * - pour les plans payants, on exige un abonnement actif/trialing.
    */
   async hasActiveSubscription(): Promise<boolean> {
     await this.initialize();
@@ -295,12 +321,19 @@ export class SubscriptionChecker {
 
     /**
      * Le plan gratuit n'a pas forcément de document Subscription.
-     * Il est donc considéré comme disponible.
      */
     if (currentPlan === "free") return true;
 
+    /**
+     * Sécurité :
+     * si l'utilisateur a un plan payant mais aucun abonnement actif,
+     * on bloque.
+     */
     if (!this.subscription) return false;
 
+    /**
+     * Vérification expiration si le champ existe.
+     */
     if (
       this.subscription.currentPeriodEnd &&
       new Date(this.subscription.currentPeriodEnd) < new Date()
@@ -319,7 +352,7 @@ export class SubscriptionChecker {
 
     const currentPlan = await this.getCurrentPlan();
 
-    if (!isPlanEnough(currentPlan, requiredPlan)) {
+    if (!isPlanAtLeast(currentPlan, requiredPlan)) {
       return {
         allowed: false,
         user: this.user,
@@ -371,7 +404,7 @@ export class SubscriptionChecker {
   /**
    * Vérifie si l'utilisateur peut effectuer une action.
    *
-   * Cette méthode ne consomme pas l'action.
+   * Cette méthode NE CONSOMME PAS l'action.
    * Elle vérifie seulement les limites.
    *
    * La consommation réelle doit être faite dans la route API concernée
@@ -403,14 +436,14 @@ export class SubscriptionChecker {
         const used = await this.getDailyLikesCount();
         const limit = limits.dailyLikes;
 
-        if (limit !== Infinity && used + count > limit) {
+        if (isLimitExceeded(limit, used, count)) {
           return {
             allowed: false,
             currentPlan,
             reason: "Limite quotidienne de likes atteinte.",
             used,
             limit,
-            remaining: Math.max(0, limit - used),
+            remaining: getRemaining(limit, used),
             upgradeUrl: getUpgradeUrl(),
           };
         }
@@ -420,7 +453,7 @@ export class SubscriptionChecker {
           currentPlan,
           used,
           limit,
-          remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+          remaining: getRemaining(limit, used),
         };
       }
 
@@ -428,14 +461,14 @@ export class SubscriptionChecker {
         const used = await this.getDailyMessagesCount();
         const limit = limits.dailyMessages;
 
-        if (limit !== Infinity && used + count > limit) {
+        if (isLimitExceeded(limit, used, count)) {
           return {
             allowed: false,
             currentPlan,
             reason: "Limite quotidienne de messages atteinte.",
             used,
             limit,
-            remaining: Math.max(0, limit - used),
+            remaining: getRemaining(limit, used),
             upgradeUrl: getUpgradeUrl(),
           };
         }
@@ -445,7 +478,7 @@ export class SubscriptionChecker {
           currentPlan,
           used,
           limit,
-          remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+          remaining: getRemaining(limit, used),
         };
       }
 
@@ -453,14 +486,14 @@ export class SubscriptionChecker {
         const used = await this.getDailySuperLikesCount();
         const limit = limits.superLikesPerDay;
 
-        if (limit !== Infinity && used + count > limit) {
+        if (isLimitExceeded(limit, used, count)) {
           return {
             allowed: false,
             currentPlan,
             reason: "Limite quotidienne de super likes atteinte.",
             used,
             limit,
-            remaining: Math.max(0, limit - used),
+            remaining: getRemaining(limit, used),
             upgradeUrl: getUpgradeUrl(),
           };
         }
@@ -470,7 +503,7 @@ export class SubscriptionChecker {
           currentPlan,
           used,
           limit,
-          remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+          remaining: getRemaining(limit, used),
         };
       }
 
@@ -478,14 +511,14 @@ export class SubscriptionChecker {
         const used = await this.getMonthlyBoostsCount();
         const limit = limits.boostsPerMonth;
 
-        if (limit !== Infinity && used + count > limit) {
+        if (isLimitExceeded(limit, used, count)) {
           return {
             allowed: false,
             currentPlan,
             reason: "Limite mensuelle de boosts atteinte.",
             used,
             limit,
-            remaining: Math.max(0, limit - used),
+            remaining: getRemaining(limit, used),
             upgradeUrl: getUpgradeUrl(),
           };
         }
@@ -495,22 +528,22 @@ export class SubscriptionChecker {
           currentPlan,
           used,
           limit,
-          remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+          remaining: getRemaining(limit, used),
         };
       }
 
-      case "view_profile": {
-        const used = await this.getProfileViewsCount();
-        const limit = limits.profileViews;
+      case "visit_profile": {
+        const used = await this.getProfileVisitsCount();
+        const limit = limits.profileVisits;
 
-        if (limit !== Infinity && used + count > limit) {
+        if (isLimitExceeded(limit, used, count)) {
           return {
             allowed: false,
             currentPlan,
-            reason: "Limite de vues de profils atteinte.",
+            reason: "Limite de visites de profils atteinte.",
             used,
             limit,
-            remaining: Math.max(0, limit - used),
+            remaining: getRemaining(limit, used),
             upgradeUrl: getUpgradeUrl(),
           };
         }
@@ -520,7 +553,7 @@ export class SubscriptionChecker {
           currentPlan,
           used,
           limit,
-          remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+          remaining: getRemaining(limit, used),
         };
       }
 
@@ -623,6 +656,8 @@ export class SubscriptionChecker {
    * On suppose que ton User contient éventuellement :
    * - dailySuperLikesCount
    * - dailySuperLikesDate
+   *
+   * Si tu n'as pas encore ces champs, ça renvoie 0 proprement.
    */
   private async getDailySuperLikesCount(): Promise<number> {
     const today = getStartOfToday();
@@ -656,17 +691,23 @@ export class SubscriptionChecker {
   }
 
   /**
-   * Compte les vues de profil effectuées.
+   * Compte les visites de profil effectuées.
    *
    * Modèle utilisé :
-   * src/models/ProfileView.ts
+   * src/models/ProfileVisit.ts
    *
-   * On compte les vues faites par l'utilisateur connecté.
+   * On compte les visites faites par l'utilisateur connecté :
+   * - visitorId = utilisateur connecté
+   *
+   * Important :
+   * Ici on compte toutes les visites stockées.
+   * Si tu veux une limite quotidienne, ajoute :
+   * createdAt: { $gte: getStartOfToday() }
    */
-  private async getProfileViewsCount(): Promise<number> {
+  private async getProfileVisitsCount(): Promise<number> {
     try {
-      return await ProfileView.countDocuments({
-        viewerId: this.userId,
+      return await ProfileVisit.countDocuments({
+        visitorId: this.userId,
       });
     } catch {
       return 0;
@@ -706,7 +747,7 @@ export async function getAuthenticatedUser() {
   await connectDB();
 
   const user = await User.findOne({
-    email: session.user.email,
+    email: session.user.email.toLowerCase().trim(),
   });
 
   if (!user) {
@@ -747,7 +788,9 @@ export async function getAuthenticatedUser() {
  *
  * const user = access.user;
  */
-export async function checkSubscriptionAccess(options: SubscriptionGuardOptions = {}) {
+export async function checkSubscriptionAccess(
+  options: SubscriptionGuardOptions = {}
+): Promise<SubscriptionAccessResult> {
   const {
     requiredPlan,
     requiredFeature,
@@ -764,7 +807,7 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
         allowed: false,
         user: null,
         subscription: null,
-        currentPlan: "free" as PlanId,
+        currentPlan: "free",
         response: auth.response,
       };
     }
@@ -775,6 +818,9 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
 
     const currentPlan = await checker.getCurrentPlan();
 
+    /**
+     * Bloque explicitement les comptes gratuits si demandé.
+     */
     if (!allowFree && currentPlan === "free") {
       return {
         allowed: false,
@@ -793,6 +839,9 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
       };
     }
 
+    /**
+     * Vérification du plan minimum.
+     */
     if (requiredPlan) {
       const planCheck = await checker.requirePlan(requiredPlan);
 
@@ -816,6 +865,12 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
       }
     }
 
+    /**
+     * Vérification d'une fonctionnalité.
+     *
+     * Exemple :
+     * requiredFeature: "ghostMode"
+     */
     if (requiredFeature) {
       const featureCheck = await checker.requireFeature(requiredFeature);
 
@@ -839,6 +894,9 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
       }
     }
 
+    /**
+     * Vérification d'une action limitée.
+     */
     if (action) {
       const actionCheck = await checker.canPerformAction(action, count);
 
@@ -880,7 +938,7 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
       allowed: false,
       user: null,
       subscription: null,
-      currentPlan: "free" as PlanId,
+      currentPlan: "free",
       response: NextResponse.json(
         {
           success: false,
@@ -900,6 +958,7 @@ export async function checkSubscriptionAccess(options: SubscriptionGuardOptions 
  * Exige un plan minimum.
  *
  * Exemple :
+ *
  * const access = await requireSubscriptionPlan("premium-monthly");
  * if (!access.allowed) return access.response;
  */
@@ -913,6 +972,7 @@ export async function requireSubscriptionPlan(requiredPlan: PlanId) {
  * Exige une fonctionnalité premium.
  *
  * Exemple :
+ *
  * const access = await requireSubscriptionFeature("ghostMode");
  * if (!access.allowed) return access.response;
  */
@@ -926,6 +986,7 @@ export async function requireSubscriptionFeature(requiredFeature: FeatureKey) {
  * Exige qu'une action soit autorisée.
  *
  * Exemple :
+ *
  * const access = await requireSubscriptionAction("send_message");
  * if (!access.allowed) return access.response;
  */
@@ -941,6 +1002,9 @@ export async function requireSubscriptionAction(
 
 /**
  * Vérifie rapidement si l'utilisateur connecté est premium.
+ *
+ * Attention :
+ * premium ici signifie simplement "plan différent de free".
  */
 export async function isCurrentUserPremium() {
   const access = await checkSubscriptionAccess();

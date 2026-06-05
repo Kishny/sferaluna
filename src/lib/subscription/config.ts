@@ -8,12 +8,6 @@
  * - les limites par plan ;
  * - les fonctionnalités accessibles selon le plan ;
  * - les types TypeScript utilisés dans les guards premium.
- *
- * Très important :
- * On utilise `as const` pour permettre à TypeScript de déduire précisément :
- * - les noms des plans ;
- * - les clés des fonctionnalités ;
- * - les clés des limites.
  */
 
 export const SUBSCRIPTION_PLANS = {
@@ -28,7 +22,7 @@ export const SUBSCRIPTION_PLANS = {
       dailyMessages: 10,
       superLikesPerDay: 0,
       boostsPerMonth: 0,
-      profileViews: 20,
+      profileVisits: 20,
       maxMatches: 3,
       vibePlannerPerMonth: 0,
     },
@@ -60,7 +54,7 @@ export const SUBSCRIPTION_PLANS = {
       dailyMessages: Infinity,
       superLikesPerDay: 3,
       boostsPerMonth: 1,
-      profileViews: 100,
+      profileVisits: 100,
       maxMatches: Infinity,
       vibePlannerPerMonth: 3,
     },
@@ -92,7 +86,7 @@ export const SUBSCRIPTION_PLANS = {
       dailyMessages: Infinity,
       superLikesPerDay: 10,
       boostsPerMonth: 3,
-      profileViews: Infinity,
+      profileVisits: Infinity,
       maxMatches: Infinity,
       vibePlannerPerMonth: Infinity,
     },
@@ -124,7 +118,7 @@ export const SUBSCRIPTION_PLANS = {
       dailyMessages: Infinity,
       superLikesPerDay: Infinity,
       boostsPerMonth: 10,
-      profileViews: Infinity,
+      profileVisits: Infinity,
       maxMatches: Infinity,
       vibePlannerPerMonth: Infinity,
     },
@@ -146,36 +140,14 @@ export const SUBSCRIPTION_PLANS = {
   },
 } as const;
 
-/**
- * Type des plans disponibles.
- *
- * Résultat :
- * "free" | "essential-monthly" | "premium-monthly" | "elite-monthly"
- */
 export type PlanId = keyof typeof SUBSCRIPTION_PLANS;
 
-/**
- * Type complet d’un plan.
- */
 export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[PlanId];
 
-/**
- * Type des limites disponibles.
- */
 export type LimitKey = keyof SubscriptionPlan["limits"];
 
-/**
- * Type des fonctionnalités disponibles.
- *
- * Résultat :
- * "circleOfSix" | "ghostMode" | "vibePlanner" | etc.
- */
 export type FeatureKey = keyof SubscriptionPlan["features"];
 
-/**
- * Liste ordonnée des plans.
- * Sert à comparer le niveau d’un abonnement.
- */
 export const PLAN_ORDER: PlanId[] = [
   "free",
   "essential-monthly",
@@ -183,31 +155,22 @@ export const PLAN_ORDER: PlanId[] = [
   "elite-monthly",
 ];
 
-/**
- * Vérifie si une valeur est un PlanId valide.
- */
 export function isValidPlanId(plan: unknown): plan is PlanId {
   return typeof plan === "string" && plan in SUBSCRIPTION_PLANS;
 }
 
-/**
- * Normalise un plan inconnu.
- */
 export function normalizePlanId(plan: unknown): PlanId {
   if (isValidPlanId(plan)) return plan;
   return "free";
 }
 
-/**
- * Retourne le rang numérique d’un plan.
- */
 export function getPlanRank(plan: PlanId): number {
   return PLAN_ORDER.indexOf(plan);
 }
 
-/**
- * Vérifie si un plan actuel est supérieur ou égal au plan requis.
- */
-export function isPlanAtLeast(currentPlan: PlanId, requiredPlan: PlanId): boolean {
+export function isPlanAtLeast(
+  currentPlan: PlanId,
+  requiredPlan: PlanId
+): boolean {
   return getPlanRank(currentPlan) >= getPlanRank(requiredPlan);
 }

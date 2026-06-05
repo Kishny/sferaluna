@@ -7,13 +7,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import {
-  getAvailableFeatures,
-  getPlanLabel,
-  getPlanLimits,
-  getSubscriptionStatusLabel,
-  isPremiumActive,
-  normalizePremiumUser,
-} from "@/lib/premium";
+  SUBSCRIPTION_PLANS,
+  normalizePlanId,
+  type PlanId,
+} from "@/lib/subscription/config";
 
 /**
  * GET /api/subscription/status
@@ -29,6 +26,46 @@ import {
  * cette route ne modifie rien.
  * Elle lit simplement MongoDB et renvoie un payload propre.
  */
+
+function getPlanLabel(plan: PlanId) {
+  return SUBSCRIPTION_PLANS[plan]?.name ?? "Gratuit";
+}
+
+function getSubscriptionStatusLabel(status?: string) {
+  const labels: Record<string, string> = {
+    inactive: "Inactif",
+    active: "Actif",
+    trialing: "Période d’essai",
+    past_due: "Paiement en retard",
+    canceled: "Annulé",
+  };
+
+  return labels[status || "inactive"] ?? "Inactif";
+}
+
+function isSubscriptionActive(user: {
+  isPremium?: boolean;
+  subscriptionStatus?: string;
+  plan?: string;
+}) {
+  const plan = normalizePlanId(user.plan);
+
+  if (plan === "free") return false;
+
+  return (
+    user.isPremium === true &&
+    (user.subscriptionStatus === "active" ||
+      user.subscriptionStatus === "trialing")
+  );
+}
+
+function getFeaturesObject(plan: PlanId) {
+  return SUBSCRIPTION_PLANS[plan].features;
+}
+
+function getLimits(plan: PlanId) {
+  return SUBSCRIPTION_PLANS[plan].limits;
+}
 
 export const runtime = "nodejs";
 
@@ -90,15 +127,15 @@ export async function GET() {
       );
     }
 
-    const premiumUser = normalizePremiumUser({
-      isPremium: user.isPremium,
-      plan: user.plan,
-      subscriptionStatus: user.subscriptionStatus,
-    });
+    const plan = normalizePlanId(user.plan);
+const active = isSubscriptionActive({
+  isPremium: user.isPremium,
+  subscriptionStatus: user.subscriptionStatus,
+  plan: user.plan,
+});
 
-    const active = isPremiumActive(premiumUser);
-    const features = getAvailableFeatures(premiumUser);
-    const limits = getPlanLimits(premiumUser.plan);
+const features = getFeaturesObject(plan);
+const limits = getLimits(plan);
 
     return NextResponse.json(
       {
@@ -108,14 +145,14 @@ export async function GET() {
           email: user.email,
           pseudonyme: user.pseudonyme,
 
-          plan: premiumUser.plan,
-          planLabel: getPlanLabel(premiumUser.plan),
+          plan: user.plan,
+          planLabel: getPlanLabel(user.plan),
 
           isPremium: active,
 
-          subscriptionStatus: premiumUser.subscriptionStatus,
+          subscriptionStatus: user.subscriptionStatus,
           subscriptionStatusLabel: getSubscriptionStatusLabel(
-            premiumUser.subscriptionStatus
+            user.subscriptionStatus
           ),
 
           premiumStartedAt: user.premiumStartedAt ?? null,
@@ -126,16 +163,16 @@ export async function GET() {
           stripeSubscriptionId: user.stripeSubscriptionId ?? "",
 
           features: Object.fromEntries(
-            features.map((feature) => [feature, true])
+            Object.keys(features).map((feature) => [feature, true])
           ),
 
           limits,
 
           usage: {
-            remainingSwipes: limits.likes,
-            remainingMessages: limits.messages,
-            remainingBoosts: limits.boosts,
-            remainingProfileViews: limits.profileViews,
+            remainingSwipes: limits.dailyLikes,
+            remainingMessages: limits.dailyMessages,
+            remainingBoosts: limits.boostsPerMonth,
+            remainingProfileVisits: limits.profileVisits,
           },
         },
       },

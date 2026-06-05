@@ -7,106 +7,176 @@ import mongoose from "mongoose";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
-import { ProfileVisit } from "@/models/ProfileVisit";
+import { ProfileVisit, getVisitDay } from "@/models/ProfileVisit";
+import { checkSubscriptionAccess } from "@/lib/subscription/subscription-check";
 
 /**
  * GET /api/visitors
  *
- * Retourne la liste des utilisateurs qui ont visité le profil connecté.
- * Réservé aux membres premium (essential-monthly+).
+ * Retourne la liste des utilisatrices qui ont visité le profil connecté.
+ *
+ * Fonctionnalité premium :
+ * - nécessite la feature "profileVisitors"
+ * - donc accessible aux plans qui l'ont activée dans :
+ *   src/lib/subscription/config.ts
  *
  * Query params :
- * - limit (défaut : 30)
+ * - limit : nombre maximum de visiteurs retournés, défaut 30, maximum 100.
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    /**
+     * Protection premium officielle.
+     *
+     * Cette ligne remplace la vérification manuelle :
+     * currentUser.isPremium && subscriptionStatus === "active"
+     *
+     * Avantage :
+     * - même logique partout ;
+     * - compatible avec SUBSCRIPTION_PLANS ;
+     * - plus simple à maintenir.
+     */
+    const access = await checkSubscriptionAccess({
+      requiredFeature: "profileVisitors",
+    });
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false, error: "Non autorisé.", code: "UNAUTHORIZED" },
-        { status: 401 }
-      );
+    if (!access.allowed || !access.user) {
+      return access.response;
     }
 
     await connectDB();
 
-    const email = session.user.email.toLowerCase().trim();
-    const currentUser = await User.findOne({ email }).select(
-      "_id isPremium subscriptionStatus plan"
-    );
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, error: "Utilisateur introuvable.", code: "USER_NOT_FOUND" },
-        { status: 404 }
-      );
-    }
-
-    // Vérification premium
-    const isPremiumActive =
-      currentUser.isPremium &&
-      (currentUser.subscriptionStatus === "active" ||
-        currentUser.subscriptionStatus === "trialing");
-
-    if (!isPremiumActive) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Cette fonctionnalité est réservée aux membres premium.",
-          code: "PREMIUM_REQUIRED",
-        },
-        { status: 403 }
-      );
-    }
+    const currentUserId = access.user._id as mongoose.Types.ObjectId;
 
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "30"), 100);
 
-    const currentUserId = currentUser._id as mongoose.Types.ObjectId;
+    /**
+     * Limite sécurisée :
+     * - défaut : 30
+     * - maximum : 100
+     * - évite les abus côté API.
+     */
+    const parsedLimit = Number(searchParams.get("limit") ?? "30");
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(Math.max(parsedLimit, 1), 100)
+      : 30;
 
-    // Récupérer les visites, groupées par visiteur (la plus récente par visiteur)
+    /**
+     * Récupération des visites.
+     *
+     * Objectif :
+     * - récupérer les personnes qui ont visité mon profil ;
+     * - grouper par visiteur ;
+     * - garder la visite la plus récente ;
+     * - compter le nombre total de visites par visiteur.
+     */
     const visits = await ProfileVisit.aggregate([
-      { $match: { visitedId: currentUserId } },
-      { $sort: { createdAt: -1 } },
+      {
+        $match: {
+          visitedId: currentUserId,
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
       {
         $group: {
           _id: "$visitorId",
-          lastVisit: { $first: "$createdAt" },
-          visitCount: { $sum: 1 },
+          lastVisit: {
+            $first: "$createdAt",
+          },
+          visitCount: {
+            $sum: 1,
+          },
         },
       },
-      { $sort: { lastVisit: -1 } },
-      { $limit: limit },
+      {
+        $sort: {
+          lastVisit: -1,
+        },
+      },
+      {
+        $limit: limit,
+      },
     ]);
 
     if (visits.length === 0) {
-      return NextResponse.json({ success: true, visitors: [], total: 0 }, { status: 200 });
+      return NextResponse.json(
+        {
+          success: true,
+          visitors: [],
+          total: 0,
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
+      );
     }
 
-    const visitorIds = visits.map((v) => v._id);
+    const visitorIds = visits.map((visit) => visit._id);
 
-    const users = await User.find({ _id: { $in: visitorIds } })
-      .select("_id pseudonyme age localisation image interets")
+    /**
+     * Récupère les profils des visiteuses.
+     *
+     * On ne renvoie que les champs publics utiles.
+     */
+    const users = await User.find({
+      _id: {
+        $in: visitorIds,
+      },
+    })
+      .select("_id pseudonyme age localisation image interets identityVerified")
       .lean();
 
-    const usersById = new Map(users.map((u) => [u._id.toString(), u]));
+    const usersById = new Map(
+      users.map((user: any) => [user._id.toString(), user])
+    );
 
-    const result = visits.map((v) => ({
-      user: usersById.get(v._id.toString()) ?? null,
-      lastVisit: v.lastVisit,
-      visitCount: v.visitCount,
-    }));
+    const visitors = visits
+      .map((visit) => {
+        const user = usersById.get(visit._id.toString());
+
+        /**
+         * Si une utilisatrice a été supprimée entre-temps,
+         * on évite de renvoyer une entrée cassée.
+         */
+        if (!user) return null;
+
+        return {
+          user,
+          lastVisit: visit.lastVisit,
+          visitCount: visit.visitCount,
+        };
+      })
+      .filter(Boolean);
 
     return NextResponse.json(
-      { success: true, visitors: result, total: result.length },
-      { status: 200, headers: { "Cache-Control": "no-store" } }
+      {
+        success: true,
+        visitors,
+        total: visitors.length,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error: unknown) {
     console.error("Erreur GET /api/visitors :", error);
 
     return NextResponse.json(
-      { success: false, error: "Erreur serveur." },
+      {
+        success: false,
+        error: "Erreur serveur lors de la récupération des visiteurs.",
+        code: "INTERNAL_SERVER_ERROR",
+      },
       { status: 500 }
     );
   }
@@ -116,9 +186,23 @@ export async function GET(req: NextRequest) {
  * POST /api/visitors
  *
  * Enregistre une visite de profil.
- * Appelé côté client quand on consulte un profil dans l'Explorer.
  *
- * Body : { visitedUserId: string }
+ * Appelé quand une utilisatrice consulte un profil :
+ * - depuis Explorer ;
+ * - depuis Matches ;
+ * - depuis une page profil publique ;
+ * - ou autre page future.
+ *
+ * Body attendu :
+ * {
+ *   visitedUserId: string
+ * }
+ *
+ * Important :
+ * - une visite de soi-même n'est pas enregistrée ;
+ * - une visite en mode invisible n'est pas enregistrée ;
+ * - une même visiteuse ne compte qu'une seule fois par jour
+ *   pour le même profil grâce à visitDay.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -126,17 +210,41 @@ export async function POST(req: NextRequest) {
 
     if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, error: "Non autorisé." },
+        {
+          success: false,
+          error: "Non autorisé.",
+          code: "UNAUTHORIZED",
+        },
         { status: 401 }
       );
     }
 
-    const body = await req.json();
-    const { visitedUserId } = body;
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Body JSON invalide.",
+          code: "INVALID_JSON_BODY",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { visitedUserId } = body as {
+      visitedUserId?: string;
+    };
 
     if (!visitedUserId || !mongoose.Types.ObjectId.isValid(visitedUserId)) {
       return NextResponse.json(
-        { success: false, error: "visitedUserId invalide." },
+        {
+          success: false,
+          error: "visitedUserId invalide.",
+          code: "INVALID_VISITED_USER_ID",
+        },
         { status: 400 }
       );
     }
@@ -144,43 +252,125 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const email = session.user.email.toLowerCase().trim();
+
+    /**
+     * On récupère :
+     * - _id pour identifier le visiteur ;
+     * - visibilite pour savoir si le mode fantôme est actif.
+     */
     const currentUser = await User.findOne({ email }).select("_id visibilite");
 
     if (!currentUser) {
-      return NextResponse.json({ success: false }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Utilisateur introuvable.",
+          code: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      );
     }
 
     const visitorId = currentUser._id as mongoose.Types.ObjectId;
     const visitedId = new mongoose.Types.ObjectId(visitedUserId);
 
-    // Ne pas enregistrer si l'utilisateur se visite lui-même
+    /**
+     * On ne comptabilise pas une visite de son propre profil.
+     */
     if (visitorId.equals(visitedId)) {
-      return NextResponse.json({ success: true, skipped: true }, { status: 200 });
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: "self_visit",
+        },
+        { status: 200 }
+      );
     }
 
-    // Ne pas enregistrer si le visiteur est en mode invisible
+    /**
+     * Mode Fantôme :
+     * si l'utilisatrice est invisible, on ne laisse pas de trace.
+     *
+     * C'est logique :
+     * - elle navigue discrètement ;
+     * - son passage ne doit pas apparaître dans les visiteurs.
+     */
     if (currentUser.visibilite === "invisible") {
-      return NextResponse.json({ success: true, skipped: true }, { status: 200 });
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: "ghost_mode",
+        },
+        { status: 200 }
+      );
     }
 
-    // Upsert : une visite unique par (visiteur, visité) par jour
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const visitDay = getVisitDay();
 
+    /**
+     * Upsert propre.
+     *
+     * Grâce à l'index unique :
+     * visitorId + visitedId + visitDay
+     *
+     * On garantit :
+     * - une seule visite comptabilisée par jour ;
+     * - pas de doublons sauvages ;
+     * - une mise à jour de updatedAt si la visite existe déjà.
+     */
     await ProfileVisit.findOneAndUpdate(
       {
         visitorId,
         visitedId,
-        createdAt: { $gte: today },
+        visitDay,
       },
-      { visitorId, visitedId },
-      { upsert: true, new: true }
+      {
+        $setOnInsert: {
+          visitorId,
+          visitedId,
+          visitDay,
+        },
+        $set: {
+          updatedAt: new Date(),
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
     );
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch (error: unknown) {
-    // On ignore silencieusement les erreurs d'upsert (index dupliqué, etc.)
+    /**
+     * Ici, on reste volontairement doux :
+     * une erreur d'enregistrement de visite ne doit pas casser
+     * l'expérience utilisateur.
+     *
+     * Par contre, on log quand même côté serveur.
+     */
     console.error("Erreur POST /api/visitors :", error);
-    return NextResponse.json({ success: true }, { status: 200 });
+
+    return NextResponse.json(
+      {
+        success: true,
+        skipped: true,
+        reason: "visit_tracking_failed",
+      },
+      { status: 200 }
+    );
   }
 }
