@@ -1,4 +1,16 @@
+// src/app/inscription/steps/Step3.tsx
+
 "use client";
+
+/**
+ * Étape 3 du formulaire d'inscription SferaLuna.
+ *
+ * Objectif :
+ * - définir une localisation ;
+ * - choisir un rayon de recherche ;
+ * - proposer des villes rapides ;
+ * - garder une UX fluide sur mobile.
+ */
 
 import { useFormContext } from "react-hook-form";
 
@@ -17,8 +29,7 @@ const rayons = [
 ];
 
 /**
- * Villes rapides proposées à l'utilisateur.
- * L'utilisateur peut aussi saisir librement une autre ville.
+ * Villes rapides proposées.
  */
 const villesPrincipales = [
   "Paris",
@@ -29,6 +40,34 @@ const villesPrincipales = [
   "Lille",
   "Nantes",
   "Strasbourg",
+  "Rennes",
+  "Reims",
+  "Le Mans",
+  "Toulon",
+  "Aix-en-Provence",
+  "Clermont-Ferrand",
+  "Limoges",
+  "Tours",
+  "Versailles",
+  "Amiens",
+  "Orléans",
+  "Mulhouse",
+  "Rouen",
+  "Nancy",
+  "Besançon",
+  "Troyes",
+  "Dijon",
+  "Grenoble",
+  "Saint-Etienne",
+  "Brest",
+  "Ajaccio",
+  "Nice",
+  "Saint-Denis",
+  "Saint-Pierre",
+  "Saint-Paul",
+  "Saint-Benoit",
+  "Saint-Louis",
+  "Saint-Louis",
 ];
 
 export default function Step3() {
@@ -39,17 +78,9 @@ export default function Step3() {
     formState: { errors },
   } = useFormContext();
 
-  /**
-   * Valeurs actuelles du formulaire.
-   * watch permet de mettre à jour le style visuel en direct.
-   */
   const selectedLocalisation = watch("localisation") || "";
   const selectedRayon = watch("rayon") || "";
 
-  /**
-   * Quand l'utilisateur clique sur une ville rapide,
-   * on met à jour React Hook Form avec setValue.
-   */
   const handleLocalisationClick = (ville: string) => {
     setValue("localisation", ville, {
       shouldValidate: true,
@@ -59,18 +90,21 @@ export default function Step3() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Titre de l'étape */}
       <div>
-        <h2 className="text-2xl font-bold text-purple-300">Localisation</h2>
-        <p className="mt-2 text-sm text-gray-300">
+        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
+          Localisation
+        </h2>
+
+        <p className="mt-2 text-sm leading-relaxed text-gray-300">
           Indiquez votre zone de recherche pour recevoir des suggestions proches
           de vous.
         </p>
       </div>
 
       {/* Champ localisation */}
-      <div className="space-y-4">
+      <section className="space-y-4">
         <label className="block text-sm font-semibold text-gray-100">
           Où êtes-vous situé(e) ? <span className="text-pink-400">*</span>
         </label>
@@ -79,13 +113,13 @@ export default function Step3() {
           {...register("localisation")}
           type="text"
           placeholder="Saisissez votre ville ou code postal"
-          className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+          className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
         />
 
         <div>
-          <p className="text-sm text-gray-300 mb-3">Villes principales :</p>
+          <p className="mb-3 text-sm text-gray-300">Villes principales :</p>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {villesPrincipales.map((ville) => {
               const isSelected = selectedLocalisation === ville;
 
@@ -94,10 +128,10 @@ export default function Step3() {
                   key={ville}
                   type="button"
                   onClick={() => handleLocalisationClick(ville)}
-                  className={`px-3 py-3 rounded-xl border text-sm font-medium transition-all ${
+                  className={`rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
                     isSelected
                       ? "border-pink-400 bg-pink-500/20 text-white shadow-lg shadow-pink-500/10"
-                      : "border-white/25 bg-white/5 text-gray-100 hover:bg-white/10 hover:border-purple-300"
+                      : "border-white/25 bg-white/5 text-gray-100 hover:border-purple-300 hover:bg-white/10"
                   }`}
                 >
                   {ville}
@@ -112,25 +146,25 @@ export default function Step3() {
             {errors.localisation.message as string}
           </p>
         )}
-      </div>
+      </section>
 
       {/* Rayon de recherche */}
-      <div className="space-y-4">
+      <section className="space-y-4">
         <label className="block text-sm font-semibold text-gray-100">
           Rayon de recherche <span className="text-pink-400">*</span>
         </label>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
           {rayons.map((rayon) => {
             const isSelected = selectedRayon === rayon.value;
 
             return (
               <label
                 key={rayon.value}
-                className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`flex cursor-pointer items-center rounded-xl border p-3 transition-all sm:p-4 ${
                   isSelected
                     ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:bg-white/10 hover:border-purple-300"
+                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
                 }`}
               >
                 <input
@@ -161,7 +195,7 @@ export default function Step3() {
             {errors.rayon.message as string}
           </p>
         )}
-      </div>
+      </section>
     </div>
   );
 }

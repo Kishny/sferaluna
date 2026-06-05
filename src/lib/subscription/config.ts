@@ -1,108 +1,213 @@
 // src/lib/subscription/config.ts
 
-import type { UserPlan } from "@/models/User";
-
 /**
- * Configuration complète des plans SferaLuna.
+ * Configuration centrale des abonnements SferaLuna.
  *
- * IMPORTANT : les clés correspondent exactement aux valeurs UserPlan dans User.ts.
- * Ne jamais utiliser "basic", "premium", "master" ici.
+ * Ce fichier définit :
+ * - les plans disponibles ;
+ * - les limites par plan ;
+ * - les fonctionnalités accessibles selon le plan ;
+ * - les types TypeScript utilisés dans les guards premium.
+ *
+ * Très important :
+ * On utilise `as const` pour permettre à TypeScript de déduire précisément :
+ * - les noms des plans ;
+ * - les clés des fonctionnalités ;
+ * - les clés des limites.
  */
-export const PLAN_CONFIG = {
+
+export const SUBSCRIPTION_PLANS = {
   free: {
-    id: "free" as UserPlan,
+    id: "free",
     name: "Gratuit",
     price: 0,
-    priceLabel: "Gratuit",
+    description: "Découvre SferaLuna gratuitement",
+
+    limits: {
+      dailyLikes: 5,
+      dailyMessages: 10,
+      superLikesPerDay: 0,
+      boostsPerMonth: 0,
+      profileViews: 20,
+      maxMatches: 3,
+      vibePlannerPerMonth: 0,
+    },
+
     features: {
-      likes: { limit: 10, period: "daily" as const },
-      messages: { limit: 5, period: "daily" as const },
-      vibeSphere: "basic",
-      moderation: "standard",
-      support: "none",
+      circleOfSix: false,
+      ghostMode: false,
+      vibePlanner: false,
+      profileVisitors: false,
+      premiumFilters: false,
+      advancedVibeSphere: false,
+      unlimitedMessages: false,
+      unlimitedLikes: false,
+      eventsAccess: false,
+      vibementorCoaching: false,
+      vipCommunity: false,
+      prioritySupport: false,
     },
   },
 
   "essential-monthly": {
-    id: "essential-monthly" as UserPlan,
+    id: "essential-monthly",
     name: "Essentiel",
     price: 9.99,
-    priceLabel: "9,99€/mois",
+    description: "Pour aller plus loin dans tes rencontres",
+
+    limits: {
+      dailyLikes: Infinity,
+      dailyMessages: Infinity,
+      superLikesPerDay: 3,
+      boostsPerMonth: 1,
+      profileViews: 100,
+      maxMatches: Infinity,
+      vibePlannerPerMonth: 3,
+    },
+
     features: {
-      likes: { limit: 50, period: "daily" as const },
-      messages: { limit: 50, period: "daily" as const },
-      vibeSphere: "basic",
-      moderation: "standard",
-      support: "form",
-      priorityMessages: true,
+      circleOfSix: true,
+      ghostMode: false,
+      vibePlanner: true,
+      profileVisitors: false,
+      premiumFilters: false,
+      advancedVibeSphere: false,
+      unlimitedMessages: true,
+      unlimitedLikes: true,
+      eventsAccess: true,
+      vibementorCoaching: false,
+      vipCommunity: false,
+      prioritySupport: true,
     },
   },
 
   "premium-monthly": {
-    id: "premium-monthly" as UserPlan,
+    id: "premium-monthly",
     name: "Premium",
     price: 19.99,
-    priceLabel: "19,99€/mois",
-    badge: "Plus populaire",
+    description: "L’expérience SferaLuna complète",
+
+    limits: {
+      dailyLikes: Infinity,
+      dailyMessages: Infinity,
+      superLikesPerDay: 10,
+      boostsPerMonth: 3,
+      profileViews: Infinity,
+      maxMatches: Infinity,
+      vibePlannerPerMonth: Infinity,
+    },
+
     features: {
-      likes: { unlimited: true },
-      messages: { unlimited: true },
-      vibeSphere: "advanced",
-      moderation: "priority",
-      support: "priority",
-      priorityMessages: true,
-      advancedFilters: true,
-      invisibleMode: true,
+      circleOfSix: true,
+      ghostMode: true,
+      vibePlanner: true,
       profileVisitors: true,
-      readReceipts: true,
-      statistics: true,
-      boost: true,
-      premiumBadge: true,
+      premiumFilters: true,
+      advancedVibeSphere: true,
+      unlimitedMessages: true,
+      unlimitedLikes: true,
+      eventsAccess: true,
+      vibementorCoaching: false,
+      vipCommunity: false,
+      prioritySupport: true,
     },
   },
 
   "elite-monthly": {
-    id: "elite-monthly" as UserPlan,
+    id: "elite-monthly",
     name: "Elite",
     price: 34.99,
-    priceLabel: "34,99€/mois",
-    badge: "Le plus complet",
+    description: "Pour les plus engagées",
+
+    limits: {
+      dailyLikes: Infinity,
+      dailyMessages: Infinity,
+      superLikesPerDay: Infinity,
+      boostsPerMonth: 10,
+      profileViews: Infinity,
+      maxMatches: Infinity,
+      vibePlannerPerMonth: Infinity,
+    },
+
     features: {
-      likes: { unlimited: true },
-      messages: { unlimited: true },
-      vibeSphere: "ultimate",
-      moderation: "vip",
-      support: "vip",
-      priorityMessages: true,
-      advancedFilters: true,
-      invisibleMode: true,
+      circleOfSix: true,
+      ghostMode: true,
+      vibePlanner: true,
       profileVisitors: true,
-      readReceipts: true,
-      statistics: true,
-      boost: true,
-      premiumBadge: true,
-      eliteBadge: true,
-      coaching: true,
-      vipCircle: true,
-      earlyAccess: true,
+      premiumFilters: true,
+      advancedVibeSphere: true,
+      unlimitedMessages: true,
+      unlimitedLikes: true,
+      eventsAccess: true,
+      vibementorCoaching: true,
+      vipCommunity: true,
+      prioritySupport: true,
     },
   },
 } as const;
 
-export type PlanConfigKey = keyof typeof PLAN_CONFIG;
+/**
+ * Type des plans disponibles.
+ *
+ * Résultat :
+ * "free" | "essential-monthly" | "premium-monthly" | "elite-monthly"
+ */
+export type PlanId = keyof typeof SUBSCRIPTION_PLANS;
 
 /**
- * Retourne la config d'un plan ou celle du plan gratuit par défaut.
+ * Type complet d’un plan.
  */
-export function getPlanConfig(plan: UserPlan) {
-  return PLAN_CONFIG[plan] ?? PLAN_CONFIG["free"];
+export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[PlanId];
+
+/**
+ * Type des limites disponibles.
+ */
+export type LimitKey = keyof SubscriptionPlan["limits"];
+
+/**
+ * Type des fonctionnalités disponibles.
+ *
+ * Résultat :
+ * "circleOfSix" | "ghostMode" | "vibePlanner" | etc.
+ */
+export type FeatureKey = keyof SubscriptionPlan["features"];
+
+/**
+ * Liste ordonnée des plans.
+ * Sert à comparer le niveau d’un abonnement.
+ */
+export const PLAN_ORDER: PlanId[] = [
+  "free",
+  "essential-monthly",
+  "premium-monthly",
+  "elite-monthly",
+];
+
+/**
+ * Vérifie si une valeur est un PlanId valide.
+ */
+export function isValidPlanId(plan: unknown): plan is PlanId {
+  return typeof plan === "string" && plan in SUBSCRIPTION_PLANS;
 }
 
 /**
- * Liste ordonnée des plans payants pour l'affichage sur /paiement.
+ * Normalise un plan inconnu.
  */
-export const PAID_PLANS = [
-  PLAN_CONFIG["essential-monthly"],
-  PLAN_CONFIG["premium-monthly"],
-  PLAN_CONFIG["elite-monthly"],
-] as const;
+export function normalizePlanId(plan: unknown): PlanId {
+  if (isValidPlanId(plan)) return plan;
+  return "free";
+}
+
+/**
+ * Retourne le rang numérique d’un plan.
+ */
+export function getPlanRank(plan: PlanId): number {
+  return PLAN_ORDER.indexOf(plan);
+}
+
+/**
+ * Vérifie si un plan actuel est supérieur ou égal au plan requis.
+ */
+export function isPlanAtLeast(currentPlan: PlanId, requiredPlan: PlanId): boolean {
+  return getPlanRank(currentPlan) >= getPlanRank(requiredPlan);
+}

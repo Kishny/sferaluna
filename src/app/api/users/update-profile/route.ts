@@ -10,29 +10,41 @@ import { User } from "@/models/User";
 import { authOptions } from "../../auth/[...nextauth]/route";
 
 /**
- * Schéma de validation pour la finalisation du profil SferaLuna.
+ * Route de finalisation du profil après inscription.
  *
- * Cette route sert UNIQUEMENT à sauvegarder le profil utilisateur.
- * Elle ne doit plus gérer le plan premium.
+ * Utilisée principalement par :
+ * - /inscription
  *
- * Le choix du plan et l'activation premium sont maintenant gérés par :
+ * Important :
+ * Cette route ne gère PAS le plan premium.
+ * Le paiement est géré par Stripe :
  * - /api/stripe/create-checkout-session
  * - /api/stripe/webhook
  */
+
+const profileVisibilitySchema = z.enum([
+  "public",
+  "matches",
+  "premium",
+  "invisible",
+]);
+
 const updateProfileSchema = z.object({
   pseudonyme: z
     .string()
+    .trim()
     .min(3, "Le pseudonyme doit contenir au moins 3 caractères")
     .max(50, "Le pseudonyme ne doit pas dépasser 50 caractères")
     .optional(),
 
   email: z.string().email("Adresse email invalide").optional(),
 
-  /**
-   * Le mot de passe est optionnel.
-   * Pour un utilisateur Google, ce champ peut rester vide.
-   */
-  password: z.string().min(6, "Mot de passe trop court").optional().or(z.literal("")),
+  password: z
+    .preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères").optional()
+    )
+    .optional(),
 
   age: z.coerce
     .number()
@@ -40,24 +52,27 @@ const updateProfileSchema = z.object({
     .max(120, "Âge invalide")
     .optional(),
 
-  orientation: z.string().max(100).optional(),
+  bio: z.string().trim().max(500).optional(),
 
-  intentions: z.array(z.string()).optional(),
+  orientation: z.string().trim().max(100).optional(),
 
-  localisation: z.string().max(120).optional(),
+  intentions: z.array(z.string().trim()).max(10).optional(),
 
-  rayon: z.string().max(50).optional(),
+  localisation: z.string().trim().max(120).optional(),
 
-  question: z.string().max(300).optional(),
+  rayon: z.string().trim().max(50).optional(),
+
+  question: z.string().trim().max(300).optional(),
 
   reponse: z
     .string()
+    .trim()
     .max(200, "Votre réponse ne doit pas dépasser 200 caractères")
     .optional(),
 
-  interets: z.array(z.string()).min(0).max(10).optional(),
+  interets: z.array(z.string().trim()).min(0).max(10).optional(),
 
-  visibilite: z.string().max(50).optional(),
+  visibilite: profileVisibilitySchema.optional(),
 
   consentement: z.boolean().optional(),
 
@@ -66,40 +81,81 @@ const updateProfileSchema = z.object({
 
 type UpdateProfileData = z.infer<typeof updateProfileSchema>;
 
-/**
- * Nettoie l'utilisateur avant de l'envoyer au frontend.
- * On ne renvoie jamais le mot de passe.
- */
 function sanitizeUser(user: any) {
   if (!user) return null;
 
-  const plainUser = user.toObject ? user.toObject() : user;
+  const plainUser = user.toObject ? user.toObject({ virtuals: true }) : user;
 
   delete plainUser.password;
+  delete plainUser.reponse;
+  delete plainUser.emailVerificationToken;
+  delete plainUser.emailVerificationExpiry;
+  delete plainUser.resetPasswordToken;
+  delete plainUser.resetPasswordExpiry;
   delete plainUser.__v;
 
   return plainUser;
 }
 
+function calculateProfileCompletion(user: any) {
+  const raw = user?.toObject ? user.toObject() : user;
+
+  const fields = [
+    "pseudonyme",
+    "email",
+    "age",
+    "orientation",
+    "intentions",
+    "localisation",
+    "rayon",
+    "question",
+    "reponse",
+    "interets",
+    "visibilite",
+    "consentement",
+  ];
+
+  const completedFields = fields.filter((field) => {
+    const value = raw?.[field];
+
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "boolean") return value === true;
+
+    return value !== undefined && value !== null && value !== "";
+  });
+
+  const missingFields = fields.filter((field) => {
+    const value = raw?.[field];
+
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === "boolean") return value !== true;
+
+    return value === undefined || value === null || value === "";
+  });
+
+  return {
+    percentage: Math.round((completedFields.length / fields.length) * 100),
+    completedFields,
+    missingFields,
+  };
+}
+
+async function getSessionEmail() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) return null;
+
+  return session.user.email.toLowerCase().trim();
+}
+
 /**
  * POST /api/users/update-profile
- *
- * Finalise ou met à jour le profil de l'utilisateur connecté.
- * Cette route ne touche PAS aux champs Stripe :
- * - plan
- * - isPremium
- * - subscriptionStatus
- * - stripeCustomerId
- * - stripeSubscriptionId
  */
 export async function POST(req: NextRequest) {
   try {
-    /**
-     * 1. Vérification de la session NextAuth.
-     */
-    const session = await getServerSession(authOptions);
+    const sessionEmail = await getSessionEmail();
 
-    if (!session?.user?.email) {
+    if (!sessionEmail) {
       return NextResponse.json(
         {
           success: false,
@@ -110,14 +166,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 2. Lecture du body JSON.
-     */
-    const body = await req.json();
+    let body: unknown;
 
-    /**
-     * 3. Validation Zod.
-     */
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Body JSON invalide.",
+          code: "INVALID_JSON_BODY",
+        },
+        { status: 400 }
+      );
+    }
+
     const validation = updateProfileSchema.safeParse(body);
 
     if (!validation.success) {
@@ -134,18 +197,9 @@ export async function POST(req: NextRequest) {
 
     const data: UpdateProfileData = validation.data;
 
-    /**
-     * 4. Connexion MongoDB.
-     */
     await connectDB();
 
-    /**
-     * 5. On récupère l'utilisateur avec l'email de session.
-     * Très important : on ne fait pas confiance à l'email envoyé par le frontend.
-     */
-    const sessionEmail = session.user.email.toLowerCase().trim();
-
-    const user = await User.findOne({ email: sessionEmail });
+    const user = await User.findOne({ email: sessionEmail }).select("+reponse");
 
     if (!user) {
       return NextResponse.json(
@@ -158,25 +212,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 6. Préparation des champs autorisés.
-     */
     const updateData: Record<string, unknown> = {};
 
-    if (data.pseudonyme !== undefined) {
-      updateData.pseudonyme = data.pseudonyme.trim();
-    }
+    if (data.pseudonyme !== undefined) updateData.pseudonyme = data.pseudonyme;
 
     /**
-     * L'email n'est pas modifié ici.
-     * Il vient de NextAuth et sert d'identifiant.
+     * L'email envoyé par le frontend est ignoré volontairement.
+     * L'email de session NextAuth reste la source de vérité.
      */
 
-    if (data.password && data.password.trim().length >= 6) {
+    if (data.password && data.password.trim().length >= 8) {
       updateData.password = await bcrypt.hash(data.password.trim(), 12);
     }
 
     if (data.age !== undefined) updateData.age = data.age;
+    if (data.bio !== undefined) updateData.bio = data.bio;
     if (data.orientation !== undefined) updateData.orientation = data.orientation;
     if (data.intentions !== undefined) updateData.intentions = data.intentions;
     if (data.localisation !== undefined) updateData.localisation = data.localisation;
@@ -188,30 +238,23 @@ export async function POST(req: NextRequest) {
     if (data.consentement !== undefined) updateData.consentement = data.consentement;
 
     /**
-     * Le profil est considéré complété dès que cette route passe correctement.
+     * Cette route sert à finaliser l'inscription.
+     * On marque donc le profil comme complété.
      */
     updateData.hasCompletedProfile = true;
 
-    /**
-     * On enregistre la date de complétion uniquement la première fois.
-     */
     if (!user.hasCompletedProfile) {
       updateData.profileCompletedAt = new Date();
     }
 
-    /**
-     * 7. Mise à jour MongoDB.
-     */
     const updatedUser = await User.findOneAndUpdate(
       { email: sessionEmail },
-      {
-        $set: updateData,
-      },
+      { $set: updateData },
       {
         new: true,
         runValidators: true,
       }
-    ).select("-password -__v");
+    ).select("+reponse -password -__v");
 
     if (!updatedUser) {
       return NextResponse.json(
@@ -307,9 +350,9 @@ export async function PUT(req: NextRequest) {
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const sessionEmail = await getSessionEmail();
 
-    if (!session?.user?.email) {
+    if (!sessionEmail) {
       return NextResponse.json(
         {
           success: false,
@@ -322,9 +365,9 @@ export async function GET() {
 
     await connectDB();
 
-    const user = await User.findOne({
-      email: session.user.email.toLowerCase().trim(),
-    }).select("-password -__v");
+    const user = await User.findOne({ email: sessionEmail }).select(
+      "+reponse -password -__v"
+    );
 
     if (!user) {
       return NextResponse.json(
@@ -371,48 +414,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-/**
- * Calcule la complétion du profil.
- */
-function calculateProfileCompletion(user: any) {
-  const fields = [
-    "pseudonyme",
-    "email",
-    "age",
-    "orientation",
-    "intentions",
-    "localisation",
-    "rayon",
-    "question",
-    "reponse",
-    "interets",
-    "visibilite",
-    "consentement",
-  ];
-
-  const completedFields = fields.filter((field) => {
-    const value = user[field];
-
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === "boolean") return value === true;
-
-    return value !== undefined && value !== null && value !== "";
-  });
-
-  const missingFields = fields.filter((field) => {
-    const value = user[field];
-
-    if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === "boolean") return value !== true;
-
-    return value === undefined || value === null || value === "";
-  });
-
-  return {
-    percentage: Math.round((completedFields.length / fields.length) * 100),
-    completedFields,
-    missingFields,
-  };
 }

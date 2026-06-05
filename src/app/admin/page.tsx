@@ -7,26 +7,31 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users,
-  Crown,
-  Heart,
-  MessageCircle,
-  TrendingUp,
+  AlertCircle,
   ArrowLeft,
-  Search,
-  RefreshCw,
+  BadgeCheck,
   ChevronLeft,
   ChevronRight,
+  Crown,
+  Loader2,
+  RefreshCw,
+  Search,
   Shield,
   Star,
-  AlertCircle,
-  Loader2,
-  BadgeCheck,
+  TrendingUp,
 } from "lucide-react";
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
+/**
+ * Dashboard Admin SferaLuna.
+ *
+ * Version mobile améliorée :
+ * - tabs scrollables sur mobile ;
+ * - cartes statistiques compactes ;
+ * - utilisateurs affichés en cards sur mobile ;
+ * - table conservée sur desktop ;
+ * - signalements / témoignages en cards compactes ;
+ * - filtres responsives.
+ */
 
 interface AdminStats {
   users: {
@@ -74,15 +79,11 @@ interface AdminReport {
 
 const reasonLabel: Record<string, string> = {
   spam: "Spam",
-  "harcèlement": "Harcèlement",
-  "contenu_inapproprié": "Contenu inapproprié",
-  "faux_profil": "Faux profil",
+  harcèlement: "Harcèlement",
+  contenu_inapproprié: "Contenu inapproprié",
+  faux_profil: "Faux profil",
   autre: "Autre",
 };
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
 
 const planEmoji: Record<string, string> = {
   free: "🌙",
@@ -116,92 +117,34 @@ function formatNumber(n: number) {
   return n.toLocaleString("fr-FR");
 }
 
-// ─────────────────────────────────────────────
-// Page Admin
-// ─────────────────────────────────────────────
-
 export default function AdminPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   const [activeTab, setActiveTab] = useState<TabId>("stats");
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Signalements
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
 
-  const fetchReports = useCallback(async () => {
-    setIsLoadingReports(true);
-    try {
-      const res = await fetch("/api/admin/reports");
-      const data = await res.json();
-      if (data.reports) setReports(data.reports);
-    } catch {}
-    finally { setIsLoadingReports(false); }
-  }, []);
-
-  const handleBan = async (userId: string, pseudonyme: string) => {
-    if (!confirm(`Bannir ${pseudonyme} ? Cette action désactivera son compte.`)) return;
-    setActionLoading("ban-" + userId);
-    try {
-      await fetch(`/api/admin/users/${userId}/ban`, { method: "POST" });
-      fetchReports();
-    } finally { setActionLoading(null); }
-  };
-
-  const handleResolveReport = async (reportId: string, action: "reviewed" | "dismissed") => {
-    setActionLoading(reportId + action);
-    try {
-      await fetch(`/api/admin/reports/${reportId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action }),
-      });
-      fetchReports();
-    } finally { setActionLoading(null); }
-  };
-
-  // Témoignages
-  const [testimonials, setTestimonials] = useState<{
-    _id: string; authorName: string; age?: number; content: string;
-    status: string; createdAt: string;
-  }[]>([]);
+  const [testimonials, setTestimonials] = useState<
+    {
+      _id: string;
+      authorName: string;
+      age?: number;
+      content: string;
+      status: string;
+      createdAt: string;
+    }[]
+  >([]);
   const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(false);
 
-  const fetchTestimonials = useCallback(async () => {
-    setIsLoadingTestimonials(true);
-    try {
-      const res = await fetch("/api/admin/testimonials", { cache: "no-store" });
-      const data = await res.json();
-      if (data.success) setTestimonials(data.testimonials);
-    } catch { /* silent */ } finally { setIsLoadingTestimonials(false); }
-  }, []);
-
-  const handleTestimonialAction = async (id: string, action: "approved" | "rejected" | "delete") => {
-    setActionLoading(id + action);
-    try {
-      if (action === "delete") {
-        await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE" });
-        setTestimonials(prev => prev.filter(t => t._id !== id));
-      } else {
-        const res = await fetch(`/api/admin/testimonials/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: action }),
-        });
-        const data = await res.json();
-        if (data.success) setTestimonials(prev => prev.map(t => t._id === id ? { ...t, status: action } : t));
-      }
-    } catch { /* silent */ } finally { setActionLoading(null); }
-  };
-
-  // Filtres users
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -209,23 +152,30 @@ export default function AdminPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
 
-  // ── Vérification rôle admin ──
   useEffect(() => {
-    if (status === "unauthenticated") { router.push("/auth?mode=login"); return; }
+    if (status === "unauthenticated") {
+      router.push("/auth?mode=login");
+    }
   }, [status, router]);
 
-  // ── Chargement stats ──
   const fetchStats = useCallback(async () => {
     setIsLoadingStats(true);
     setError("");
+
     try {
       const res = await fetch("/api/admin/stats", { cache: "no-store" });
       const data = await res.json();
+
       if (!data.success) {
-        if (res.status === 403) { router.push("/mon-compte"); return; }
+        if (res.status === 403) {
+          router.push("/mon-compte");
+          return;
+        }
+
         setError(data.error || "Erreur de chargement.");
         return;
       }
+
       setStats(data.stats);
     } catch {
       setError("Erreur de connexion.");
@@ -234,9 +184,9 @@ export default function AdminPage() {
     }
   }, [router]);
 
-  // ── Chargement users ──
   const fetchUsers = useCallback(async () => {
     setIsLoadingUsers(true);
+
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -245,8 +195,13 @@ export default function AdminPage() {
         ...(planFilter !== "all" && { plan: planFilter }),
         ...(statusFilter !== "all" && { status: statusFilter }),
       });
-      const res = await fetch(`/api/admin/users?${params}`, { cache: "no-store" });
+
+      const res = await fetch(`/api/admin/users?${params}`, {
+        cache: "no-store",
+      });
+
       const data = await res.json();
+
       if (data.success) {
         setUsers(data.users);
         setTotalPages(data.pagination.totalPages);
@@ -259,24 +214,77 @@ export default function AdminPage() {
     }
   }, [page, search, planFilter, statusFilter]);
 
-  useEffect(() => { if (status === "authenticated") fetchStats(); }, [status, fetchStats]);
-  useEffect(() => { if (status === "authenticated" && activeTab === "users") fetchUsers(); }, [status, activeTab, fetchUsers]);
-  useEffect(() => { if (status === "authenticated" && activeTab === "testimonials") fetchTestimonials(); }, [status, activeTab, fetchTestimonials]);
-  useEffect(() => { if (status === "authenticated" && activeTab === "reports") fetchReports(); }, [status, activeTab, fetchReports]);
-  useEffect(() => { setPage(1); }, [search, planFilter, statusFilter]);
+  const fetchReports = useCallback(async () => {
+    setIsLoadingReports(true);
 
-  // ── Action sur utilisateur ──
+    try {
+      const res = await fetch("/api/admin/reports");
+      const data = await res.json();
+
+      if (data.reports) setReports(data.reports);
+    } catch {
+      // Silence volontaire.
+    } finally {
+      setIsLoadingReports(false);
+    }
+  }, []);
+
+  const fetchTestimonials = useCallback(async () => {
+    setIsLoadingTestimonials(true);
+
+    try {
+      const res = await fetch("/api/admin/testimonials", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) setTestimonials(data.testimonials);
+    } catch {
+      // Silence volontaire.
+    } finally {
+      setIsLoadingTestimonials(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") fetchStats();
+  }, [status, fetchStats]);
+
+  useEffect(() => {
+    if (status === "authenticated" && activeTab === "users") fetchUsers();
+  }, [status, activeTab, fetchUsers]);
+
+  useEffect(() => {
+    if (status === "authenticated" && activeTab === "testimonials") {
+      fetchTestimonials();
+    }
+  }, [status, activeTab, fetchTestimonials]);
+
+  useEffect(() => {
+    if (status === "authenticated" && activeTab === "reports") fetchReports();
+  }, [status, activeTab, fetchReports]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, planFilter, statusFilter]);
+
   const handleUserAction = async (userId: string, action: string) => {
     setActionLoading(userId + action);
+
     try {
       const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, action }),
       });
+
       const data = await res.json();
+
       if (data.success) {
-        setUsers((prev) => prev.map((u) => u._id === userId ? { ...u, ...data.user } : u));
+        setUsers((prev) =>
+          prev.map((u) => (u._id === userId ? { ...u, ...data.user } : u))
+        );
       } else {
         setError(data.error || "Action échouée.");
       }
@@ -287,95 +295,176 @@ export default function AdminPage() {
     }
   };
 
+  const handleBan = async (userId: string, pseudonyme: string) => {
+    if (!confirm(`Bannir ${pseudonyme} ? Cette action désactivera son compte.`)) {
+      return;
+    }
+
+    setActionLoading("ban-" + userId);
+
+    try {
+      await fetch(`/api/admin/users/${userId}/ban`, { method: "POST" });
+      fetchReports();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResolveReport = async (
+    reportId: string,
+    action: "reviewed" | "dismissed"
+  ) => {
+    setActionLoading(reportId + action);
+
+    try {
+      await fetch(`/api/admin/reports/${reportId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: action }),
+      });
+
+      fetchReports();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTestimonialAction = async (
+    id: string,
+    action: "approved" | "rejected" | "delete"
+  ) => {
+    setActionLoading(id + action);
+
+    try {
+      if (action === "delete") {
+        await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE" });
+        setTestimonials((prev) => prev.filter((t) => t._id !== id));
+      } else {
+        const res = await fetch(`/api/admin/testimonials/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: action }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setTestimonials((prev) =>
+            prev.map((t) => (t._id === id ? { ...t, status: action } : t))
+          );
+        }
+      }
+    } catch {
+      // Silence volontaire.
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (status === "loading" || isLoadingStats) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82]">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82]">
         <div className="text-center">
-          <Loader2 className="h-10 w-10 text-purple-300 animate-spin mx-auto mb-4" />
-          <p className="text-white/50 text-sm">Chargement du dashboard admin…</p>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-purple-300" />
+          <p className="text-sm text-white/50">
+            Chargement du dashboard admin…
+          </p>
         </div>
       </div>
     );
   }
 
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "stats", label: "📊 Stats" },
+    { id: "users", label: "👥 Users" },
+    { id: "reports", label: "🚨 Reports" },
+    { id: "testimonials", label: "💬 Avis" },
+  ];
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
-      {/* Orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-32 right-1/4 h-96 w-96 rounded-full bg-purple-600/15 blur-3xl" />
         <div className="absolute bottom-0 left-1/4 h-80 w-80 rounded-full bg-pink-600/15 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 pb-16">
-
-        {/* ── Header ── */}
-        <motion.div
+      <div className="relative z-10 mx-auto max-w-6xl px-3 py-5 pb-12 sm:px-4 sm:py-8 sm:pb-16">
+        {/* Header compact */}
+        <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 flex items-center justify-between"
+          className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur sm:mb-8 sm:flex sm:items-center sm:justify-between"
         >
-          <div className="flex items-center gap-4">
+          <div>
             <button
               onClick={() => router.push("/mon-compte")}
-              className="flex items-center gap-2 text-white/50 hover:text-white transition text-sm"
+              className="mb-3 flex items-center gap-2 text-xs text-white/50 transition hover:text-white sm:text-sm"
             >
               <ArrowLeft className="h-4 w-4" />
               Mon compte
             </button>
-            <div className="h-4 w-px bg-white/15" />
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center">
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-yellow-400/30 bg-yellow-400/20">
                 <Star className="h-4 w-4 text-yellow-300" />
               </div>
+
               <div>
                 <h1 className="font-bold leading-tight">Dashboard Admin</h1>
-                <p className="text-xs text-white/40">SferaLuna — Vue d&apos;ensemble</p>
+                <p className="text-xs text-white/40">
+                  SferaLuna — Vue d&apos;ensemble
+                </p>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => { fetchStats(); if (activeTab === "users") fetchUsers(); }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition text-sm"
+            onClick={() => {
+              fetchStats();
+              if (activeTab === "users") fetchUsers();
+              if (activeTab === "reports") fetchReports();
+              if (activeTab === "testimonials") fetchTestimonials();
+            }}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 transition hover:bg-white/10 hover:text-white sm:mt-0 sm:w-auto"
           >
             <RefreshCw className="h-4 w-4" />
             Actualiser
           </button>
-        </motion.div>
+        </motion.header>
 
-        {/* ── Erreur globale ── */}
         <AnimatePresence>
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="mb-6"
+              className="mb-4"
             >
-              <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-200 flex items-center gap-3 text-sm">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                {error}
-                <button onClick={() => setError("")} className="ml-auto text-red-300 hover:text-white">✕</button>
+              <div className="flex items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{error}</span>
+
+                <button
+                  onClick={() => setError("")}
+                  className="text-red-300 hover:text-white"
+                >
+                  ✕
+                </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Tabs ── */}
-        <div className="mb-6 flex gap-2">
-          {([
-            { id: "stats", label: "📊 Statistiques" },
-            { id: "users", label: "👥 Utilisateurs" },
-            { id: "reports", label: "🚨 Signalements" },
-            { id: "testimonials", label: "💬 Témoignages" },
-          ] as { id: TabId; label: string }[]).map((tab) => (
+        {/* Tabs mobile scroll */}
+        <div className="mb-5 flex gap-2 overflow-x-auto pb-1 sm:mb-6">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+              className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-medium transition sm:px-4 sm:text-sm ${
                 activeTab === tab.id
-                  ? "bg-white/15 border border-white/20 text-white"
-                  : "bg-white/5 border border-white/8 text-white/50 hover:text-white hover:bg-white/10"
+                  ? "border-white/20 bg-white/15 text-white"
+                  : "border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
               }`}
             >
               {tab.label}
@@ -383,75 +472,136 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* ── Onglet Statistiques ── */}
+        {/* Stats */}
         {activeTab === "stats" && stats && (
-          <motion.div
+          <motion.section
             key="stats"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-4 sm:space-y-6"
           >
-            {/* Cartes principales */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
               {[
-                { emoji: "👤", label: "Utilisateurs", value: formatNumber(stats.users.total), sub: `+${stats.users.newLast7days} cette semaine`, color: "from-purple-500/20 to-purple-800/20", border: "border-purple-400/20" },
-                { emoji: "👑", label: "Membres premium", value: formatNumber(stats.users.premium), sub: `${stats.users.conversionRate}% de conversion`, color: "from-yellow-500/15 to-amber-800/15", border: "border-yellow-400/20" },
-                { emoji: "💞", label: "Matches actifs", value: formatNumber(stats.matches.active), sub: `${stats.matches.last7days} cette semaine`, color: "from-pink-500/15 to-rose-800/15", border: "border-pink-400/20" },
-                { emoji: "💬", label: "Messages", value: formatNumber(stats.messages.total), sub: `${stats.messages.last7days} cette semaine`, color: "from-blue-500/15 to-indigo-800/15", border: "border-blue-400/20" },
+                {
+                  emoji: "👤",
+                  label: "Utilisateurs",
+                  value: formatNumber(stats.users.total),
+                  sub: `+${stats.users.newLast7days} cette semaine`,
+                  color: "from-purple-500/20 to-purple-800/20",
+                  border: "border-purple-400/20",
+                },
+                {
+                  emoji: "👑",
+                  label: "Premium",
+                  value: formatNumber(stats.users.premium),
+                  sub: `${stats.users.conversionRate}% conversion`,
+                  color: "from-yellow-500/15 to-amber-800/15",
+                  border: "border-yellow-400/20",
+                },
+                {
+                  emoji: "💞",
+                  label: "Matches actifs",
+                  value: formatNumber(stats.matches.active),
+                  sub: `${stats.matches.last7days} cette semaine`,
+                  color: "from-pink-500/15 to-rose-800/15",
+                  border: "border-pink-400/20",
+                },
+                {
+                  emoji: "💬",
+                  label: "Messages",
+                  value: formatNumber(stats.messages.total),
+                  sub: `${stats.messages.last7days} cette semaine`,
+                  color: "from-blue-500/15 to-indigo-800/15",
+                  border: "border-blue-400/20",
+                },
               ].map((card, i) => (
                 <motion.div
                   key={card.label}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.06 }}
-                  className={`rounded-2xl border ${card.border} bg-gradient-to-br ${card.color} p-5`}
+                  transition={{ delay: i * 0.05 }}
+                  className={`rounded-2xl border ${card.border} bg-gradient-to-br ${card.color} p-3 sm:p-5`}
                 >
-                  <p className="text-2xl mb-2">{card.emoji}</p>
-                  <p className="text-2xl font-bold mb-0.5">{card.value}</p>
-                  <p className="text-xs text-white/50">{card.label}</p>
-                  <p className="text-xs text-white/30 mt-1">{card.sub}</p>
+                  <p className="mb-1 text-xl sm:text-2xl">{card.emoji}</p>
+                  <p className="text-xl font-bold sm:text-2xl">{card.value}</p>
+                  <p className="text-[11px] text-white/50 sm:text-xs">
+                    {card.label}
+                  </p>
+                  <p className="mt-1 text-[10px] text-white/30 sm:text-xs">
+                    {card.sub}
+                  </p>
                 </motion.div>
               ))}
             </div>
 
-            {/* Ligne 2 : inscriptions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
               {[
-                { emoji: "📅", label: "Inscrits aujourd'hui", value: stats.users.newToday },
-                { emoji: "📆", label: "Inscrits cette semaine", value: stats.users.newLast7days },
-                { emoji: "🗓️", label: "Inscrits ce mois", value: stats.users.newLast30days },
-              ].map((c, i) => (
-                <div key={c.label} className="rounded-2xl border border-white/8 bg-white/5 p-5">
-                  <p className="text-xl mb-2">{c.emoji}</p>
+                {
+                  emoji: "📅",
+                  label: "Aujourd'hui",
+                  value: stats.users.newToday,
+                },
+                {
+                  emoji: "📆",
+                  label: "Cette semaine",
+                  value: stats.users.newLast7days,
+                },
+                {
+                  emoji: "🗓️",
+                  label: "Ce mois",
+                  value: stats.users.newLast30days,
+                },
+              ].map((c) => (
+                <div
+                  key={c.label}
+                  className="rounded-2xl border border-white/8 bg-white/5 p-4 sm:p-5"
+                >
+                  <p className="mb-1 text-xl">{c.emoji}</p>
                   <p className="text-2xl font-bold">{formatNumber(c.value)}</p>
-                  <p className="text-xs text-white/50 mt-0.5">{c.label}</p>
+                  <p className="mt-0.5 text-xs text-white/50">{c.label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Répartition des plans */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <h3 className="font-bold mb-5 flex items-center gap-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+              <h3 className="mb-4 flex items-center gap-2 font-bold">
                 <TrendingUp className="h-5 w-5 text-purple-300" />
                 Répartition des plans
               </h3>
+
               <div className="space-y-3">
                 {stats.planBreakdown.map((p) => {
-                  const pct = stats.users.total > 0 ? Math.round((p.count / stats.users.total) * 100) : 0;
+                  const pct =
+                    stats.users.total > 0
+                      ? Math.round((p.count / stats.users.total) * 100)
+                      : 0;
+
                   return (
                     <div key={p.plan} className="flex items-center gap-3">
-                      <span className="text-lg w-6 text-center">{planEmoji[p.plan] || "🌙"}</span>
+                      <span className="w-6 text-center text-lg">
+                        {planEmoji[p.plan] || "🌙"}
+                      </span>
+
                       <div className="flex-1">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-white/70">{planLabel[p.plan] || p.plan}</span>
-                          <span className="font-semibold">{p.count} <span className="text-white/40 font-normal">({pct}%)</span></span>
+                        <div className="mb-1 flex justify-between text-sm">
+                          <span className="text-white/70">
+                            {planLabel[p.plan] || p.plan}
+                          </span>
+
+                          <span className="font-semibold">
+                            {p.count}{" "}
+                            <span className="font-normal text-white/40">
+                              ({pct}%)
+                            </span>
+                          </span>
                         </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
-                            transition={{ duration: 0.8, delay: 0.1 }}
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                            transition={{ duration: 0.8 }}
+                            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
                           />
                         </div>
                       </div>
@@ -460,52 +610,34 @@ export default function AdminPage() {
                 })}
               </div>
             </div>
-
-            {/* Autres stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { emoji: "✅", label: "Profils complétés", value: `${formatNumber(stats.users.profilesCompleted)} / ${formatNumber(stats.users.total)}`, pct: stats.users.total > 0 ? Math.round((stats.users.profilesCompleted / stats.users.total) * 100) : 0 },
-                { emoji: "💳", label: "Abonnements actifs", value: `${formatNumber(stats.users.activeSubscriptions)}`, pct: stats.users.total > 0 ? Math.round((stats.users.activeSubscriptions / stats.users.total) * 100) : 0 },
-                { emoji: "🔁", label: "Total matches", value: formatNumber(stats.matches.total), pct: null },
-              ].map((c) => (
-                <div key={c.label} className="rounded-2xl border border-white/8 bg-white/5 p-5">
-                  <p className="text-2xl mb-2">{c.emoji}</p>
-                  <p className="text-xl font-bold">{c.value}</p>
-                  <p className="text-xs text-white/50 mt-0.5">{c.label}</p>
-                  {c.pct !== null && (
-                    <p className="text-xs text-purple-300 mt-1">{c.pct}%</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          </motion.section>
         )}
 
-        {/* ── Onglet Utilisateurs ── */}
+        {/* Users */}
         {activeTab === "users" && (
-          <motion.div
+          <motion.section
             key="users"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-5"
+            className="space-y-4 sm:space-y-5"
           >
-            {/* Filtres */}
-            <div className="flex flex-wrap gap-3">
-              <div className="relative flex-1 min-w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher email, pseudo…"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-purple-400/50"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-white placeholder-white/30 focus:border-purple-400/50 focus:outline-none"
                 />
               </div>
 
               <select
                 value={planFilter}
                 onChange={(e) => setPlanFilter(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                className="rounded-xl border border-white/10 bg-[#241447] px-3 py-2 text-sm text-white focus:outline-none"
               >
                 <option value="all">Tous les plans</option>
                 <option value="free">🌙 Gratuit</option>
@@ -517,7 +649,7 @@ export default function AdminPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none"
+                className="rounded-xl border border-white/10 bg-[#241447] px-3 py-2 text-sm text-white focus:outline-none"
               >
                 <option value="all">Tous les statuts</option>
                 <option value="active">Actif</option>
@@ -527,284 +659,536 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Compteur */}
-            <p className="text-xs text-white/40">{formatNumber(totalUsers)} utilisateur{totalUsers !== 1 ? "s" : ""} trouvé{totalUsers !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-white/40">
+              {formatNumber(totalUsers)} utilisateur
+              {totalUsers !== 1 ? "s" : ""} trouvé
+              {totalUsers !== 1 ? "s" : ""}
+            </p>
 
-            {/* Table */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-              {isLoadingUsers ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-8 w-8 text-purple-300 animate-spin" />
-                </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-12 text-white/40 text-sm">
-                  Aucun utilisateur trouvé.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-white/8 text-white/40 text-xs">
-                        <th className="px-4 py-3 text-left font-medium">Utilisateur</th>
-                        <th className="px-4 py-3 text-left font-medium">Plan</th>
-                        <th className="px-4 py-3 text-left font-medium">Statut</th>
-                        <th className="px-4 py-3 text-left font-medium">Inscription</th>
-                        <th className="px-4 py-3 text-left font-medium">Rôle</th>
-                        <th className="px-4 py-3 text-right font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u, i) => (
-                        <tr
-                          key={u._id}
-                          className={`border-b border-white/5 hover:bg-white/5 transition ${i % 2 === 0 ? "" : "bg-white/2"}`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                {u.pseudonyme.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium truncate max-w-32">{u.pseudonyme}</p>
-                                <p className="text-white/40 text-xs truncate max-w-32">{u.email}</p>
-                              </div>
-                              {u.hasCompletedProfile && (
-                                <BadgeCheck className="h-4 w-4 text-green-400 flex-shrink-0" />
-                              )}
-                            </div>
-                          </td>
+            {isLoadingUsers ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-300" />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 py-12 text-center text-sm text-white/40">
+                Aucun utilisateur trouvé.
+              </div>
+            ) : (
+              <>
+                {/* Cards mobile */}
+                <div className="space-y-3 md:hidden">
+                  {users.map((u) => (
+                    <article
+                      key={u._id}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-bold">
+                          {u.pseudonyme.charAt(0).toUpperCase()}
+                        </div>
 
-                          <td className="px-4 py-3">
-                            <span className="text-xs font-medium">
-                              {planEmoji[u.plan] || "🌙"} {planLabel[u.plan] || u.plan}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-semibold">
+                              {u.pseudonyme}
+                            </p>
+
+                            {u.hasCompletedProfile && (
+                              <BadgeCheck className="h-4 w-4 text-green-400" />
+                            )}
+                          </div>
+
+                          <p className="truncate text-xs text-white/40">
+                            {u.email}
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs">
+                              {planEmoji[u.plan] || "🌙"}{" "}
+                              {planLabel[u.plan] || u.plan}
                             </span>
-                          </td>
 
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full border ${statusColor[u.subscriptionStatus] || statusColor.inactive}`}>
+                            <span
+                              className={`rounded-full border px-2 py-1 text-xs ${
+                                statusColor[u.subscriptionStatus] ||
+                                statusColor.inactive
+                              }`}
+                            >
                               {u.subscriptionStatus}
                             </span>
-                          </td>
 
-                          <td className="px-4 py-3 text-white/50 text-xs">
-                            {formatDate(u.createdAt)}
-                          </td>
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/50">
+                              {u.role === "admin" ? "⭐ Admin" : "User"}
+                            </span>
+                          </div>
 
-                          <td className="px-4 py-3">
-                            {u.role === "admin" ? (
-                              <span className="flex items-center gap-1 text-xs text-yellow-300">
-                                <Star className="h-3 w-3" /> Admin
-                              </span>
-                            ) : (
-                              <span className="text-xs text-white/40">User</span>
-                            )}
-                          </td>
+                          <p className="mt-2 text-xs text-white/40">
+                            Inscription : {formatDate(u.createdAt)}
+                          </p>
+                        </div>
+                      </div>
 
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => handleUserAction(u._id, "toggle_premium")}
-                                disabled={actionLoading === u._id + "toggle_premium"}
-                                title={u.isPremium ? "Révoquer premium" : "Activer premium"}
-                                className={`p-1.5 rounded-lg border transition text-xs ${u.isPremium ? "bg-yellow-400/15 border-yellow-400/20 text-yellow-300 hover:bg-yellow-400/25" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"}`}
-                              >
-                                {actionLoading === u._id + "toggle_premium"
-                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  : <Crown className="h-3.5 w-3.5" />
-                                }
-                              </button>
+                      <div className="mt-3 flex justify-end gap-2 border-t border-white/8 pt-3">
+                        <button
+                          onClick={() =>
+                            handleUserAction(u._id, "toggle_premium")
+                          }
+                          disabled={actionLoading === u._id + "toggle_premium"}
+                          className={`rounded-lg border p-2 transition ${
+                            u.isPremium
+                              ? "border-yellow-400/20 bg-yellow-400/15 text-yellow-300"
+                              : "border-white/10 bg-white/5 text-white/40"
+                          }`}
+                        >
+                          {actionLoading === u._id + "toggle_premium" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Crown className="h-4 w-4" />
+                          )}
+                        </button>
 
-                              <button
-                                onClick={() => handleUserAction(u._id, u.role === "admin" ? "demote" : "promote")}
-                                disabled={actionLoading === u._id + (u.role === "admin" ? "demote" : "promote")}
-                                title={u.role === "admin" ? "Retirer admin" : "Promouvoir admin"}
-                                className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition"
-                              >
-                                {actionLoading === u._id + (u.role === "admin" ? "demote" : "promote")
-                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  : <Shield className="h-3.5 w-3.5" />
-                                }
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        <button
+                          onClick={() =>
+                            handleUserAction(
+                              u._id,
+                              u.role === "admin" ? "demote" : "promote"
+                            )
+                          }
+                          disabled={
+                            actionLoading ===
+                            u._id + (u.role === "admin" ? "demote" : "promote")
+                          }
+                          className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/40 transition hover:bg-white/10 hover:text-white"
+                        >
+                          {actionLoading ===
+                          u._id + (u.role === "admin" ? "demote" : "promote") ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Shield className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              )}
-            </div>
 
-            {/* Pagination */}
+                {/* Table desktop */}
+                <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-white/5 md:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/8 text-xs text-white/40">
+                          <th className="px-4 py-3 text-left font-medium">
+                            Utilisateur
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Plan
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Statut
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Inscription
+                          </th>
+                          <th className="px-4 py-3 text-left font-medium">
+                            Rôle
+                          </th>
+                          <th className="px-4 py-3 text-right font-medium">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {users.map((u) => (
+                          <tr
+                            key={u._id}
+                            className="border-b border-white/5 transition hover:bg-white/5"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-xs font-bold">
+                                  {u.pseudonyme.charAt(0).toUpperCase()}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <p className="max-w-32 truncate font-medium">
+                                    {u.pseudonyme}
+                                  </p>
+                                  <p className="max-w-32 truncate text-xs text-white/40">
+                                    {u.email}
+                                  </p>
+                                </div>
+
+                                {u.hasCompletedProfile && (
+                                  <BadgeCheck className="h-4 w-4 shrink-0 text-green-400" />
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span className="text-xs font-medium">
+                                {planEmoji[u.plan] || "🌙"}{" "}
+                                {planLabel[u.plan] || u.plan}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span
+                                className={`rounded-full border px-2 py-1 text-xs ${
+                                  statusColor[u.subscriptionStatus] ||
+                                  statusColor.inactive
+                                }`}
+                              >
+                                {u.subscriptionStatus}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3 text-xs text-white/50">
+                              {formatDate(u.createdAt)}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {u.role === "admin" ? (
+                                <span className="flex items-center gap-1 text-xs text-yellow-300">
+                                  <Star className="h-3 w-3" /> Admin
+                                </span>
+                              ) : (
+                                <span className="text-xs text-white/40">
+                                  User
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() =>
+                                    handleUserAction(u._id, "toggle_premium")
+                                  }
+                                  disabled={
+                                    actionLoading === u._id + "toggle_premium"
+                                  }
+                                  className={`rounded-lg border p-1.5 text-xs transition ${
+                                    u.isPremium
+                                      ? "border-yellow-400/20 bg-yellow-400/15 text-yellow-300"
+                                      : "border-white/10 bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                                  }`}
+                                >
+                                  {actionLoading ===
+                                  u._id + "toggle_premium" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Crown className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    handleUserAction(
+                                      u._id,
+                                      u.role === "admin" ? "demote" : "promote"
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading ===
+                                    u._id +
+                                      (u.role === "admin" ? "demote" : "promote")
+                                  }
+                                  className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-white/40 transition hover:bg-white/10 hover:text-white"
+                                >
+                                  {actionLoading ===
+                                  u._id +
+                                    (u.role === "admin" ? "demote" : "promote") ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Shield className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <p className="text-xs text-white/40">Page {page} / {totalPages}</p>
+                <p className="text-xs text-white/40">
+                  Page {page} / {totalPages}
+                </p>
+
                 <div className="flex gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
                     disabled={page <= 1 || isLoadingUsers}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition disabled:opacity-30 flex items-center gap-1 text-sm"
+                    className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
                   >
-                    <ChevronLeft className="h-4 w-4" /> Préc.
+                    <ChevronLeft className="h-4 w-4" />
+                    Préc.
                   </button>
+
                   <button
                     onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                     disabled={page >= totalPages || isLoadingUsers}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition disabled:opacity-30 flex items-center gap-1 text-sm"
+                    className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
                   >
-                    Suiv. <ChevronRight className="h-4 w-4" />
+                    Suiv.
+                    <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             )}
-          </motion.div>
+          </motion.section>
         )}
-        {/* ── Onglet Témoignages ── */}
+
+        {/* Testimonials */}
         {activeTab === "testimonials" && (
-          <motion.div key="testimonials" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-white/60 text-sm">{testimonials.length} témoignage(s) au total</p>
-              <button onClick={fetchTestimonials} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition">
-                <RefreshCw className="h-3 w-3" /> Actualiser
+          <motion.section
+            key="testimonials"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm text-white/60">
+                {testimonials.length} témoignage(s)
+              </p>
+
+              <button
+                onClick={fetchTestimonials}
+                className="flex items-center gap-1 text-xs text-white/40 transition hover:text-white"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Actualiser
               </button>
             </div>
 
             {isLoadingTestimonials && (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 text-purple-300 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-purple-300" />
               </div>
             )}
 
             {!isLoadingTestimonials && testimonials.length === 0 && (
-              <div className="text-center py-16 text-white/40">Aucun témoignage pour l'instant.</div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 py-16 text-center text-white/40">
+                Aucun témoignage pour l&apos;instant.
+              </div>
             )}
 
-            {testimonials.map(t => (
-              <div key={t._id} className="rounded-xl border border-white/10 bg-white/5 p-5 space-y-3">
-                <div className="flex items-start justify-between gap-4">
+            {testimonials.map((t) => (
+              <article
+                key={t._id}
+                className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <span className="font-medium text-white">{t.authorName}{t.age ? `, ${t.age} ans` : ''}</span>
-                    <span className="ml-3 text-xs text-white/40">{formatDate(t.createdAt)}</span>
+                    <span className="font-medium text-white">
+                      {t.authorName}
+                      {t.age ? `, ${t.age} ans` : ""}
+                    </span>
+
+                    <span className="ml-3 text-xs text-white/40">
+                      {formatDate(t.createdAt)}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${
-                    t.status === 'approved' ? 'text-green-300 bg-green-400/10 border-green-400/20' :
-                    t.status === 'rejected' ? 'text-red-300 bg-red-400/10 border-red-400/20' :
-                    'text-yellow-300 bg-yellow-400/10 border-yellow-400/20'
-                  }`}>
-                    {t.status === 'approved' ? '✓ Approuvé' : t.status === 'rejected' ? '✕ Rejeté' : '⏳ En attente'}
+
+                  <span
+                    className={`w-fit rounded-full border px-2 py-1 text-xs font-medium ${
+                      t.status === "approved"
+                        ? "border-green-400/20 bg-green-400/10 text-green-300"
+                        : t.status === "rejected"
+                          ? "border-red-400/20 bg-red-400/10 text-red-300"
+                          : "border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
+                    }`}
+                  >
+                    {t.status === "approved"
+                      ? "✓ Approuvé"
+                      : t.status === "rejected"
+                        ? "✕ Rejeté"
+                        : "⏳ En attente"}
                   </span>
                 </div>
-                <p className="text-white/70 text-sm leading-relaxed italic">« {t.content} »</p>
-                <div className="flex gap-2 pt-1">
-                  {t.status !== 'approved' && (
+
+                <p className="text-sm italic leading-relaxed text-white/70">
+                  « {t.content} »
+                </p>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {t.status !== "approved" && (
                     <button
-                      onClick={() => handleTestimonialAction(t._id, 'approved')}
-                      disabled={actionLoading === t._id + 'approved'}
-                      className="px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-400/30 text-green-300 text-xs font-medium hover:bg-green-500/30 transition disabled:opacity-50"
+                      onClick={() =>
+                        handleTestimonialAction(t._id, "approved")
+                      }
+                      disabled={actionLoading === t._id + "approved"}
+                      className="rounded-lg border border-green-400/30 bg-green-500/20 px-3 py-1.5 text-xs font-medium text-green-300 transition hover:bg-green-500/30 disabled:opacity-50"
                     >
-                      {actionLoading === t._id + 'approved' ? '…' : '✓ Approuver'}
+                      {actionLoading === t._id + "approved"
+                        ? "…"
+                        : "✓ Approuver"}
                     </button>
                   )}
-                  {t.status !== 'rejected' && (
+
+                  {t.status !== "rejected" && (
                     <button
-                      onClick={() => handleTestimonialAction(t._id, 'rejected')}
-                      disabled={actionLoading === t._id + 'rejected'}
-                      className="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-400/30 text-orange-300 text-xs font-medium hover:bg-orange-500/30 transition disabled:opacity-50"
+                      onClick={() =>
+                        handleTestimonialAction(t._id, "rejected")
+                      }
+                      disabled={actionLoading === t._id + "rejected"}
+                      className="rounded-lg border border-orange-400/30 bg-orange-500/20 px-3 py-1.5 text-xs font-medium text-orange-300 transition hover:bg-orange-500/30 disabled:opacity-50"
                     >
-                      {actionLoading === t._id + 'rejected' ? '…' : '✕ Rejeter'}
+                      {actionLoading === t._id + "rejected" ? "…" : "✕ Rejeter"}
                     </button>
                   )}
+
                   <button
-                    onClick={() => handleTestimonialAction(t._id, 'delete')}
-                    disabled={actionLoading === t._id + 'delete'}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-300 text-xs font-medium hover:bg-red-500/30 transition disabled:opacity-50 ml-auto"
+                    onClick={() => handleTestimonialAction(t._id, "delete")}
+                    disabled={actionLoading === t._id + "delete"}
+                    className="ml-auto rounded-lg border border-red-400/30 bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/30 disabled:opacity-50"
                   >
-                    {actionLoading === t._id + 'delete' ? '…' : '🗑 Supprimer'}
+                    {actionLoading === t._id + "delete"
+                      ? "…"
+                      : "🗑 Supprimer"}
                   </button>
                 </div>
-              </div>
+              </article>
             ))}
-          </motion.div>
+          </motion.section>
         )}
 
-        {/* ── Onglet Signalements ── */}
+        {/* Reports */}
         {activeTab === "reports" && (
-          <motion.div key="reports" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-white/60 text-sm">{reports.length} signalement(s)</p>
-              <button onClick={fetchReports} className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition">
-                <RefreshCw className="h-3 w-3" /> Actualiser
+          <motion.section
+            key="reports"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm text-white/60">
+                {reports.length} signalement(s)
+              </p>
+
+              <button
+                onClick={fetchReports}
+                className="flex items-center gap-1 text-xs text-white/40 transition hover:text-white"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Actualiser
               </button>
             </div>
 
             {isLoadingReports && (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 text-purple-300 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-purple-300" />
               </div>
             )}
 
             {!isLoadingReports && reports.length === 0 && (
-              <div className="text-center py-12 text-white/30">Aucun signalement</div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 py-12 text-center text-white/30">
+                Aucun signalement.
+              </div>
             )}
 
             {reports.map((report) => (
-              <div key={report._id} className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                        report.status === "pending" ? "text-yellow-300 bg-yellow-400/10 border-yellow-400/20" :
-                        report.status === "reviewed" ? "text-green-300 bg-green-400/10 border-green-400/20" :
-                        "text-white/40 bg-white/5 border-white/10"
-                      }`}>
-                        {report.status === "pending" ? "En attente" : report.status === "reviewed" ? "Traité" : "Ignoré"}
-                      </span>
-                      <span className="text-xs text-white/40">{formatDate(report.createdAt)}</span>
-                    </div>
-                    <p className="text-sm font-semibold">
-                      Motif : <span className="text-red-300">{reasonLabel[report.reason] || report.reason}</span>
-                    </p>
-                    {report.details && <p className="text-xs text-white/50">{report.details}</p>}
-                    <p className="text-xs text-white/40">
-                      Signalé par : <span className="text-white/70">{report.reporterId?.pseudonyme || "Inconnu"}</span>
-                      {" → "}
-                      Visé : <span className="text-white/70">{report.targetId?.pseudonyme || report.targetType}</span>
-                    </p>
+              <article
+                key={report._id}
+                className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5"
+              >
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                        report.status === "pending"
+                          ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
+                          : report.status === "reviewed"
+                            ? "border-green-400/20 bg-green-400/10 text-green-300"
+                            : "border-white/10 bg-white/5 text-white/40"
+                      }`}
+                    >
+                      {report.status === "pending"
+                        ? "En attente"
+                        : report.status === "reviewed"
+                          ? "Traité"
+                          : "Ignoré"}
+                    </span>
+
+                    <span className="text-xs text-white/40">
+                      {formatDate(report.createdAt)}
+                    </span>
                   </div>
+
+                  <p className="text-sm font-semibold">
+                    Motif :{" "}
+                    <span className="text-red-300">
+                      {reasonLabel[report.reason] || report.reason}
+                    </span>
+                  </p>
+
+                  {report.details && (
+                    <p className="text-xs text-white/50">{report.details}</p>
+                  )}
+
+                  <p className="text-xs text-white/40">
+                    Signalé par :{" "}
+                    <span className="text-white/70">
+                      {report.reporterId?.pseudonyme || "Inconnu"}
+                    </span>{" "}
+                    → Visé :{" "}
+                    <span className="text-white/70">
+                      {report.targetId?.pseudonyme || report.targetType}
+                    </span>
+                  </p>
                 </div>
 
                 {report.status === "pending" && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2">
                     {report.targetId?._id && (
                       <button
-                        onClick={() => handleBan(report.targetId!._id, report.targetId?.pseudonyme || "cette utilisatrice")}
-                        disabled={actionLoading === "ban-" + report.targetId._id}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition disabled:opacity-50"
+                        onClick={() =>
+                          handleBan(
+                            report.targetId!._id,
+                            report.targetId?.pseudonyme || "cette utilisatrice"
+                          )
+                        }
+                        disabled={
+                          actionLoading === "ban-" + report.targetId._id
+                        }
+                        className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
                       >
                         🚫 Bannir
                       </button>
                     )}
+
                     <button
-                      onClick={() => handleResolveReport(report._id, "reviewed")}
+                      onClick={() =>
+                        handleResolveReport(report._id, "reviewed")
+                      }
                       disabled={actionLoading === report._id + "reviewed"}
-                      className="px-4 py-2 rounded-xl bg-green-600/20 border border-green-400/30 text-green-200 text-xs hover:bg-green-600/30 transition disabled:opacity-50"
+                      className="rounded-xl border border-green-400/30 bg-green-600/20 px-4 py-2 text-xs text-green-200 transition hover:bg-green-600/30 disabled:opacity-50"
                     >
                       ✓ Marquer traité
                     </button>
+
                     <button
-                      onClick={() => handleResolveReport(report._id, "dismissed")}
+                      onClick={() =>
+                        handleResolveReport(report._id, "dismissed")
+                      }
                       disabled={actionLoading === report._id + "dismissed"}
-                      className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-xs hover:bg-white/10 transition disabled:opacity-50"
+                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/40 transition hover:bg-white/10 disabled:opacity-50"
                     >
                       Ignorer
                     </button>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
-          </motion.div>
+          </motion.section>
         )}
-
       </div>
     </main>
   );

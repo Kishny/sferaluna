@@ -1,29 +1,54 @@
+// src/app/layout.tsx
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
 import "./globals.css";
+
 import ClientProvider from "./ClientProvider";
 import JsonLd from "@/components/JsonLd";
 
+/**
+ * Police principale du site.
+ */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
+/**
+ * Police monospace utilisée si besoin.
+ */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
+/**
+ * URL publique du site.
+ *
+ * En production, mets bien dans ton .env :
+ * NEXT_PUBLIC_APP_URL=https://sferaluna.fr
+ */
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.fr";
 
+/**
+ * Métadonnées globales du site.
+ *
+ * Les pages peuvent ensuite surcharger ces données
+ * avec le helper buildMeta dans src/app/layout-meta.ts.
+ */
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
+
   title: {
     default: "SferaLuna — Site de rencontres premium pour femmes",
     template: "%s | SferaLuna",
   },
+
   description:
     "SferaLuna est le site de rencontres premium pensé pour les femmes françaises. Sécurité, authenticité et affinités profondes. Rejoignez une communauté bienveillante.",
+
   keywords: [
     "site de rencontres",
     "rencontres femmes",
@@ -35,9 +60,11 @@ export const metadata: Metadata = {
     "rencontres sécurisées",
     "rencontres France",
   ],
+
   authors: [{ name: "SferaLuna", url: baseUrl }],
   creator: "SferaLuna",
   publisher: "SferaLuna",
+
   robots: {
     index: true,
     follow: true,
@@ -49,13 +76,14 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+
   icons: {
-    icon: [
-      { url: "/logo-sferaluna.png", type: "image/png" },
-    ],
+    icon: [{ url: "/logo-sferaluna.png", type: "image/png" }],
     apple: [{ url: "/logo-sferaluna.png" }],
   },
+
   manifest: "/site.webmanifest",
+
   openGraph: {
     title: "SferaLuna — Site de rencontres premium pour femmes",
     description:
@@ -73,6 +101,7 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     type: "website",
   },
+
   twitter: {
     card: "summary_large_image",
     title: "SferaLuna — Site de rencontres premium pour femmes",
@@ -81,16 +110,26 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
     creator: "@sferaluna",
   },
+
   alternates: {
     canonical: baseUrl,
-    languages: { "fr-FR": baseUrl },
+    languages: {
+      "fr-FR": baseUrl,
+    },
   },
+
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || "",
   },
+
   category: "dating",
 };
 
+/**
+ * JSON-LD Organization.
+ *
+ * Sert à améliorer la compréhension du site par Google.
+ */
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -107,6 +146,9 @@ const organizationJsonLd = {
   sameAs: [],
 };
 
+/**
+ * JSON-LD WebSite.
+ */
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -116,18 +158,33 @@ const websiteJsonLd = {
   inLanguage: "fr-FR",
   potentialAction: {
     "@type": "SearchAction",
-    target: { "@type": "EntryPoint", urlTemplate: `${baseUrl}/explorer?q={search_term_string}` },
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${baseUrl}/explorer?q={search_term_string}`,
+    },
     "query-input": "required name=search_term_string",
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Layout racine obligatoire de Next.js.
+ *
+ * Important :
+ * - src/app/layout.tsx doit toujours exporter un composant React par défaut.
+ * - C'est ici qu'on met <html>, <body>, providers globaux, fonts, etc.
+ */
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="fr">
       <head>
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={websiteJsonLd} />
       </head>
+
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ClientProvider>{children}</ClientProvider>
       </body>

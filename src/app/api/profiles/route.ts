@@ -14,31 +14,44 @@ import { Like } from "@/models/Like";
  *
  * Retourne des profils compatibles avec l'utilisateur connecté.
  *
- * Filtres de base (tous) :
- * - age_min / age_max
- * - intentions (comma-separated)
- * - localisation (recherche textuelle partielle)
- * - limit (défaut : 20)
- * - page (défaut : 1)
- *
- * Filtres premium uniquement :
- * - orientation
- * - actif_recemment=true (profils actifs dans les 7 derniers jours)
- *
- * Règles d'exclusion :
- * - profil de l'utilisateur connecté
- * - profils déjà likés par l'utilisateur
- * - profils avec visibilite = "invisible"
- * - profils avec visibilite = "premium" si l'utilisateur n'est pas premium
- * - profils dont hasCompletedProfile = false
+ * Mobile-first côté API :
+ * - pagination stricte ;
+ * - limite maximale ;
+ * - champs publics uniquement ;
+ * - pas de payload inutile.
  */
+
+function parsePositiveInt(value: string | null, fallback: number) {
+  const parsed = Number.parseInt(value || "", 10);
+
+  if (Number.isNaN(parsed) || parsed <= 0) return fallback;
+
+  return parsed;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isPremiumActive(user: any) {
+  return (
+    user.isPremium === true &&
+    (user.subscriptionStatus === "active" ||
+      user.subscriptionStatus === "trialing")
+  );
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, error: "Non autorisé.", code: "UNAUTHORIZED" },
+        {
+          success: false,
+          error: "Non autorisé.",
+          code: "UNAUTHORIZED",
+        },
         { status: 401 }
       );
     }
@@ -53,68 +66,104 @@ export async function GET(req: NextRequest) {
 
     if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: "Utilisateur introuvable.", code: "USER_NOT_FOUND" },
+        {
+          success: false,
+          error: "Utilisateur introuvable.",
+          code: "USER_NOT_FOUND",
+        },
         { status: 404 }
       );
     }
 
     const currentUserId = currentUser._id as mongoose.Types.ObjectId;
-    const userIsPremium = currentUser.isPremium === true;
+    const userIsPremium = isPremiumActive(currentUser);
 
-    // Récupérer les IDs déjà likés par l'utilisateur
-    const alreadyLiked = await Like.find({ fromUserId: currentUserId }).select("toUserId");
-    const likedIds = alreadyLiked.map((l) => l.toUserId);
+    const alreadyLiked = await Like.find({
+      fromUserId: currentUserId,
+    }).select("toUserId");
 
-    // Paramètres de filtre
+    const likedIds = alreadyLiked.map((like) => like.toUserId);
+
     const { searchParams } = new URL(req.url);
-    const ageMin = parseInt(searchParams.get("age_min") ?? "18");
-    const ageMax = parseInt(searchParams.get("age_max") ?? "120");
+
+    /**
+     * SferaLuna vise 28+.
+     * On met donc 28 par défaut.
+     */
+    const ageMin = parsePositiveInt(searchParams.get("age_min"), 28);
+    const ageMax = parsePositiveInt(searchParams.get("age_max"), 120);
+
+    const safeAgeMin = Math.max(28, Math.min(ageMin, 120));
+    const safeAgeMax = Math.max(safeAgeMin, Math.min(ageMax, 120));
+
     const intentionsParam = searchParams.get("intentions");
     const localisation = searchParams.get("localisation");
-    const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 50);
-    const page = Math.max(parseInt(searchParams.get("page") ?? "1"), 1);
+
+    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), 20), 50);
+    const page = parsePositiveInt(searchParams.get("page"), 1);
     const skip = (page - 1) * limit;
 
-    // Filtres premium
+    /**
+     * Filtres premium uniquement.
+     */
     const orientation = userIsPremium ? searchParams.get("orientation") : null;
-    const actifRecemment = userIsPremium && searchParams.get("actif_recemment") === "true";
+    const actifRecemment =
+      userIsPremium && searchParams.get("actif_recemment") === "true";
 
-    // Construire la requête MongoDB
+    /**
+     * Requête principale.
+     */
     const query: Record<string, unknown> = {
-      _id: { $ne: currentUserId, $nin: likedIds },
+      _id: {
+        $ne: currentUserId,
+        ...(likedIds.length > 0 ? { $nin: likedIds } : {}),
+      },
+
       hasCompletedProfile: true,
-      role: { $ne: "admin" }, // Exclure les comptes admin
+      consentement: true,
+      banned: { $ne: true },
+      role: { $ne: "admin" },
+
+      age: {
+        $gte: safeAgeMin,
+        $lte: safeAgeMax,
+      },
     };
 
-    // Filtrer les profils invisibles et premium-only selon le statut
+    /**
+     * Visibilité :
+     * - public : visible dans Explorer.
+     * - premium : visible seulement si le visiteur est premium.
+     * - matches : à réserver aux profils déjà matchés, pas à Explorer.
+     * - invisible : jamais dans Explorer.
+     */
     query.visibilite = userIsPremium
-      ? { $nin: ["invisible"] }
-      : { $nin: ["invisible", "premium"] };
+      ? { $in: ["public", "premium"] }
+      : { $in: ["public"] };
 
-    // Filtre âge
-    if (!isNaN(ageMin) && !isNaN(ageMax)) {
-      query.age = { $gte: ageMin, $lte: ageMax };
-    }
-
-    // Filtre intentions
     if (intentionsParam) {
-      const intentions = intentionsParam.split(",").map((i) => i.trim()).filter(Boolean);
+      const intentions = intentionsParam
+        .split(",")
+        .map((intent) => intent.trim())
+        .filter(Boolean)
+        .slice(0, 10);
+
       if (intentions.length > 0) {
         query.intentions = { $in: intentions };
       }
     }
 
-    // Filtre localisation (recherche partielle)
     if (localisation && localisation.trim().length >= 2) {
-      query.localisation = { $regex: localisation.trim(), $options: "i" };
+      query.localisation = {
+        $regex: escapeRegex(localisation.trim()),
+        $options: "i",
+      };
     }
 
-    // [PREMIUM] Filtre orientation
     if (orientation && orientation.trim().length > 0) {
       query.orientation = orientation.trim();
     }
 
-    // [PREMIUM] Filtre actif récemment (7 derniers jours)
     if (actifRecemment) {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       query.updatedAt = { $gte: sevenDaysAgo };
@@ -123,12 +172,13 @@ export async function GET(req: NextRequest) {
     const [profiles, total] = await Promise.all([
       User.find(query)
         .select(
-          "pseudonyme age localisation interets intentions visibilite image createdAt"
+          "pseudonyme age localisation interets intentions visibilite image identityVerified createdAt updatedAt"
         )
-        .sort({ createdAt: -1 })
+        .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
+
       User.countDocuments(query),
     ]);
 
@@ -143,21 +193,31 @@ export async function GET(req: NextRequest) {
           totalPages: Math.ceil(total / limit),
           hasMore: skip + profiles.length < total,
         },
+        filters: {
+          userIsPremium,
+          ageMin: safeAgeMin,
+          ageMax: safeAgeMax,
+        },
       },
       {
         status: 200,
-        headers: { "Cache-Control": "no-store" },
+        headers: {
+          "Cache-Control": "no-store",
+        },
       }
     );
   } catch (error: unknown) {
     console.error("Erreur GET /api/profiles :", error);
+
     const err = error as { message?: string };
 
     return NextResponse.json(
       {
         success: false,
         error: "Erreur serveur.",
-        message: process.env.NODE_ENV === "development" ? err.message : undefined,
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
       },
       { status: 500 }
     );

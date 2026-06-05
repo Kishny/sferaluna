@@ -2,16 +2,23 @@
 
 "use client";
 
-import { useFormContext } from "react-hook-form";
-
 /**
  * Étape 1 du formulaire d'inscription SferaLuna.
  *
  * Objectif :
  * - récupérer les informations de base du profil ;
- * - garder une interface lisible sur le fond sombre SferaLuna ;
+ * - préremplir correctement l'email / pseudonyme si NextAuth les fournit ;
+ * - garder une interface lisible sur mobile ;
  * - afficher les erreurs React Hook Form / Zod proprement.
+ *
+ * Important :
+ * Le mot de passe est optionnel dans le schéma principal.
+ * C'est normal, car un utilisateur connecté avec Google OAuth n'a pas forcément
+ * besoin de définir un mot de passe ici.
  */
+
+import { useFormContext } from "react-hook-form";
+
 export default function Step1() {
   const {
     register,
@@ -19,109 +26,143 @@ export default function Step1() {
   } = useFormContext();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Titre de l'étape */}
       <div>
-        <h2 className="text-2xl font-bold text-purple-300">
+        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
           Informations de base
         </h2>
 
-        <p className="mt-2 text-sm text-gray-300">
-          Commençons par créer votre identité SferaLuna. Ces informations seront
-          utilisées pour configurer votre profil.
+        <p className="mt-2 text-sm leading-relaxed text-gray-300">
+          Commençons par créer votre identité SferaLuna. Ces informations
+          seront utilisées pour configurer votre profil.
         </p>
       </div>
 
       <div className="space-y-5">
         {/* Pseudonyme */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-100 mb-2">
-            Pseudonyme <span className="text-pink-400">*</span>
-          </label>
-
+        <Field
+          label="Pseudonyme"
+          required
+          error={errors.pseudonyme?.message as string | undefined}
+        >
           <input
             {...register("pseudonyme")}
             type="text"
             autoComplete="nickname"
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+            className="input-step"
             placeholder="Choisissez un pseudonyme unique"
           />
-
-          {errors.pseudonyme && (
-            <p className="mt-2 text-sm text-red-300">
-              {errors.pseudonyme.message as string}
-            </p>
-          )}
-        </div>
+        </Field>
 
         {/* Email */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-100 mb-2">
-            Adresse email <span className="text-pink-400">*</span>
-          </label>
-
+        <Field
+          label="Adresse email"
+          required
+          error={errors.email?.message as string | undefined}
+        >
           <input
             type="email"
             {...register("email")}
             autoComplete="email"
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+            className="input-step"
             placeholder="votre@email.com"
           />
+        </Field>
 
-          {errors.email && (
-            <p className="mt-2 text-sm text-red-300">
-              {errors.email.message as string}
-            </p>
-          )}
-        </div>
-
-        {/* Mot de passe */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-100 mb-2">
-            Mot de passe <span className="text-pink-400">*</span>
-          </label>
-
+        {/* Mot de passe optionnel */}
+        <Field
+          label="Mot de passe"
+          helper="Optionnel si vous vous êtes connecté avec Google ou Apple."
+          error={errors.password?.message as string | undefined}
+        >
           <input
             type="password"
             {...register("password")}
             autoComplete="new-password"
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
-            placeholder="Minimum 6 caractères"
+            className="input-step"
+            placeholder="Optionnel"
           />
-
-          {errors.password && (
-            <p className="mt-2 text-sm text-red-300">
-              {errors.password.message as string}
-            </p>
-          )}
-        </div>
+        </Field>
 
         {/* Âge */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-100 mb-2">
-            Âge <span className="text-pink-400">*</span>
-          </label>
-
+        <Field
+          label="Âge"
+          required
+          helper="Vous devez avoir au moins 28 ans."
+          error={errors.age?.message as string | undefined}
+        >
           <input
             type="number"
             {...register("age", { valueAsNumber: true })}
             min={28}
             max={120}
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+            className="input-step"
             placeholder="28"
           />
-
-          <p className="mt-2 text-sm text-gray-300">
-            Vous devez avoir au moins 28 ans.
-          </p>
-
-          {errors.age && (
-            <p className="mt-2 text-sm text-red-300">
-              {errors.age.message as string}
-            </p>
-          )}
-        </div>
+        </Field>
       </div>
+
+      <style jsx global>{`
+        .input-step {
+          width: 100%;
+          border-radius: 0.75rem;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          background: rgba(255, 255, 255, 0.1);
+          padding: 0.75rem 1rem;
+          color: white;
+          outline: none;
+          transition:
+            border-color 0.2s ease,
+            box-shadow 0.2s ease,
+            background 0.2s ease;
+        }
+
+        .input-step::placeholder {
+          color: rgba(156, 163, 175, 1);
+        }
+
+        .input-step:focus {
+          border-color: rgba(244, 114, 182, 1);
+          box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.3);
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        @media (max-width: 420px) {
+          .input-step {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.875rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  required = false,
+  helper,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  helper?: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-gray-100">
+        {label} {required && <span className="text-pink-400">*</span>}
+      </label>
+
+      {children}
+
+      {helper && <p className="mt-2 text-sm text-gray-300">{helper}</p>}
+
+      {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
     </div>
   );
 }

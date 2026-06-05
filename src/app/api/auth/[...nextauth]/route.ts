@@ -6,25 +6,27 @@ import AppleProvider from "next-auth/providers/apple";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 
 /**
- * Plans SferaLuna utilisés partout :
- * - MongoDB
- * - Stripe
- * - frontend
+ * Configuration NextAuth SferaLuna.
+ *
+ * Objectif mobile-first :
+ * - session légère ;
+ * - infos essentielles directement disponibles côté frontend ;
+ * - pas de données sensibles dans session.user ;
+ * - synchronisation propre avec MongoDB à chaque JWT callback.
  */
+
 type LunaPlan =
   | "free"
   | "essential-monthly"
   | "premium-monthly"
   | "elite-monthly";
 
-/**
- * Statuts d'abonnement internes.
- */
 type SubscriptionStatus =
   | "inactive"
   | "active"
@@ -32,22 +34,71 @@ type SubscriptionStatus =
   | "past_due"
   | "canceled";
 
-/**
- * Petit helper pour éviter les erreurs si une valeur MongoDB est absente.
- */
+type AuthProvider = "credentials" | "google" | "facebook" | "apple";
+
+type IdentityVerificationStatus =
+  | "unverified"
+  | "pending"
+  | "verified"
+  | "failed";
+
 function normalizeBoolean(value: unknown, fallback = false) {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function normalizeOAuthProvider(
+  provider?: string
+): Exclude<AuthProvider, "credentials"> {
+  if (provider === "apple") return "apple";
+  if (provider === "facebook") return "facebook";
+  return "google";
+}
+
+function normalizeEmail(email?: string | null) {
+  return email?.toLowerCase().trim() || "";
+}
+
+function dateToIso(date?: Date | string | null) {
+  if (!date) return null;
+
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) return null;
+
+  return parsedDate.toISOString();
+}
+
 /**
- * Récupère l'utilisateur MongoDB à partir d'un email.
- * On centralise cette logique pour le callback JWT.
+ * Génère le clientSecret Apple au format JWT.
+ *
+ * Apple exige un JWT signé en ES256.
+ * NextAuth attend une string pour clientSecret.
  */
+function generateAppleClientSecret() {
+  const appleId = process.env.APPLE_ID;
+  const teamId = process.env.APPLE_TEAM_ID;
+  const privateKey = process.env.APPLE_PRIVATE_KEY;
+  const keyId = process.env.APPLE_KEY_ID;
+
+  if (!appleId || !teamId || !privateKey || !keyId) {
+    throw new Error("Variables Apple OAuth manquantes.");
+  }
+
+  return jwt.sign({}, privateKey.replace(/\\n/g, "\n"), {
+    algorithm: "ES256",
+    expiresIn: "180d",
+    audience: "https://appleid.apple.com",
+    issuer: teamId,
+    subject: appleId,
+    keyid: keyId,
+  });
+}
+
 async function getMongoUserByEmail(email: string) {
   await connectDB();
 
   return User.findOne({
-    email: email.toLowerCase().trim(),
+    email: normalizeEmail(email),
   }).select(
     [
       "_id",
@@ -57,6 +108,7 @@ async function getMongoUserByEmail(email: string) {
       "image",
       "role",
       "provider",
+      "banned",
       "hasCompletedProfile",
       "plan",
       "isPremium",
@@ -65,61 +117,68 @@ async function getMongoUserByEmail(email: string) {
       "premiumExpiresAt",
       "stripeCustomerId",
       "stripeSubscriptionId",
+      "identityVerified",
+      "identityVerificationStatus",
+      "lastLoginAt",
     ].join(" ")
   );
 }
 
 /**
- * Configuration principale NextAuth.
+ * Providers OAuth activés selon les variables .env.
+ *
+ * Mobile-first :
+ * on évite que le site plante si Apple/Facebook ne sont pas encore configurés.
  */
+function getOAuthProviders() {
+  const providers = [];
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    providers.push(
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      })
+    );
+  }
+
+  if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+    providers.push(
+      FacebookProvider({
+        clientId: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      })
+    );
+  }
+
+  /**
+   * Apple OAuth.
+   *
+   * Correction importante :
+   * clientSecret doit être une string.
+   * On utilise donc generateAppleClientSecret().
+   */
+  if (
+    process.env.APPLE_ID &&
+    process.env.APPLE_TEAM_ID &&
+    process.env.APPLE_PRIVATE_KEY &&
+    process.env.APPLE_KEY_ID
+  ) {
+    providers.push(
+      AppleProvider({
+        clientId: process.env.APPLE_ID,
+        clientSecret: generateAppleClientSecret(),
+      })
+    );
+  }
+
+  return providers;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
-    /**
-     * Connexion Google.
-     */
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    }),
+    ...getOAuthProviders(),
 
-    /**
-     * Connexion Facebook.
-     */
-    FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID as string,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET as string,
-    }),
-
-    /**
-     * Connexion Apple.
-     * Nécessite un compte Apple Developer (developer.apple.com) :
-     * - APPLE_ID        = votre Service ID (ex: com.sferaluna.web)
-     * - APPLE_TEAM_ID   = votre Team ID (10 caractères)
-     * - APPLE_PRIVATE_KEY = contenu du fichier .p8 (avec \n entre les lignes)
-     * - APPLE_KEY_ID    = Key ID du fichier .p8
-     * Fonctionne uniquement sur HTTPS (pas en localhost).
-     */
-    ...(process.env.APPLE_ID
-      ? [
-          AppleProvider({
-            clientId: process.env.APPLE_ID as string,
-            clientSecret: {
-              appleId: process.env.APPLE_ID as string,
-              teamId: process.env.APPLE_TEAM_ID as string,
-              privateKey: (process.env.APPLE_PRIVATE_KEY as string).replace(/\\n/g, "\n"),
-              keyId: process.env.APPLE_KEY_ID as string,
-            },
-          }),
-        ]
-      : []),
-
-    /**
-     * Connexion email + mot de passe.
-     *
-     * Attention :
-     * pour l’instant ton mot de passe est comparé en clair.
-     * Plus tard, il faudra passer sur bcrypt.
-     */
     CredentialsProvider({
       name: "Credentials",
 
@@ -137,26 +196,26 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         await connectDB();
 
-        const email = credentials?.email?.toLowerCase().trim();
-        const password = credentials?.password;
+        const email = normalizeEmail(credentials?.email);
+        const password = credentials?.password || "";
 
         if (!email || !password) {
           return null;
         }
 
-        // On force la sélection du password (select: false dans le modèle)
-        const user = await User.findOne({ email }).select("+password");
+        const user = await User.findOne({ email }).select(
+          "+password _id email pseudonyme name image banned"
+        );
 
         if (!user) {
           return null;
         }
 
-        /**
-         * Comparaison bcrypt du mot de passe.
-         * user.password est le hash stocké en base.
-         */
+        if (user.banned) {
+          return null;
+        }
+
         if (!user.password) {
-          // Compte créé via Google OAuth, pas de mot de passe credentials
           return null;
         }
 
@@ -166,10 +225,13 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        /**
-         * On retourne un objet simple pour NextAuth.
-         * Les vraies infos seront ensuite rafraîchies dans jwt().
-         */
+        try {
+          user.lastLoginAt = new Date();
+          await user.save();
+        } catch (error) {
+          console.warn("Impossible de mettre à jour lastLoginAt :", error);
+        }
+
         return {
           id: user._id.toString(),
           email: user.email,
@@ -180,37 +242,31 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  /**
-   * Session JWT.
-   */
   session: {
     strategy: "jwt",
   },
 
-  /**
-   * Page personnalisée.
-   */
   pages: {
     signIn: "/auth",
   },
 
   callbacks: {
-    /**
-     * signIn :
-     * - crée l'utilisateur Google s'il n'existe pas ;
-     * - ne remet jamais à zéro le premium ;
-     * - ne touche pas à plan/isPremium/subscriptionStatus si l'utilisateur existe.
-     */
     async signIn({ user, account }) {
       await connectDB();
 
-      const email = user.email?.toLowerCase().trim();
+      const email = normalizeEmail(user.email);
 
       if (!email) {
         return false;
       }
 
-      if (account?.provider === "google" || account?.provider === "apple" || account?.provider === "facebook") {
+      if (
+        account?.provider === "google" ||
+        account?.provider === "apple" ||
+        account?.provider === "facebook"
+      ) {
+        const oauthProvider = normalizeOAuthProvider(account.provider);
+
         const existingUser = await User.findOne({ email });
 
         if (!existingUser) {
@@ -219,19 +275,17 @@ export const authOptions: NextAuthOptions = {
             pseudonyme: user.name || "Utilisateur Luna",
             name: user.name || "",
             image: user.image || "",
-            provider: (account?.provider as "google" | "apple" | "facebook") ?? "google",
-            emailVerified: true, // OAuth = email déjà vérifié
+            provider: oauthProvider,
 
-            /**
-             * Un nouveau compte Google doit compléter son profil.
-             */
+            emailVerified: true,
+
             hasCompletedProfile: false,
+            profileCompletedAt: null,
+
             consentement: true,
             role: "user",
+            banned: false,
 
-            /**
-             * Valeurs premium par défaut.
-             */
             plan: "free",
             isPremium: false,
             subscriptionStatus: "inactive",
@@ -239,38 +293,29 @@ export const authOptions: NextAuthOptions = {
             premiumExpiresAt: null,
             stripeCustomerId: "",
             stripeSubscriptionId: "",
-          });
+            stripeCheckoutSessionId: "",
 
+            identityVerified: false,
+            identityVerificationStatus: "unverified",
+
+            lastLoginAt: new Date(),
+          });
         } else {
-          /**
-           * Important :
-           * ici on synchronise uniquement les infos Google.
-           * On ne touche pas au paiement.
-           */
           existingUser.name = user.name || existingUser.name;
           existingUser.image = user.image || existingUser.image;
-          existingUser.provider = "google";
+          existingUser.provider = oauthProvider;
+          existingUser.emailVerified = true;
+          existingUser.lastLoginAt = new Date();
 
           await existingUser.save();
-
         }
       }
 
       return true;
     },
 
-    /**
-     * jwt :
-     * À chaque récupération de session, on recharge l'utilisateur MongoDB.
-     *
-     * C'est ce qui permet au site de "se souvenir" :
-     * - du profil complété ;
-     * - du plan ;
-     * - du statut premium ;
-     * - de l'abonnement Stripe.
-     */
     async jwt({ token }) {
-      const email = token.email?.toLowerCase().trim();
+      const email = normalizeEmail(token.email);
 
       if (!email) {
         return token;
@@ -283,6 +328,8 @@ export const authOptions: NextAuthOptions = {
       }
 
       token.id = dbUser._id.toString();
+      token._id = dbUser._id.toString();
+
       token.email = dbUser.email;
       token.name = dbUser.pseudonyme || dbUser.name || "Utilisateur Luna";
       token.picture = dbUser.image || token.picture || "";
@@ -291,55 +338,59 @@ export const authOptions: NextAuthOptions = {
       token.role = dbUser.role || "user";
       token.provider = dbUser.provider || "credentials";
 
+      token.banned = normalizeBoolean(dbUser.banned, false);
+
       token.hasCompletedProfile = normalizeBoolean(
         dbUser.hasCompletedProfile,
         false
       );
 
       token.plan = (dbUser.plan || "free") as LunaPlan;
+
       token.isPremium = normalizeBoolean(dbUser.isPremium, false);
+
       token.subscriptionStatus = (dbUser.subscriptionStatus ||
         "inactive") as SubscriptionStatus;
 
-      token.premiumStartedAt = dbUser.premiumStartedAt
-        ? dbUser.premiumStartedAt.toISOString()
-        : null;
-
-      token.premiumExpiresAt = dbUser.premiumExpiresAt
-        ? dbUser.premiumExpiresAt.toISOString()
-        : null;
+      token.premiumStartedAt = dateToIso(dbUser.premiumStartedAt);
+      token.premiumExpiresAt = dateToIso(dbUser.premiumExpiresAt);
 
       token.stripeCustomerId = dbUser.stripeCustomerId || "";
       token.stripeSubscriptionId = dbUser.stripeSubscriptionId || "";
 
+      token.identityVerified = normalizeBoolean(dbUser.identityVerified, false);
+
+      token.identityVerificationStatus = (dbUser.identityVerificationStatus ||
+        "unverified") as IdentityVerificationStatus;
+
+      token.lastLoginAt = dateToIso(dbUser.lastLoginAt);
+
       return token;
     },
 
-    /**
-     * session :
-     * On transfère les infos du token vers session.user.
-     *
-     * On utilise "as any" pour éviter les erreurs TypeScript tant que
-     * le fichier next-auth.d.ts n'est pas encore ajouté.
-     */
     async session({ session, token }) {
       if (session.user) {
         const sessionUser = session.user as any;
 
         sessionUser.id = token.id as string;
+        sessionUser._id = (token._id || token.id) as string;
+
         sessionUser.email = token.email as string;
         sessionUser.name = token.name as string;
         sessionUser.image = token.picture as string;
 
         sessionUser.pseudonyme = token.pseudonyme as string;
         sessionUser.role = token.role as string;
-        sessionUser.provider = token.provider as string;
+        sessionUser.provider = token.provider as AuthProvider;
+
+        sessionUser.banned = token.banned as boolean;
 
         sessionUser.hasCompletedProfile =
           token.hasCompletedProfile as boolean;
 
         sessionUser.plan = token.plan as LunaPlan;
         sessionUser.isPremium = token.isPremium as boolean;
+
         sessionUser.subscriptionStatus =
           token.subscriptionStatus as SubscriptionStatus;
 
@@ -349,16 +400,18 @@ export const authOptions: NextAuthOptions = {
         sessionUser.stripeCustomerId = token.stripeCustomerId as string;
         sessionUser.stripeSubscriptionId =
           token.stripeSubscriptionId as string;
+
+        sessionUser.identityVerified = token.identityVerified as boolean;
+
+        sessionUser.identityVerificationStatus =
+          token.identityVerificationStatus as IdentityVerificationStatus;
+
+        sessionUser.lastLoginAt = token.lastLoginAt as string | null;
       }
 
       return session;
     },
 
-    /**
-     * redirect :
-     * On respecte les URLs internes.
-     * La vraie décision /inscription ou /mon-compte se fera côté page /auth.
-     */
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
@@ -372,18 +425,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  /**
-   * Très important :
-   * si tu changes NEXTAUTH_SECRET, les anciennes sessions cassent.
-   * Donc garde une valeur stable dans .env.local.
-   */
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-/**
- * Handler NextAuth compatible App Router.
- */
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
-

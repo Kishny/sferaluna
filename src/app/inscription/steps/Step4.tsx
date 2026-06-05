@@ -2,12 +2,25 @@
 
 "use client";
 
+/**
+ * Étape 4 du formulaire d'inscription SferaLuna.
+ *
+ * Objectif :
+ * - définir une question de sécurité ;
+ * - définir une réponse ;
+ * - choisir 3 à 5 centres d'intérêt ;
+ * - mettre à jour correctement React Hook Form pour le tableau interets.
+ *
+ * Important :
+ * Les centres d'intérêt sont gérés ici, et uniquement ici.
+ * Step5 ne doit pas les répéter, sinon la logique de validation devient confuse.
+ */
+
 import { useFormContext } from "react-hook-form";
 import { Check } from "lucide-react";
 
 /**
  * Questions de sécurité disponibles.
- * Elles pourront servir plus tard pour une récupération de compte.
  */
 const questionsSecurite = [
   {
@@ -34,7 +47,7 @@ const questionsSecurite = [
 
 /**
  * Centres d'intérêt proposés.
- * Le schema Zod demande 3 à 5 choix.
+ * Le schéma Zod demande 3 à 5 choix.
  */
 const interetsDisponibles = [
   { value: "voyage", label: "Voyage" },
@@ -59,14 +72,7 @@ export default function Step4() {
     formState: { errors },
   } = useFormContext();
 
-  /**
-   * Permet d'afficher le compteur de caractères en direct.
-   */
   const reponse = watch("reponse") || "";
-
-  /**
-   * Liste des centres d'intérêt sélectionnés.
-   */
   const selectedInterets: string[] = watch("interets") || [];
 
   /**
@@ -82,6 +88,7 @@ export default function Step4() {
       setValue("interets", nextInterets, {
         shouldValidate: true,
         shouldDirty: true,
+        shouldTouch: true,
       });
 
       return;
@@ -92,18 +99,19 @@ export default function Step4() {
     setValue("interets", [...selectedInterets, value], {
       shouldValidate: true,
       shouldDirty: true,
+      shouldTouch: true,
     });
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 sm:space-y-10">
       {/* Titre de l'étape */}
       <div>
-        <h2 className="text-2xl font-bold text-purple-300">
+        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
           Sécurité et centres d’intérêt
         </h2>
 
-        <p className="mt-2 text-sm text-gray-300">
+        <p className="mt-2 text-sm leading-relaxed text-gray-300">
           Ajoutez une question de sécurité et choisissez quelques centres
           d’intérêt pour améliorer vos suggestions SferaLuna.
         </p>
@@ -131,7 +139,7 @@ export default function Step4() {
 
           <select
             {...register("question")}
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+            className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
           >
             <option value="" className="bg-gray-900 text-white">
               Choisissez une question
@@ -166,10 +174,10 @@ export default function Step4() {
             type="text"
             placeholder="Votre réponse, maximum 200 caractères"
             maxLength={200}
-            className="w-full px-4 py-3 rounded-xl border border-white/25 bg-white/10 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+            className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
           />
 
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-gray-400">
               Cette réponse doit rester personnelle et facile à retenir.
             </p>
@@ -192,7 +200,7 @@ export default function Step4() {
       </section>
 
       {/* Bloc centres d'intérêt */}
-      <section className="space-y-5 pt-6 border-t border-white/10">
+      <section className="space-y-5 border-t border-white/10 pt-6">
         <div>
           <h3 className="text-lg font-semibold text-white">
             Centres d’intérêt <span className="text-pink-400">*</span>
@@ -204,7 +212,7 @@ export default function Step4() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {interetsDisponibles.map((interet) => {
             const isSelected = selectedInterets.includes(interet.value);
             const isDisabled = selectedInterets.length >= 5 && !isSelected;
@@ -215,17 +223,17 @@ export default function Step4() {
                 type="button"
                 onClick={() => toggleInteret(interet.value)}
                 disabled={isDisabled}
-                className={`p-3 rounded-xl border text-left transition-all ${
+                className={`rounded-xl border p-3 text-left transition-all ${
                   isSelected
                     ? "border-pink-400 bg-pink-500/20 text-white"
                     : isDisabled
-                    ? "border-white/10 bg-white/5 text-gray-500 cursor-not-allowed"
-                    : "border-white/20 bg-white/10 text-gray-200 hover:bg-white/15 hover:border-purple-300/50"
+                      ? "cursor-not-allowed border-white/10 bg-white/5 text-gray-500"
+                      : "border-white/20 bg-white/10 text-gray-200 hover:border-purple-300/50 hover:bg-white/15"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`h-5 w-5 rounded-md border flex items-center justify-center ${
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                       isSelected
                         ? "border-pink-400 bg-pink-500"
                         : "border-white/30"
@@ -241,18 +249,17 @@ export default function Step4() {
           })}
         </div>
 
-        {/* Champ caché pour enregistrer correctement le tableau dans react-hook-form */}
-        <input type="hidden" {...register("interets")} />
-
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-300">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p
+            className={`text-sm ${
+              selectedInterets.length < 3 ? "text-pink-300" : "text-gray-300"
+            }`}
+          >
             {selectedInterets.length}/5 sélectionnés — minimum 3
           </p>
 
           {selectedInterets.length >= 5 && (
-            <p className="text-sm text-pink-300">
-              Maximum atteint
-            </p>
+            <p className="text-sm text-pink-300">Maximum atteint</p>
           )}
         </div>
 

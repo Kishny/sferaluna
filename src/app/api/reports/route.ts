@@ -1,123 +1,358 @@
 // src/app/api/reports/route.ts
-//
-// POST /api/reports
-// Crée un signalement (utilisateur connecté uniquement)
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
+import { z } from "zod";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
+import { Message } from "@/models/Message";
 import { Report } from "@/models/Report";
 
-const VALID_TARGET_TYPES = ["user", "message", "community_post"] as const;
-const VALID_REASONS = [
-  "spam",
-  "harcèlement",
-  "contenu_inapproprié",
-  "faux_profil",
-  "autre",
-] as const;
+/**
+ * API de signalement SferaLuna.
+ *
+ * POST /api/reports
+ *
+ * Permet à un utilisateur connecté de signaler :
+ * - un profil utilisateur ;
+ * - un message privé ;
+ * - un post communautaire.
+ *
+ * Sécurité :
+ * - session obligatoire ;
+ * - cible validée ;
+ * - raison validée ;
+ * - doublon empêché ;
+ * - impossible de se signaler soi-même ;
+ * - les détails sont limités à 500 caractères.
+ */
 
+const reportSchema = z.object({
+  targetType: z.enum(["user", "message", "community_post"], {
+    message: "Type de cible invalide.",
+  }),
+
+  targetId: z
+    .string()
+    .min(1, "targetId est obligatoire.")
+    .refine((value) => mongoose.Types.ObjectId.isValid(value), {
+      message: "targetId invalide.",
+    }),
+
+  reason: z.enum(
+    ["spam", "harcèlement", "contenu_inapproprié", "faux_profil", "autre"],
+    {
+      message: "Raison invalide.",
+    }
+  ),
+
+  details: z
+    .string()
+    .trim()
+    .max(500, "Les détails ne doivent pas dépasser 500 caractères.")
+    .optional()
+    .or(z.literal("")),
+});
+
+type ReportInput = z.infer<typeof reportSchema>;
+
+/**
+ * Récupère l'utilisateur connecté.
+ */
+async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    return {
+      user: null,
+      response: NextResponse.json(
+        {
+          success: false,
+          error: "Non autorisé.",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      ),
+    };
+  }
+
+  await connectDB();
+
+  const currentUser = await User.findOne({
+    email: session.user.email.toLowerCase().trim(),
+  }).select("_id banned");
+
+  if (!currentUser) {
+    return {
+      user: null,
+      response: NextResponse.json(
+        {
+          success: false,
+          error: "Utilisateur introuvable.",
+          code: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      ),
+    };
+  }
+
+  if (currentUser.banned) {
+    return {
+      user: null,
+      response: NextResponse.json(
+        {
+          success: false,
+          error: "Compte suspendu.",
+          code: "ACCOUNT_BANNED",
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return {
+    user: currentUser,
+    response: null,
+  };
+}
+
+/**
+ * Vérifie que la cible signalée existe réellement.
+ *
+ * Pour community_post :
+ * - je ne peux pas vérifier tant que tu ne m'as pas envoyé ton modèle VibePost.
+ * - pour l'instant, on accepte l'ObjectId valide.
+ */
+async function validateReportTarget({
+  targetType,
+  targetId,
+  reporterId,
+}: {
+  targetType: ReportInput["targetType"];
+  targetId: mongoose.Types.ObjectId;
+  reporterId: mongoose.Types.ObjectId;
+}) {
+  if (targetType === "user") {
+    const targetUser = await User.findById(targetId).select("_id banned");
+
+    if (!targetUser) {
+      return {
+        ok: false,
+        error: "Profil introuvable.",
+        code: "TARGET_USER_NOT_FOUND",
+        status: 404,
+      };
+    }
+
+    if (String(targetUser._id) === String(reporterId)) {
+      return {
+        ok: false,
+        error: "Vous ne pouvez pas signaler votre propre profil.",
+        code: "SELF_REPORT",
+        status: 400,
+      };
+    }
+
+    return { ok: true };
+  }
+
+  if (targetType === "message") {
+    const targetMessage = await Message.findById(targetId).select(
+      "_id senderId"
+    );
+
+    if (!targetMessage) {
+      return {
+        ok: false,
+        error: "Message introuvable.",
+        code: "TARGET_MESSAGE_NOT_FOUND",
+        status: 404,
+      };
+    }
+
+    if (String(targetMessage.senderId) === String(reporterId)) {
+      return {
+        ok: false,
+        error: "Vous ne pouvez pas signaler votre propre message.",
+        code: "SELF_REPORT",
+        status: 400,
+      };
+    }
+
+    return { ok: true };
+  }
+
+  if (targetType === "community_post") {
+    /**
+     * À brancher quand tu m'enverras le modèle VibeSphere/Post.
+     *
+     * Exemple plus tard :
+     * const post = await VibePost.findById(targetId).select("_id userId");
+     * if (!post) ...
+     * if (String(post.userId) === String(reporterId)) ...
+     */
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    error: "Type de cible invalide.",
+    code: "INVALID_TARGET_TYPE",
+    status: 400,
+  };
+}
+
+/**
+ * POST /api/reports
+ */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const { user: currentUser, response } = await getCurrentUser();
 
-    if (!session?.user?.email) {
+    if (response || !currentUser) return response;
+
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, error: "Non autorisé." },
-        { status: 401 }
-      );
-    }
-
-    const body = await req.json();
-    const { targetType, targetId, reason, details } = body;
-
-    // Validation
-    if (!VALID_TARGET_TYPES.includes(targetType)) {
-      return NextResponse.json(
-        { success: false, error: "Type de cible invalide." },
+        {
+          success: false,
+          error: "Body JSON invalide.",
+          code: "INVALID_JSON_BODY",
+        },
         { status: 400 }
       );
     }
 
-    if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+    const validation = reportSchema.safeParse(body);
+
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: "targetId invalide." },
+        {
+          success: false,
+          error: "Données invalides.",
+          code: "VALIDATION_ERROR",
+          details: validation.error.flatten(),
+        },
         { status: 400 }
       );
     }
 
-    if (!VALID_REASONS.includes(reason)) {
-      return NextResponse.json(
-        { success: false, error: "Raison invalide." },
-        { status: 400 }
-      );
-    }
-
-    if (details && typeof details === "string" && details.length > 500) {
-      return NextResponse.json(
-        { success: false, error: "Les détails ne doivent pas dépasser 500 caractères." },
-        { status: 400 }
-      );
-    }
-
-    await connectDB();
-
-    const currentUser = await User.findOne({
-      email: session.user.email.toLowerCase().trim(),
-    }).select("_id");
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { success: false, error: "Utilisateur introuvable." },
-        { status: 404 }
-      );
-    }
+    const data = validation.data;
 
     const reporterId = currentUser._id as mongoose.Types.ObjectId;
+    const targetObjectId = new mongoose.Types.ObjectId(data.targetId);
 
-    // Vérifier qu'un signalement identique n'existe pas déjà (index unique)
-    const existing = await Report.findOne({
+    const targetValidation = await validateReportTarget({
+      targetType: data.targetType,
+      targetId: targetObjectId,
       reporterId,
-      targetId: new mongoose.Types.ObjectId(targetId),
     });
 
-    if (existing) {
+    if (!targetValidation.ok) {
       return NextResponse.json(
-        { success: false, error: "Vous avez déjà signalé cet élément." },
+        {
+          success: false,
+          error: targetValidation.error,
+          code: targetValidation.code,
+        },
+        { status: targetValidation.status }
+      );
+    }
+
+    /**
+     * Vérification doublon.
+     *
+     * Même protection aussi côté MongoDB via index unique.
+     */
+    const existingReport = await Report.findOne({
+      reporterId,
+      targetType: data.targetType,
+      targetId: targetObjectId,
+    }).select("_id");
+
+    if (existingReport) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Vous avez déjà signalé cet élément.",
+          code: "REPORT_ALREADY_EXISTS",
+        },
         { status: 409 }
       );
     }
 
     const report = await Report.create({
       reporterId,
-      targetType,
-      targetId: new mongoose.Types.ObjectId(targetId),
-      reason,
-      details: details?.trim() || undefined,
+      targetType: data.targetType,
+      targetId: targetObjectId,
+      reason: data.reason,
+      details: data.details?.trim() || "",
+      status: "pending",
     });
 
     return NextResponse.json(
-      { success: true, reportId: report._id.toString() },
-      { status: 201 }
+      {
+        success: true,
+        message: "Signalement envoyé avec succès.",
+        reportId: report._id.toString(),
+      },
+      {
+        status: 201,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   } catch (error: unknown) {
     console.error("Erreur POST /api/reports :", error);
-    const err = error as { code?: number; message?: string };
 
-    // Erreur index unique MongoDB
+    const err = error as {
+      name?: string;
+      code?: number;
+      message?: string;
+      errors?: unknown;
+      keyPattern?: Record<string, unknown>;
+    };
+
     if (err.code === 11000) {
       return NextResponse.json(
-        { success: false, error: "Vous avez déjà signalé cet élément." },
+        {
+          success: false,
+          error: "Vous avez déjà signalé cet élément.",
+          code: "REPORT_ALREADY_EXISTS",
+        },
         { status: 409 }
       );
     }
 
+    if (err.name === "ValidationError") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Erreur de validation MongoDB.",
+          code: "DB_VALIDATION_ERROR",
+          details: err.errors,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: "Erreur serveur." },
+      {
+        success: false,
+        error: "Erreur serveur.",
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          process.env.NODE_ENV === "development"
+            ? err.message
+            : "Une erreur est survenue.",
+      },
       { status: 500 }
     );
   }

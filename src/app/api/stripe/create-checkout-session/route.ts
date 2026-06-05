@@ -12,7 +12,7 @@ import { stripe } from "@/lib/stripe";
  * Plans Stripe acceptés côté serveur.
  *
  * Important :
- * le frontend n'envoie jamais un prix.
+ * Le frontend n'envoie jamais un prix.
  * Il envoie uniquement un identifiant de plan.
  * Le vrai priceId Stripe est choisi ici, côté serveur.
  */
@@ -20,13 +20,24 @@ type CheckoutPlan = "essential-monthly" | "premium-monthly" | "elite-monthly";
 
 /**
  * Liste des plans autorisés.
- * Elle sert à valider proprement ce que le frontend envoie.
+ *
+ * Cette liste sert à empêcher qu'un utilisateur envoie une valeur arbitraire
+ * comme "free", "admin", "0-euro", etc.
  */
 const allowedPlans: CheckoutPlan[] = [
   "essential-monthly",
   "premium-monthly",
   "elite-monthly",
 ];
+
+/**
+ * Labels utiles pour les logs, metadata Stripe ou affichages futurs.
+ */
+const planLabels: Record<CheckoutPlan, string> = {
+  "essential-monthly": "Essentiel",
+  "premium-monthly": "Premium",
+  "elite-monthly": "Elite",
+};
 
 /**
  * Vérifie qu'une valeur reçue est bien un plan SferaLuna valide.
@@ -54,15 +65,43 @@ function getStripePriceId(plan: CheckoutPlan) {
 }
 
 /**
+ * Nettoie l'URL publique de l'application.
+ *
+ * Exemple :
+ * NEXT_PUBLIC_APP_URL=http://localhost:3000/
+ * devient :
+ * http://localhost:3000
+ */
+function getCleanAppUrl() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (!appUrl) return null;
+
+  return appUrl.replace(/\/$/, "");
+}
+
+/**
  * POST /api/stripe/create-checkout-session
  *
  * Crée une session Stripe Checkout pour l'utilisateur connecté.
+ *
+ * Étapes :
+ * 1. Vérifier la session NextAuth.
+ * 2. Lire le plan envoyé par le frontend.
+ * 3. Vérifier que le plan est autorisé.
+ * 4. Récupérer le Price ID Stripe correspondant.
+ * 5. Récupérer l'utilisateur MongoDB.
+ * 6. Créer ou réutiliser un customer Stripe.
+ * 7. Enregistrer le plan choisi en attente.
+ * 8. Créer une session Checkout.
+ * 9. Renvoyer l'URL Stripe au frontend.
  */
 export async function POST(req: NextRequest) {
   try {
-    /**
-     * 1. Vérifier que l'utilisateur est connecté.
-     */
+    // ─────────────────────────────────────────────
+    // 1. Vérifier que l'utilisateur est connecté
+    // ─────────────────────────────────────────────
+
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -76,10 +115,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 2. Lire et valider le plan envoyé par le frontend.
-     */
-    const body = await req.json();
+    // ─────────────────────────────────────────────
+    // 2. Lire et valider le body JSON
+    // ─────────────────────────────────────────────
+
+    let body: { plan?: unknown } | null = null;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Body JSON invalide.",
+          code: "INVALID_JSON_BODY",
+        },
+        { status: 400 }
+      );
+    }
+
     const plan = body?.plan;
 
     if (!isCheckoutPlan(plan)) {
@@ -97,9 +151,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 3. Récupérer le priceId Stripe associé au plan.
-     */
+    // ─────────────────────────────────────────────
+    // 3. Récupérer le Price ID Stripe
+    // ─────────────────────────────────────────────
+
     const priceId = getStripePriceId(plan);
 
     if (!priceId) {
@@ -107,16 +162,23 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error: `Price ID Stripe manquant pour le plan : ${plan}`,
+          expectedEnv:
+            plan === "essential-monthly"
+              ? "STRIPE_PRICE_ESSENTIAL_MONTHLY"
+              : plan === "premium-monthly"
+                ? "STRIPE_PRICE_PREMIUM_MONTHLY"
+                : "STRIPE_PRICE_ELITE_MONTHLY",
           code: "MISSING_STRIPE_PRICE_ID",
         },
         { status: 500 }
       );
     }
 
-    /**
-     * 4. Vérifier l'URL publique de l'application.
-     */
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    // ─────────────────────────────────────────────
+    // 4. Vérifier l'URL publique de l'application
+    // ─────────────────────────────────────────────
+
+    const appUrl = getCleanAppUrl();
 
     if (!appUrl) {
       return NextResponse.json(
@@ -129,9 +191,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 5. Récupérer l'utilisateur MongoDB connecté.
-     */
+    // ─────────────────────────────────────────────
+    // 5. Récupérer l'utilisateur MongoDB connecté
+    // ─────────────────────────────────────────────
+
     await connectDB();
 
     const email = session.user.email.toLowerCase().trim();
@@ -149,13 +212,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * 6. Créer ou réutiliser le client Stripe.
-     *
-     * On stocke stripeCustomerId dans MongoDB pour éviter de créer
-     * plusieurs clients Stripe pour le même utilisateur.
-     */
-    let stripeCustomerId = user.stripeCustomerId;
+    // ─────────────────────────────────────────────
+    // 6. Créer ou réutiliser le customer Stripe
+    // ─────────────────────────────────────────────
+
+    let stripeCustomerId =
+      typeof user.stripeCustomerId === "string" ? user.stripeCustomerId : "";
 
     if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
@@ -164,53 +226,57 @@ export async function POST(req: NextRequest) {
         metadata: {
           userId: user._id.toString(),
           email: user.email,
+          source: "sferaluna",
         },
       });
 
       stripeCustomerId = customer.id;
 
       /**
-       * On rattache le customer Stripe à l'utilisateur MongoDB.
+       * On rattache le customer Stripe à l'utilisateur MongoDB
+       * pour éviter de créer plusieurs customers pour le même compte.
        */
       user.stripeCustomerId = stripeCustomerId;
     }
 
+    // ─────────────────────────────────────────────
+    // 7. Enregistrer le plan choisi avant paiement
+    // ─────────────────────────────────────────────
+
     /**
-     * 7. Enregistrer le plan choisi avant paiement.
+     * Ici on garde une trace du plan choisi.
      *
      * Important :
-     * - plan = choix utilisateur ;
-     * - subscriptionStatus reste inactive tant que le webhook Stripe
+     * - subscriptionStatus reste "inactive" tant que le webhook Stripe
      *   n'a pas confirmé le paiement ;
-     * - isPremium reste false tant que le webhook n'a pas validé.
+     * - isPremium reste false tant que le webhook n'a pas validé ;
+     * - le webhook sera la vraie source de vérité.
      */
     user.plan = plan;
     user.isPremium = false;
     user.subscriptionStatus = "inactive";
+    user.stripeCheckoutSessionId = "";
 
-    /**
-     * Amélioration demandée :
-     * Mongoose valide explicitement le document avant la sauvegarde.
-     *
-     * user.save() valide déjà par défaut, mais validateBeforeSave()
-     * permet de détecter clairement les incohérences du modèle avant save().
-     */
     await user.validate();
-
-    /**
-     * Sauvegarde réelle en base de données.
-     */
     await user.save();
 
-    /**
-     * 8. Créer la session Stripe Checkout.
-     *
-     * mode: "subscription" car SferaLuna fonctionne par abonnement mensuel.
-     */
+    // ─────────────────────────────────────────────
+    // 8. Créer la session Stripe Checkout
+    // ─────────────────────────────────────────────
+
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: stripeCustomerId,
+      client_reference_id: user._id.toString(),
+
       payment_method_types: ["card"],
+      allow_promotion_codes: true,
+      billing_address_collection: "auto",
+
+      customer_update: {
+        name: "auto",
+        address: "auto",
+      },
 
       line_items: [
         {
@@ -221,29 +287,38 @@ export async function POST(req: NextRequest) {
 
       /**
        * URLs de retour.
-       * La validation réelle se fait quand même via le webhook.
+       *
+       * Attention :
+       * Même si l'utilisateur revient sur success_url,
+       * la vraie activation Premium doit être faite par le webhook Stripe.
        */
       success_url: `${appUrl}/mon-compte?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/paiement?payment=cancelled`,
 
       /**
-       * Metadata utilisée par le webhook pour retrouver l'utilisateur.
+       * Metadata attachée à la session Checkout.
+       * Le webhook pourra s'en servir pour retrouver l'utilisateur.
        */
       metadata: {
         userId: user._id.toString(),
         email: user.email,
         plan,
+        planLabel: planLabels[plan],
       },
 
       /**
-       * Metadata aussi attachée à l'abonnement Stripe.
-       * Très utile pour customer.subscription.created/updated/deleted.
+       * Metadata attachée à l'abonnement Stripe.
+       * Très utile pour :
+       * - customer.subscription.created
+       * - customer.subscription.updated
+       * - customer.subscription.deleted
        */
       subscription_data: {
         metadata: {
           userId: user._id.toString(),
           email: user.email,
           plan,
+          planLabel: planLabels[plan],
         },
       },
     });
@@ -259,8 +334,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    /**
+     * On stocke l'ID de session Checkout.
+     * Pratique pour debug, support client et vérifications futures.
+     */
+    user.stripeCheckoutSessionId = checkoutSession.id;
+    await user.save();
+
     console.log("✅ Session Stripe Checkout créée :", {
       email: user.email,
+      userId: user._id.toString(),
       plan,
       priceId,
       checkoutSessionId: checkoutSession.id,
@@ -279,16 +362,17 @@ export async function POST(req: NextRequest) {
 
     const err = error as {
       name?: string;
-      code?: number;
+      type?: string;
+      code?: number | string;
       message?: string;
       errors?: unknown;
       keyPattern?: Record<string, unknown>;
     };
 
-    /**
-     * Erreur Mongoose : validation du modèle User.
-     * Exemple : plan non autorisé dans l'enum, champ manquant, etc.
-     */
+    // ─────────────────────────────────────────────
+    // Erreur Mongoose : validation du modèle User
+    // ─────────────────────────────────────────────
+
     if (err.name === "ValidationError") {
       return NextResponse.json(
         {
@@ -301,9 +385,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /**
-     * Erreur MongoDB : doublon, souvent email unique.
-     */
+    // ─────────────────────────────────────────────
+    // Erreur MongoDB : doublon
+    // ─────────────────────────────────────────────
+
     if (err.code === 11000) {
       return NextResponse.json(
         {
@@ -315,6 +400,29 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+
+    // ─────────────────────────────────────────────
+    // Erreur Stripe
+    // ─────────────────────────────────────────────
+
+    if (err.type && String(err.type).startsWith("Stripe")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Stripe a refusé la création de la session.",
+          message:
+            process.env.NODE_ENV === "development"
+              ? err.message
+              : "Une erreur est survenue avec Stripe.",
+          code: "STRIPE_ERROR",
+        },
+        { status: 500 }
+      );
+    }
+
+    // ─────────────────────────────────────────────
+    // Erreur générique
+    // ─────────────────────────────────────────────
 
     return NextResponse.json(
       {

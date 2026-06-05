@@ -4,10 +4,24 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Monitor, Users, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  MapPin,
+  Monitor,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  CalendarDays,
+  Sparkles,
+} from "lucide-react";
+
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+/**
+ * Type principal d'un événement Luna.
+ * Ces données viennent de l'API /api/events.
+ */
 interface LunaEvent {
   _id: string;
   title: string;
@@ -25,24 +39,65 @@ interface LunaEvent {
   isFull: boolean;
 }
 
+/**
+ * Filtres disponibles sur la page.
+ */
 type Filter = "all" | "online" | "presentiel";
 
+/**
+ * Formate la date complète pour desktop / détails.
+ */
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }) + " à " + date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    date.toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }) +
+    " à " +
+    date.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  );
 }
 
+/**
+ * Version courte de la date pour mobile.
+ */
+function formatShortDate(dateStr: string) {
+  const date = new Date(dateStr);
+
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+/**
+ * Heure courte pour mobile.
+ */
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+
+  return date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Met la première lettre en majuscule.
+ */
 function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export default function EvenementsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   const [events, setEvents] = useState<LunaEvent[]>([]);
@@ -51,226 +106,606 @@ export default function EvenementsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
 
+  /**
+   * Accordéon mobile pour les événements à venir.
+   * null = aucun événement ouvert.
+   */
+  const [openEventId, setOpenEventId] = useState<string | null>(null);
+
+  /**
+   * Accordéon mobile pour les événements passés.
+   * null = aucun événement passé ouvert.
+   */
+  const [openPastEventId, setOpenPastEventId] = useState<string | null>(null);
+
+  /**
+   * Redirection si l'utilisateur n'est pas connecté.
+   */
   useEffect(() => {
     if (status === "unauthenticated") router.push("/auth");
   }, [status, router]);
 
+  /**
+   * Charge les événements depuis l'API.
+   */
   const fetchEvents = useCallback(async () => {
     setLoading(true);
+
     try {
       const res = await fetch("/api/events");
       const data = await res.json();
+
       if (data.success) setEvents(data.events);
     } catch {
-      // silencieux
+      // On reste silencieux pour éviter de casser l'interface.
+      // Tu pourras ajouter un state error plus tard si besoin.
     } finally {
       setLoading(false);
     }
   }, []);
 
+  /**
+   * Premier chargement lorsque l'utilisateur est connecté.
+   */
   useEffect(() => {
     if (status === "authenticated") fetchEvents();
   }, [status, fetchEvents]);
 
+  /**
+   * Inscription / désinscription à un événement.
+   */
   const handleToggleRegistration = async (eventId: string) => {
     setTogglingId(eventId);
+
     try {
-      const res = await fetch(`/api/events/${eventId}`, { method: "POST" });
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: "POST",
+      });
+
       const data = await res.json();
+
       if (data.success) {
         setEvents((prev) =>
-          prev.map((e) =>
-            e._id === eventId
-              ? { ...e, isRegistered: data.registered, attendeeCount: data.attendeeCount, isFull: data.attendeeCount >= e.maxAttendees }
-              : e
+          prev.map((event) =>
+            event._id === eventId
+              ? {
+                  ...event,
+                  isRegistered: data.registered,
+                  attendeeCount: data.attendeeCount,
+                  isFull: data.attendeeCount >= event.maxAttendees,
+                }
+              : event
           )
         );
       }
     } catch {
-      // silencieux
+      // Silencieux pour le moment.
     } finally {
       setTogglingId(null);
     }
   };
 
-  const upcomingEvents = events.filter((e) => {
-    if (e.isPast) return false;
-    if (filter === "online") return e.isOnline;
-    if (filter === "presentiel") return !e.isOnline;
+  /**
+   * Événements à venir filtrés.
+   */
+  const upcomingEvents = events.filter((event) => {
+    if (event.isPast) return false;
+    if (filter === "online") return event.isOnline;
+    if (filter === "presentiel") return !event.isOnline;
     return true;
   });
 
-  const pastEvents = events.filter((e) => e.isPast);
+  /**
+   * Événements passés.
+   */
+  const pastEvents = events.filter((event) => event.isPast);
+
+  /**
+   * Compteur affiché dans le hero.
+   */
+  const upcomingCount = upcomingEvents.length;
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
-        <Header />
-        <div className="flex items-center justify-center min-h-screen text-[#8E7AB5]">Chargement des événements…</div>
-        <Footer />
-      </div>
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+          <Header />
+
+          <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-[#8E7AB5]">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm">Chargement des événements…</p>
+          </div>
+        </div>
+
+        <div className="hidden sm:block">
+          <Footer />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
-      <Header />
-      <main className="pt-24 pb-16 px-4 max-w-4xl mx-auto">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-[#2d1b69]">Événements Luna 🌙</h1>
-          <p className="text-[#8E7AB5] mt-2">Rencontrez-vous en vrai — en ligne ou en présentiel</p>
-        </motion.div>
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+        <Header />
 
-        {/* Filtres */}
-        <div className="flex gap-2 justify-center mb-8">
-          {(["all", "online", "presentiel"] as Filter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all border ${
-                filter === f
-                  ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-transparent"
-                  : "border-[#e8e0f5] text-[#5B4B8A] bg-white hover:bg-purple-50"
-              }`}
-            >
-              {f === "all" ? "Tous" : f === "online" ? "En ligne" : "Présentiel"}
-            </button>
-          ))}
-        </div>
+        <main className="mx-auto max-w-4xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
+          {/* Header compact */}
+          <motion.section
+            initial={{ opacity: 0, y: -18 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 overflow-hidden rounded-3xl border border-[#e8e0f5] bg-white/75 p-4 text-center shadow-sm backdrop-blur sm:mb-8 sm:bg-transparent sm:p-0 sm:shadow-none sm:border-0"
+          >
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-1 text-xs font-medium text-[#5B4B8A] sm:mb-4 sm:px-4 sm:py-1.5 sm:text-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              LunaGather
+            </div>
 
-        {/* Événements à venir */}
-        {upcomingEvents.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-6 md:py-12 text-[#8E7AB5]">
-            <p className="text-5xl mb-4">🌙</p>
-            <p className="text-lg">Aucun événement à venir pour le moment.</p>
-            <p className="text-sm mt-2">Revenez bientôt — de nouveaux événements arrivent !</p>
-          </motion.div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2">
-            {upcomingEvents.map((event, i) => (
-              <motion.div
-                key={event._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className="bg-white rounded-2xl border border-[#e8e0f5] shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+            <h1 className="text-2xl font-bold text-[#2d1b69] sm:text-3xl md:text-4xl">
+              Événements Luna 🌙
+            </h1>
+
+            <p className="mx-auto mt-1 max-w-xl text-xs leading-relaxed text-[#8E7AB5] sm:mt-2 sm:text-base">
+              Rencontrez-vous en vrai, en ligne ou en présentiel, dans une
+              ambiance douce et sécurisée.
+            </p>
+
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:mx-auto sm:max-w-md">
+              <div className="rounded-2xl bg-[#f7f0ff] px-2 py-2">
+                <p className="text-base font-bold text-[#5B4B8A]">
+                  {upcomingCount}
+                </p>
+                <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
+                  à venir
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#f7f0ff] px-2 py-2">
+                <p className="text-base font-bold text-[#5B4B8A]">
+                  {pastEvents.length}
+                </p>
+                <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
+                  passés
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#f7f0ff] px-2 py-2">
+                <p className="text-base font-bold text-[#5B4B8A]">Luna</p>
+                <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
+                  safe place
+                </p>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* Filtres compacts */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-4 flex justify-center gap-2 overflow-x-auto pb-1 sm:mb-8 sm:flex-wrap"
+          >
+            {(["all", "online", "presentiel"] as Filter[]).map((item) => (
+              <button
+                key={item}
+                onClick={() => setFilter(item)}
+                className={`shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-all sm:px-5 sm:text-sm ${
+                  filter === item
+                    ? "border-transparent bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md"
+                    : "border-[#e8e0f5] bg-white text-[#5B4B8A] hover:bg-purple-50"
+                }`}
               >
-                {/* Cover */}
-                <div className="bg-gradient-to-br from-purple-100 to-pink-100 h-24 flex items-center justify-center text-5xl">
-                  {event.coverEmoji || event.emoji}
-                </div>
-
-                <div className="p-5">
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                    <span className="text-xs px-2.5 py-1 bg-purple-50 text-[#5B4B8A] rounded-full border border-[#e8e0f5]">
-                      {event.emoji} {event.category}
-                    </span>
-                    {event.isOnline ? (
-                      <span className="flex items-center gap-1 text-xs px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100">
-                        <Monitor size={10} /> En ligne
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs px-2.5 py-1 bg-green-50 text-green-600 rounded-full border border-green-100">
-                        <MapPin size={10} /> Présentiel
-                      </span>
-                    )}
-                    {event.isFull && !event.isRegistered && (
-                      <span className="text-xs px-2.5 py-1 bg-red-50 text-red-500 rounded-full border border-red-100">Complet</span>
-                    )}
-                  </div>
-
-                  <h3 className="font-bold text-[#2d1b69] mb-2">{event.title}</h3>
-                  <p className="text-[#8E7AB5] text-xs mb-3 leading-relaxed line-clamp-2">{event.description}</p>
-
-                  {/* Date */}
-                  <p className="text-[#5B4B8A] text-xs font-medium mb-2">
-                    📅 {capitalize(formatDate(event.date))}
-                  </p>
-
-                  {/* Lieu */}
-                  {!event.isOnline && (
-                    <div className="flex items-center gap-1 text-[#8E7AB5] text-xs mb-3">
-                      <MapPin size={11} />
-                      {event.location}
-                    </div>
-                  )}
-
-                  {/* Participantes */}
-                  <div className="flex items-center gap-1 text-[#8E7AB5] text-xs mb-4">
-                    <Users size={11} />
-                    <span>
-                      <span className="font-semibold text-[#5B4B8A]">{event.attendeeCount}</span> / {event.maxAttendees} participantes
-                    </span>
-                  </div>
-
-                  {/* Bouton inscription */}
-                  <button
-                    onClick={() => handleToggleRegistration(event._id)}
-                    disabled={togglingId === event._id || (event.isFull && !event.isRegistered)}
-                    className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 ${
-                      event.isRegistered
-                        ? "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200"
-                        : event.isFull
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                        : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500"
-                    }`}
-                  >
-                    {togglingId === event._id
-                      ? "…"
-                      : event.isRegistered
-                      ? "Me désinscrire"
-                      : event.isFull
-                      ? "Complet"
-                      : "Je participe ✨"}
-                  </button>
-                </div>
-              </motion.div>
+                {item === "all"
+                  ? "Tous"
+                  : item === "online"
+                    ? "En ligne"
+                    : "Présentiel"}
+              </button>
             ))}
-          </div>
-        )}
+          </motion.div>
 
-        {/* Événements passés */}
-        {pastEvents.length > 0 && (
-          <div className="mt-12">
-            <button
-              onClick={() => setShowPast((v) => !v)}
-              className="flex items-center gap-2 text-[#8E7AB5] hover:text-[#5B4B8A] transition-colors text-sm font-medium mx-auto mb-4"
+          {/* Événements à venir */}
+          {upcomingEvents.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="rounded-3xl border border-[#e8e0f5] bg-white/70 px-4 py-10 text-center text-[#8E7AB5] shadow-sm sm:py-12"
             >
-              {showPast ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              {showPast ? "Masquer" : "Voir"} les événements passés ({pastEvents.length})
-            </button>
+              <p className="mb-3 text-4xl sm:text-5xl">🌙</p>
 
-            <AnimatePresence>
-              {showPast && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid gap-4 sm:grid-cols-2 opacity-60">
-                    {pastEvents.map((event) => (
-                      <div key={event._id} className="bg-white rounded-2xl border border-[#e8e0f5] p-4 overflow-hidden">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xl">{event.coverEmoji || event.emoji}</span>
-                          <div>
-                            <h3 className="font-semibold text-[#2d1b69] text-sm">{event.title}</h3>
-                            <p className="text-xs text-[#8E7AB5]">{capitalize(formatDate(event.date))}</p>
-                          </div>
+              <p className="text-base font-semibold sm:text-lg">
+                Aucun événement à venir pour le moment.
+              </p>
+
+              <p className="mt-2 text-sm">
+                Revenez bientôt, de nouveaux événements arrivent.
+              </p>
+            </motion.div>
+          ) : (
+            <>
+              {/* Mobile : accordéons compacts */}
+              <div className="space-y-2.5 sm:hidden">
+                {upcomingEvents.map((event, index) => {
+                  const isOpen = openEventId === event._id;
+
+                  return (
+                    <motion.article
+                      key={event._id}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(index * 0.04, 0.25) }}
+                      className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white shadow-sm"
+                    >
+                      {/* Résumé compact */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenEventId(isOpen ? null : event._id)
+                        }
+                        className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 text-2xl">
+                          {event.coverEmoji || event.emoji}
                         </div>
-                        <p className="text-xs text-[#8E7AB5]">{event.attendeeCount} participante{event.attendeeCount !== 1 ? "s" : ""}</p>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                event.isOnline
+                                  ? "bg-blue-50 text-blue-600"
+                                  : "bg-green-50 text-green-600"
+                              }`}
+                            >
+                              {event.isOnline ? (
+                                <>
+                                  <Monitor size={10} />
+                                  En ligne
+                                </>
+                              ) : (
+                                <>
+                                  <MapPin size={10} />
+                                  Présentiel
+                                </>
+                              )}
+                            </span>
+
+                            {event.isRegistered && (
+                              <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-[#8E7AB5]">
+                                Inscrite
+                              </span>
+                            )}
+
+                            {event.isFull && !event.isRegistered && (
+                              <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                                Complet
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="truncate text-sm font-bold text-[#2d1b69]">
+                            {event.title}
+                          </h3>
+
+                          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-[#8E7AB5]">
+                            <CalendarDays size={11} />
+                            <span>
+                              {formatShortDate(event.date)} ·{" "}
+                              {formatTime(event.date)}
+                            </span>
+                          </p>
+                        </div>
+
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {/* Détails accordéon */}
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: "easeOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="border-t border-[#f0ecff] px-3 pb-3 pt-3">
+                              <div className="mb-3 flex flex-wrap gap-1.5">
+                                <span className="rounded-full border border-[#e8e0f5] bg-purple-50 px-2.5 py-1 text-[11px] text-[#5B4B8A]">
+                                  {event.emoji} {event.category}
+                                </span>
+
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[#e8e0f5] bg-white px-2.5 py-1 text-[11px] text-[#8E7AB5]">
+                                  <Users size={11} />
+                                  {event.attendeeCount}/{event.maxAttendees}
+                                </span>
+                              </div>
+
+                              <p className="mb-3 text-xs leading-relaxed text-[#8E7AB5]">
+                                {event.description}
+                              </p>
+
+                              <p className="mb-2 text-xs font-medium text-[#5B4B8A]">
+                                📅 {capitalize(formatDate(event.date))}
+                              </p>
+
+                              {!event.isOnline && (
+                                <p className="mb-3 flex items-center gap-1 text-xs text-[#8E7AB5]">
+                                  <MapPin size={12} />
+                                  {event.location}
+                                </p>
+                              )}
+
+                              <button
+                                onClick={() =>
+                                  handleToggleRegistration(event._id)
+                                }
+                                disabled={
+                                  togglingId === event._id ||
+                                  (event.isFull && !event.isRegistered)
+                                }
+                                className={`w-full rounded-xl py-2.5 text-sm font-medium transition-all disabled:opacity-50 ${
+                                  event.isRegistered
+                                    ? "border border-gray-200 bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                    : event.isFull
+                                      ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400"
+                                      : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500"
+                                }`}
+                              >
+                                {togglingId === event._id
+                                  ? "…"
+                                  : event.isRegistered
+                                    ? "Me désinscrire"
+                                    : event.isFull
+                                      ? "Complet"
+                                      : "Je participe ✨"}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.article>
+                  );
+                })}
+              </div>
+
+              {/* Desktop / tablette : cards complètes */}
+              <div className="hidden grid-cols-2 gap-5 sm:grid">
+                {upcomingEvents.map((event, index) => (
+                  <motion.article
+                    key={event._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.06 }}
+                    className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    {/* Cover */}
+                    <div className="flex h-24 items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100 text-5xl">
+                      {event.coverEmoji || event.emoji}
+                    </div>
+
+                    <div className="p-5">
+                      {/* Badges */}
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[#e8e0f5] bg-purple-50 px-2.5 py-1 text-xs text-[#5B4B8A]">
+                          {event.emoji} {event.category}
+                        </span>
+
+                        {event.isOnline ? (
+                          <span className="flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs text-blue-600">
+                            <Monitor size={10} /> En ligne
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full border border-green-100 bg-green-50 px-2.5 py-1 text-xs text-green-600">
+                            <MapPin size={10} /> Présentiel
+                          </span>
+                        )}
+
+                        {event.isFull && !event.isRegistered && (
+                          <span className="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs text-red-500">
+                            Complet
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-      </main>
-      <Footer />
-    </div>
+
+                      <h3 className="mb-2 font-bold text-[#2d1b69]">
+                        {event.title}
+                      </h3>
+
+                      <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-[#8E7AB5]">
+                        {event.description}
+                      </p>
+
+                      {/* Date */}
+                      <p className="mb-2 text-xs font-medium text-[#5B4B8A]">
+                        📅 {capitalize(formatDate(event.date))}
+                      </p>
+
+                      {/* Lieu */}
+                      {!event.isOnline && (
+                        <div className="mb-3 flex items-center gap-1 text-xs text-[#8E7AB5]">
+                          <MapPin size={11} />
+                          {event.location}
+                        </div>
+                      )}
+
+                      {/* Participantes */}
+                      <div className="mb-4 flex items-center gap-1 text-xs text-[#8E7AB5]">
+                        <Users size={11} />
+
+                        <span>
+                          <span className="font-semibold text-[#5B4B8A]">
+                            {event.attendeeCount}
+                          </span>{" "}
+                          / {event.maxAttendees} participantes
+                        </span>
+                      </div>
+
+                      {/* Bouton inscription */}
+                      <button
+                        onClick={() => handleToggleRegistration(event._id)}
+                        disabled={
+                          togglingId === event._id ||
+                          (event.isFull && !event.isRegistered)
+                        }
+                        className={`w-full rounded-xl py-2.5 text-sm font-medium transition-all disabled:opacity-50 ${
+                          event.isRegistered
+                            ? "border border-gray-200 bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            : event.isFull
+                              ? "cursor-not-allowed border border-gray-200 bg-gray-100 text-gray-400"
+                              : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500"
+                        }`}
+                      >
+                        {togglingId === event._id
+                          ? "…"
+                          : event.isRegistered
+                            ? "Me désinscrire"
+                            : event.isFull
+                              ? "Complet"
+                              : "Je participe ✨"}
+                      </button>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Événements passés */}
+          {pastEvents.length > 0 && (
+            <section className="mt-8 sm:mt-12">
+              <button
+                onClick={() => setShowPast((current) => !current)}
+                className="mx-auto mb-4 flex items-center gap-2 rounded-full border border-[#e8e0f5] bg-white px-4 py-2 text-sm font-medium text-[#8E7AB5] transition-colors hover:text-[#5B4B8A]"
+              >
+                {showPast ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {showPast ? "Masquer" : "Voir"} les événements passés (
+                {pastEvents.length})
+              </button>
+
+              <AnimatePresence>
+                {showPast && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    {/* Mobile : passés en accordéons très compacts */}
+                    <div className="space-y-2 opacity-75 sm:hidden">
+                      {pastEvents.map((event) => {
+                        const isOpen = openPastEventId === event._id;
+
+                        return (
+                          <div
+                            key={event._id}
+                            className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenPastEventId(isOpen ? null : event._id)
+                              }
+                              className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                            >
+                              <span className="text-2xl">
+                                {event.coverEmoji || event.emoji}
+                              </span>
+
+                              <div className="min-w-0 flex-1">
+                                <h3 className="truncate text-sm font-semibold text-[#2d1b69]">
+                                  {event.title}
+                                </h3>
+
+                                <p className="text-[11px] text-[#8E7AB5]">
+                                  {formatShortDate(event.date)} ·{" "}
+                                  {event.attendeeCount} participante
+                                  {event.attendeeCount !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+
+                              <ChevronDown
+                                className={`h-4 w-4 text-[#8E7AB5] transition-transform ${
+                                  isOpen ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
+
+                            <AnimatePresence initial={false}>
+                              {isOpen && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{
+                                    duration: 0.2,
+                                    ease: "easeOut",
+                                  }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="border-t border-[#f0ecff] px-3 pb-3 pt-2">
+                                    <p className="text-xs leading-relaxed text-[#8E7AB5]">
+                                      {event.description}
+                                    </p>
+
+                                    <p className="mt-2 text-xs font-medium text-[#5B4B8A]">
+                                      📅 {capitalize(formatDate(event.date))}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop / tablette : passés en grille */}
+                    <div className="hidden grid-cols-2 gap-4 opacity-60 sm:grid">
+                      {pastEvents.map((event) => (
+                        <div
+                          key={event._id}
+                          className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white p-4"
+                        >
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="text-xl">
+                              {event.coverEmoji || event.emoji}
+                            </span>
+
+                            <div>
+                              <h3 className="text-sm font-semibold text-[#2d1b69]">
+                                {event.title}
+                              </h3>
+
+                              <p className="text-xs text-[#8E7AB5]">
+                                {capitalize(formatDate(event.date))}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-[#8E7AB5]">
+                            {event.attendeeCount} participante
+                            {event.attendeeCount !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
+          )}
+        </main>
+      </div>
+
+      {/* Footer masqué sur mobile pour garder une sensation d'application */}
+      <div className="hidden sm:block">
+        <Footer />
+      </div>
+    </>
   );
 }

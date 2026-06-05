@@ -1,608 +1,962 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, User, Moon, Sparkles, ChevronDown, Bell, LogOut, Crown, Shield } from 'lucide-react';
+import {
+  Menu,
+  X,
+  User,
+  Moon,
+  Sparkles,
+  ChevronDown,
+  LogOut,
+  Crown,
+  Shield,
+  Bell,
+  Home,
+  Compass,
+  Heart,
+  MessageCircle,
+  Settings,
+} from 'lucide-react';
 import { getPusherClient } from '@/lib/pusher-client';
 
+/**
+ * Type d'un sous-lien dans le header.
+ */
+type HeaderSubItem = {
+  label: string;
+  href: string;
+};
+
+/**
+ * Type d'un lien principal du header.
+ */
+type HeaderLink = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  mobileIcon: string;
+  badge?: string;
+  subItems?: HeaderSubItem[];
+};
+
+/**
+ * Header SferaLuna.
+ *
+ * Objectifs de cette version :
+ * - header desktop conservé, mais plus propre ;
+ * - header mobile beaucoup plus compact ;
+ * - menu burger différent d'un menu classique ;
+ * - menu mobile sous forme de panneau flottant "Luna Dock" ;
+ * - sous-sections en accordéon mobile ;
+ * - support utilisateur connecté / non connecté ;
+ * - notifications temps réel via Pusher ;
+ * - bouton retour en haut masqué tant qu'on n'a pas scrollé.
+ */
 export default function Header() {
-    const [open, setOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
-    const [hoveredLink, setHoveredLink] = useState<string | null>(null);
-    const [showAuthDropdown, setShowAuthDropdown] = useState(false);
-    const [showUserDropdown, setShowUserDropdown] = useState(false);
-    const [notifCount, setNotifCount] = useState(0);
-    const pathname = usePathname();
-    const router = useRouter();
-    const { data: session, status } = useSession();
-    const isLoggedIn = status === 'authenticated' && !!session?.user;
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
 
-    // Polling notifications toutes les 30s
-    useEffect(() => {
-        if (!isLoggedIn) return;
+  /**
+   * Accordéon mobile :
+   * on ouvre un seul groupe à la fois.
+   */
+  const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
 
-        const fetchNotifs = async () => {
-            try {
-                const res = await fetch('/api/notifications');
-                if (res.ok) {
-                    const data = await res.json();
-                    setNotifCount(data.total || 0);
-                }
-            } catch {}
-        };
+  const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, status } = useSession();
 
-        fetchNotifs();
-        const interval = setInterval(fetchNotifs, 30_000);
-        return () => clearInterval(interval);
-    }, [isLoggedIn]);
+  const isLoggedIn = status === 'authenticated' && !!session?.user;
 
-    // Abonnement Pusher — notifications temps réel (nouveaux matches)
-    useEffect(() => {
-        if (!isLoggedIn) return;
+  /**
+   * Liens principaux du header.
+   */
+  const links: HeaderLink[] = [
+    {
+      href: '/',
+      label: 'Luna',
+      icon: <Moon size={17} />,
+      mobileIcon: '🌙',
+      subItems: [
+        { label: 'Accueil', href: '/' },
+        { label: 'Notre histoire', href: '/histoire' },
+        { label: 'Explorer librement', href: '/explorer' },
+        { label: 'Équipe', href: '/equipe' },
+      ],
+    },
+    {
+      href: '/valeurs',
+      label: 'Valeurs',
+      icon: <Heart size={17} />,
+      mobileIcon: '💫',
+      badge: 'Essentiel',
+    },
+    {
+      href: '/fonctionnalites',
+      label: 'Fonctions',
+      icon: <Sparkles size={17} />,
+      mobileIcon: '🚀',
+      subItems: [
+        { label: 'Toutes les fonctionnalités', href: '/fonctionnalites' },
+        { label: 'Circle of Six', href: '/circle' },
+        { label: 'Mode Fantôme', href: '/mode-fantome' },
+        { label: 'VibePlanner', href: '/vibeplanner' },
+        { label: 'VibeSphere', href: '/vibesphere' },
+      ],
+    },
+    {
+      href: '/vibesphere',
+      label: 'VibeSphere',
+      icon: <Compass size={17} />,
+      mobileIcon: '🌌',
+      badge: 'Nouveau',
+    },
+    {
+      href: '/commencer',
+      label: 'Commencer',
+      icon: <Sparkles size={17} />,
+      mobileIcon: '🌟',
+      subItems: [
+        { label: 'Commencer', href: '/commencer' },
+        { label: 'Guide débutant', href: '/guide' },
+        { label: 'FAQ', href: '/faq' },
+        { label: 'Tarifs', href: '/tarifs' },
+      ],
+    },
+  ];
 
-        const sessionUser = session?.user as { id?: string } | undefined;
-        const userId = sessionUser?.id;
-        if (!userId) return;
+  /**
+   * Détection du scroll pour rendre le header plus compact et lisible.
+   */
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 16);
+    };
 
-        const channelName = `private-user-${userId}`;
-        const client = getPusherClient();
-        const channel = client.subscribe(channelName);
+    handleScroll();
 
-        channel.bind('new-match', () => {
-            setNotifCount((prev) => prev + 1);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  /**
+   * Ferme le menu mobile à chaque changement de route.
+   */
+  useEffect(() => {
+    setOpen(false);
+    setOpenMobileGroup(null);
+    setShowAuthDropdown(false);
+    setShowUserDropdown(false);
+  }, [pathname]);
+
+  /**
+   * Quand le menu mobile est ouvert, on bloque le scroll du body.
+   * Ça évite les bugs de scroll derrière le menu.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  /**
+   * Notifications : polling toutes les 30 secondes.
+   */
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const fetchNotifs = async () => {
+      try {
+        const res = await fetch('/api/notifications', {
+          cache: 'no-store',
         });
 
-        return () => {
-            channel.unbind_all();
-            client.unsubscribe(channelName);
-        };
-    }, [isLoggedIn, session?.user]);
+        if (!res.ok) return;
 
-    const links = [
-        {
-            href: '/',
-            label: 'Luna',
-            icon: '🌙',
-            subItems: [
-                { label: 'Accueil', href: '/' },
-                { label: 'Notre histoire', href: '/histoire' },
-                { label: 'Explorer librement', href: '/explorer' },
-                { label: 'Équipe', href: '/equipe' },
-            ]
-        },
-        {
-            href: '/valeurs',
-            label: 'Valeurs',
-            icon: '💫',
-            badge: 'Essentiel'
-        },
-        {
-            href: '/fonctionnalites',
-            label: 'Fonctionnalités',
-            icon: '🚀',
-            subItems: [
-                { label: 'Fonctionnalites', href: '/fonctionnalites' },
-                { label: 'Circle of Six', href: '/circle' },
-                { label: 'Mode Fantôme', href: '/mode-fantome' },
-                { label: 'VibePlanner', href: '/vibeplanner' },
-            ]
-        },
-        {
-            href: '/vibesphere',
-            label: 'VibeSphere',
-            icon: '🌌',
-            badge: 'Nouveau'
-        },
-        {
-            href: '/commencer',
-            label: 'Commencer',
-            icon: '🌟',
-            subItems: [
-                { label: 'Commencer', href: '/commencer' },
-                { label: 'Guide débutant', href: '/guide' },
-                { label: 'FAQ', href: '/faq' },
-                { label: 'Tarifs', href: '/tarifs' },
-
-            ]
-        },
-    ];
-
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    const handleAuthClick = (mode: 'login' | 'register') => {
-        router.push(`/auth?mode=${mode}`);
-        setOpen(false);
-        setShowAuthDropdown(false);
+        const data = await res.json();
+        setNotifCount(data.total || 0);
+      } catch {
+        // On ignore volontairement l'erreur pour ne pas casser le header.
+      }
     };
 
-    const handleLogout = async () => {
-        await signOut({ redirect: false });
-        router.push('/');
-        setShowUserDropdown(false);
-        setOpen(false);
-    };
+    fetchNotifs();
 
-    const menuVariants = {
-        closed: {
-            opacity: 0,
-            x: 100,
-            transition: {
-                duration: 0.3,
-                ease: "easeInOut"
-            }
-        },
-        open: {
-            opacity: 1,
-            x: 0,
-            transition: {
-                duration: 0.4,
-                ease: "easeOut",
-                staggerChildren: 0.1,
-                delayChildren: 0.2
-            }
-        }
-    };
+    const interval = setInterval(fetchNotifs, 30_000);
 
-    const itemVariants = {
-        closed: { opacity: 0, x: 20 },
-        open: { opacity: 1, x: 0 }
-    };
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
-    return (
-        <>
-            <motion.header
-                initial={{ y: -100 }}
-                animate={{ y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-                    ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-white/20'
-                    : 'bg-transparent'
-                    }`}
+  /**
+   * Notifications temps réel via Pusher.
+   * Exemple : nouveau match.
+   */
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const sessionUser = session?.user as { id?: string } | undefined;
+    const userId = sessionUser?.id;
+
+    if (!userId) return;
+
+    const channelName = `private-user-${userId}`;
+    const client = getPusherClient();
+    const channel = client.subscribe(channelName);
+
+    channel.bind('new-match', () => {
+      setNotifCount((prev) => prev + 1);
+    });
+
+    return () => {
+      channel.unbind_all();
+      client.unsubscribe(channelName);
+    };
+  }, [isLoggedIn, session?.user]);
+
+  /**
+   * Redirection vers auth.
+   */
+  const handleAuthClick = (mode: 'login' | 'register') => {
+    router.push(`/auth?mode=${mode}`);
+    setOpen(false);
+    setShowAuthDropdown(false);
+  };
+
+  /**
+   * Déconnexion.
+   */
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+    setShowUserDropdown(false);
+    setOpen(false);
+  };
+
+  /**
+   * Ouvre / ferme un groupe du menu mobile.
+   */
+  const toggleMobileGroup = (href: string) => {
+    setOpenMobileGroup((current) => (current === href ? null : href));
+  };
+
+  /**
+   * Variants du panneau mobile.
+   */
+  const mobilePanelVariants = {
+    closed: {
+      opacity: 0,
+      y: -18,
+      scale: 0.96,
+      filter: 'blur(8px)',
+      transition: {
+        duration: 0.2,
+        ease: 'easeInOut',
+      },
+    },
+    open: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: 'blur(0px)',
+      transition: {
+        duration: 0.28,
+        ease: 'easeOut',
+        staggerChildren: 0.04,
+        delayChildren: 0.05,
+      },
+    },
+  };
+
+  const mobileItemVariants = {
+    closed: { opacity: 0, y: 10 },
+    open: { opacity: 1, y: 0 },
+  };
+
+  return (
+    <>
+      <motion.header
+        initial={{ y: -80 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'border-b border-white/40 bg-white/90 shadow-[0_8px_30px_rgba(80,60,120,0.08)] backdrop-blur-xl'
+            : 'bg-white/65 backdrop-blur-md'
+        }`}
+      >
+        {/* Ligne lumineuse très fine */}
+        <motion.div
+          className="h-[2px] origin-left bg-gradient-to-r from-[#8E7AB5] via-[#D9B8FF] to-[#8E7AB5]"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 1.4, ease: 'easeInOut' }}
+        />
+
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between sm:h-16 lg:h-20">
+            {/* Logo compact mobile */}
+            <motion.div
+              className="flex min-w-0 items-center"
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: 'spring', stiffness: 400 }}
             >
-                {/* Barre de progression */}
-                <motion.div
-                    className="h-0.5 bg-gradient-to-r from-[#8E7AB5] via-[#D9B8FF] to-[#8E7AB5]"
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 2, ease: "easeInOut" }}
-                    style={{ transformOrigin: 'left' }}
+              <Link href="/" className="group relative flex items-center gap-2">
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#8E7AB5]/20 to-[#D9B8FF]/20 opacity-0 blur transition-opacity duration-300 group-hover:opacity-100" />
+
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo-sferaluna.png"
+                  alt="SferaLuna"
+                  width={54}
+                  height={54}
+                  className="relative z-10 block h-11 w-11 shrink-0 object-contain drop-shadow-sm sm:h-14 sm:w-14 lg:h-[72px] lg:w-[72px]"
+                  style={{ background: 'transparent' }}
                 />
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16 md:h-20">
-                        {/* Logo avec animation */}
-                        <motion.div
-                            className="flex items-center"
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ type: "spring", stiffness: 400 }}
-                        >
-                            <Link href="/" className="group relative flex items-center gap-2">
-                                <div className="absolute -inset-2 bg-gradient-to-r from-[#8E7AB5]/20 to-[#D9B8FF]/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src="/logo-sferaluna.png"
-                                    alt="SferaLuna"
-                                    width={77}
-                                    height={77}
-                                    className="block shrink-0 z-10 drop-shadow-lg"
-                                    style={{ background: "transparent" }}
-                                />
-                                <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-                            </Link>
-
-                            {/* Badge site féminin & sécurisé */}
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.3 }}
-                                className="hidden md:flex items-center gap-1.5 ml-4 px-3 py-1 rounded-full border border-[#8E7AB5]/30 bg-white/60 backdrop-blur-sm"
-                            >
-                                <Shield size={11} className="text-[#8E7AB5]" />
-                                <span className="text-[11px] font-medium text-[#5B4B8A] whitespace-nowrap tracking-wide">100% féminin · sécurisé</span>
-                            </motion.div>
-                        </motion.div>
-
-                        {/* Menu desktop */}
-                        <nav className="hidden lg:flex items-center space-x-1">
-                            {links.map((link) => (
-                                <div key={link.href} className="relative group">
-                                    <Link
-                                        href={link.href}
-                                        onMouseEnter={() => setHoveredLink(link.href)}
-                                        onMouseLeave={() => setHoveredLink(null)}
-                                        className={`relative px-4 py-2 text-sm font-medium transition-all duration-300 flex items-center gap-2 ${pathname === link.href
-                                            ? 'text-[#8E7AB5]'
-                                            : 'text-[#5E5E5E] hover:text-[#8E7AB5]'
-                                            }`}
-                                    >
-                                        <span className="text-lg">{link.icon}</span>
-                                        {link.label}
-                                        {link.badge && (
-                                            <span className={`px-2 py-0.5 text-xs rounded-full ${link.badge === 'Nouveau'
-                                                ? 'bg-[#FF6B6B]/10 text-[#FF6B6B] border border-[#FF6B6B]/20'
-                                                : 'bg-[#8E7AB5]/10 text-[#8E7AB5] border border-[#8E7AB5]/20'
-                                                }`}>
-                                                {link.badge}
-                                            </span>
-                                        )}
-                                        {link.subItems && (
-                                            <ChevronDown size={14} className={`transition-transform duration-300 ${hoveredLink === link.href ? 'rotate-180' : ''
-                                                }`} />
-                                        )}
-                                    </Link>
-
-                                    {/* Animation soulignement */}
-                                    <motion.div
-                                        className={`absolute left-4 right-4 bottom-0 h-0.5 bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] ${pathname === link.href ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                                            }`}
-                                        initial={false}
-                                        animate={{
-                                            width: pathname === link.href || hoveredLink === link.href ? '100%' : '0%'
-                                        }}
-                                        transition={{ duration: 0.3 }}
-                                    />
-
-                                    {/* Dropdown pour sous-items */}
-                                    {link.subItems && (
-                                        <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
-                                            <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-3 min-w-[200px]">
-                                                {link.subItems.map((subItem) => (
-                                                    <Link
-                                                        key={subItem.href}
-                                                        href={subItem.href}
-                                                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#F5F3F7] text-[#5E5E5E] hover:text-[#8E7AB5] transition-colors"
-                                                    >
-                                                        <span className="text-[#8E7AB5]">•</span>
-                                                        {subItem.label}
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </nav>
-
-                        {/* Actions droite */}
-                        <div className="hidden lg:flex items-center gap-3">
-                            {isLoggedIn ? (
-                                <>
-                                    {/* Explorer */}
-                                    <Link
-                                        href="/explorer"
-                                        className="px-3 py-2 rounded-lg text-sm font-medium text-[#5E5E5E] hover:text-[#8E7AB5] hover:bg-[#F5F3F7] transition-colors flex items-center gap-1.5"
-                                    >
-                                        <Sparkles size={15} className="text-[#8E7AB5]" />
-                                        Explorer
-                                    </Link>
-
-                                    {/* Dropdown user connecté */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => { setShowUserDropdown(!showUserDropdown); setNotifCount(0); }}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#8E7AB5]/20 bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 hover:from-[#8E7AB5]/20 hover:to-[#D9B8FF]/20 transition-all text-[#5B4B8A]"
-                                        >
-                                            <div className="relative">
-                                                {session?.user?.image ? (
-                                                    <img src={session.user.image} alt="" className="h-6 w-6 rounded-full object-cover" />
-                                                ) : (
-                                                    <User size={16} />
-                                                )}
-                                                {notifCount > 0 && (
-                                                    <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                                                        {notifCount > 9 ? '9+' : notifCount}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-sm font-medium max-w-24 truncate">
-                                                {session?.user?.name || 'Mon compte'}
-                                            </span>
-                                            <ChevronDown size={13} className={`transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {showUserDropdown && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                                    className="absolute right-0 top-full mt-2 bg-white/97 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-2 min-w-[200px] z-50"
-                                                >
-                                                    <div className="px-3 py-2 mb-1 border-b border-[#F0F0F0]">
-                                                        <p className="text-xs font-semibold text-[#8E7AB5] truncate">{session?.user?.email}</p>
-                                                    </div>
-                                                    <Link
-                                                        href="/mon-compte"
-                                                        onClick={() => setShowUserDropdown(false)}
-                                                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-[#F5F3F7] text-[#5E5E5E] hover:text-[#8E7AB5] transition-colors text-sm"
-                                                    >
-                                                        <User size={15} /> Mon compte
-                                                    </Link>
-                                                    <Link
-                                                        href="/mon-compte"
-                                                        onClick={() => setShowUserDropdown(false)}
-                                                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-[#F5F3F7] text-[#5E5E5E] hover:text-[#8E7AB5] transition-colors text-sm"
-                                                    >
-                                                        <Crown size={15} /> Premium
-                                                    </Link>
-                                                    <div className="h-px bg-[#F0F0F0] my-1" />
-                                                    <button
-                                                        onClick={handleLogout}
-                                                        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-red-50 text-[#999] hover:text-red-500 transition-colors text-sm"
-                                                    >
-                                                        <LogOut size={15} /> Déconnexion
-                                                    </button>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Mode nuit — cosmétique */}
-                                    <button className="p-2 rounded-lg hover:bg-[#F5F3F7] transition-colors">
-                                        <Moon size={20} className="text-[#5E5E5E]" />
-                                    </button>
-
-                                    {/* Connexion dropdown */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowAuthDropdown(!showAuthDropdown)}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-[#F5F3F7] transition-colors text-[#5E5E5E]"
-                                        >
-                                            <User size={18} />
-                                            <span>Connexion</span>
-                                            <ChevronDown size={14} className={`transition-transform ${showAuthDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {showAuthDropdown && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                                    className="absolute right-0 top-full mt-2 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-3 min-w-[180px] z-50"
-                                                >
-                                                    <button
-                                                        onClick={() => handleAuthClick('login')}
-                                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-[#F5F3F7] text-[#5E5E5E] hover:text-[#8E7AB5] transition-colors font-medium"
-                                                    >
-                                                        Se connecter
-                                                    </button>
-                                                    <div className="h-px bg-gradient-to-r from-transparent via-[#8E7AB5]/20 to-transparent my-2" />
-                                                    <button
-                                                        onClick={() => handleAuthClick('register')}
-                                                        className="w-full text-left px-4 py-3 rounded-lg bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] text-white hover:shadow-lg transition-all duration-300 font-medium"
-                                                    >
-                                                        S'inscrire gratuitement
-                                                    </button>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Bouton mobile */}
-                        <div className="flex lg:hidden items-center gap-3">
-                            <button
-                                onClick={() => router.push(isLoggedIn ? '/mon-compte' : '/auth?mode=login')}
-                                className="p-2 rounded-lg hover:bg-[#F5F3F7] transition-colors"
-                            >
-                                {isLoggedIn && session?.user?.image ? (
-                                    <img src={session.user.image} alt="" className="h-6 w-6 rounded-full object-cover" />
-                                ) : (
-                                    <User size={20} className="text-[#5E5E5E]" />
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setOpen(!open)}
-                                className="relative z-50 p-2 rounded-lg hover:bg-[#F5F3F7] transition-colors"
-                            >
-                                <AnimatePresence mode="wait">
-                                    {open ? (
-                                        <motion.div
-                                            key="close"
-                                            initial={{ rotate: -90, opacity: 0 }}
-                                            animate={{ rotate: 0, opacity: 1 }}
-                                            exit={{ rotate: 90, opacity: 0 }}
-                                        >
-                                            <X size={28} className="text-[#8E7AB5]" />
-                                        </motion.div>
-                                    ) : (
-                                        <motion.div
-                                            key="menu"
-                                            initial={{ rotate: 90, opacity: 0 }}
-                                            animate={{ rotate: 0, opacity: 1 }}
-                                            exit={{ rotate: -90, opacity: 0 }}
-                                        >
-                                            <Menu size={28} className="text-[#8E7AB5]" />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </button>
-                        </div>
-                    </div>
+                <div className="hidden min-[380px]:block lg:hidden">
+                  <p className="text-sm font-black leading-none text-[#5B4B8A]">
+                    SferaLuna
+                  </p>
+                  <p className="text-[10px] leading-tight text-[#8E7AB5]/70">
+                    rencontre au féminin
+                  </p>
                 </div>
-            </motion.header>
+              </Link>
 
-            {/* Menu mobile */}
-            <AnimatePresence>
-                {open && (
-                    <>
-                        {/* Overlay */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setOpen(false)}
-                            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
-                        />
+              {/* Badge desktop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25 }}
+                className="ml-4 hidden items-center gap-1.5 rounded-full border border-[#8E7AB5]/25 bg-white/60 px-3 py-1 backdrop-blur-sm md:flex"
+              >
+                <Shield size={11} className="text-[#8E7AB5]" />
 
-                        {/* Menu */}
-                        <motion.div
-                            variants={menuVariants}
-                            initial="closed"
-                            animate="open"
-                            exit="closed"
-                            className="fixed inset-y-0 right-0 w-full max-w-sm bg-white/95 backdrop-blur-md shadow-2xl border-l border-white/20 z-40 lg:hidden overflow-y-auto"
-                        >
-                            <div className="p-6 pt-20 space-y-2">
-                                {/* En-tête mobile */}
-                                <div className="flex items-center gap-3 mb-8 pb-6 border-b border-[#F0F0F0]">
-                                    <div className="p-3 rounded-xl bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10">
-                                        <Moon size={24} className="text-[#8E7AB5]" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-[#1C1C1C]">Menu SferaLuna</h3>
-                                        <p className="text-sm text-[#666]">Naviguer sur la plateforme</p>
-                                    </div>
-                                </div>
-
-                                {links.map((link, index) => (
-                                    <motion.div
-                                        key={link.href}
-                                        variants={itemVariants}
-                                        transition={{ delay: index * 0.05 }}
-                                    >
-                                        <Link
-                                            href={link.href}
-                                            onClick={() => setOpen(false)}
-                                            className={`flex items-center gap-3 px-4 py-4 rounded-xl transition-all duration-300 ${pathname === link.href
-                                                ? 'bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 text-[#8E7AB5]'
-                                                : 'hover:bg-[#F5F3F7] text-[#5E5E5E] hover:text-[#8E7AB5]'
-                                                }`}
-                                        >
-                                            <span className="text-2xl">{link.icon}</span>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">{link.label}</span>
-                                                    {link.badge && (
-                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${link.badge === 'Nouveau'
-                                                            ? 'bg-[#FF6B6B]/10 text-[#FF6B6B]'
-                                                            : 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
-                                                            }`}>
-                                                            {link.badge}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {link.subItems && (
-                                                    <p className="text-xs text-[#666] mt-1">Voir les sous-sections</p>
-                                                )}
-                                            </div>
-                                            <ChevronDown size={16} className="text-[#8E7AB5]/50" />
-                                        </Link>
-
-                                        {/* Sous-items mobile */}
-                                        {link.subItems && (
-                                            <div className="ml-12 mt-2 space-y-1">
-                                                {link.subItems.map((subItem) => (
-                                                    <Link
-                                                        key={subItem.href}
-                                                        href={subItem.href}
-                                                        onClick={() => setOpen(false)}
-                                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#F5F3F7] text-[#666] hover:text-[#8E7AB5] text-sm"
-                                                    >
-                                                        <span className="w-1 h-1 rounded-full bg-[#8E7AB5]" />
-                                                        {subItem.label}
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                ))}
-
-                                {/* Actions mobile */}
-                                <div className="pt-8 mt-8 border-t border-[#F0F0F0] space-y-4">
-                                    {isLoggedIn ? (
-                                        <>
-                                            <div className="px-4 py-3 rounded-xl bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 border border-[#8E7AB5]/20">
-                                                <p className="text-xs text-[#8E7AB5] font-medium">{session?.user?.name || 'Compte'}</p>
-                                                <p className="text-xs text-[#999] truncate">{session?.user?.email}</p>
-                                            </div>
-                                            <motion.button
-                                                variants={itemVariants}
-                                                onClick={() => { router.push('/mon-compte'); setOpen(false); }}
-                                                className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] text-white hover:shadow-lg transition-all duration-300 font-medium flex items-center justify-center gap-2"
-                                            >
-                                                <User size={18} />
-                                                Mon compte
-                                            </motion.button>
-                                            <motion.button
-                                                variants={itemVariants}
-                                                onClick={handleLogout}
-                                                className="w-full px-4 py-3 rounded-xl border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium flex items-center justify-center gap-2"
-                                            >
-                                                <LogOut size={18} />
-                                                Déconnexion
-                                            </motion.button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <motion.button
-                                                variants={itemVariants}
-                                                onClick={() => handleAuthClick('login')}
-                                                className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-[#F5F3F7] to-[#F0F0F0] text-[#5E5E5E] hover:text-[#8E7AB5] transition-colors font-medium flex items-center justify-center gap-2"
-                                            >
-                                                <User size={18} />
-                                                Se connecter
-                                            </motion.button>
-
-                                            <motion.button
-                                                variants={itemVariants}
-                                                transition={{ delay: 0.1 }}
-                                                onClick={() => handleAuthClick('register')}
-                                                className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] text-white hover:shadow-lg transition-all duration-300 font-medium flex items-center justify-center gap-2"
-                                            >
-                                                <Sparkles size={18} />
-                                                S'inscrire gratuitement
-                                                <span className="ml-auto px-2 py-1 text-xs bg-white/20 rounded-full">✨</span>
-                                            </motion.button>
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Footer mobile */}
-                                <motion.div
-                                    variants={itemVariants}
-                                    transition={{ delay: 0.2 }}
-                                    className="pt-8 text-center text-xs text-[#666]"
-                                >
-                                    <p>© 2024 SferaLuna. Tous droits réservés.</p>
-                                    <p className="mt-1">Une communauté bienveillante pour femmes</p>
-                                </motion.div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-
-            {/* Indicateur de défilement */}
-            <motion.div
-                className="fixed right-6 bottom-6 z-40 lg:hidden"
-                animate={{ y: scrolled ? 0 : 100 }}
-                transition={{ type: "spring", stiffness: 200 }}
-            >
-                <button
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="p-3 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white shadow-lg hover:shadow-xl transition-shadow"
-                >
-                    <ChevronDown size={20} className="rotate-180" />
-                </button>
+                <span className="whitespace-nowrap text-[11px] font-medium tracking-wide text-[#5B4B8A]">
+                  100% féminin · sécurisé
+                </span>
+              </motion.div>
             </motion.div>
-        </>
-    );
+
+            {/* Menu desktop */}
+            <nav className="hidden items-center space-x-1 lg:flex">
+              {links.map((link) => {
+                const isActive =
+                  pathname === link.href ||
+                  Boolean(
+                    link.subItems?.some((subItem) => pathname === subItem.href)
+                  );
+
+                return (
+                  <div key={link.href} className="group relative">
+                    <Link
+                      href={link.href}
+                      onMouseEnter={() => setHoveredLink(link.href)}
+                      onMouseLeave={() => setHoveredLink(null)}
+                      className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-300 ${
+                        isActive
+                          ? 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
+                          : 'text-[#5E5E5E] hover:bg-[#8E7AB5]/8 hover:text-[#8E7AB5]'
+                      }`}
+                    >
+                      <span className="text-[#8E7AB5]">{link.icon}</span>
+
+                      {link.label}
+
+                      {link.badge && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] ${
+                            link.badge === 'Nouveau'
+                              ? 'border border-[#FF6B6B]/20 bg-[#FF6B6B]/10 text-[#FF6B6B]'
+                              : 'border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 text-[#8E7AB5]'
+                          }`}
+                        >
+                          {link.badge}
+                        </span>
+                      )}
+
+                      {link.subItems && (
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform duration-300 ${
+                            hoveredLink === link.href ? 'rotate-180' : ''
+                          }`}
+                        />
+                      )}
+                    </Link>
+
+                    {/* Dropdown desktop */}
+                    {link.subItems && (
+                      <div className="invisible absolute left-0 top-full pt-2 opacity-0 transition-all duration-300 group-hover:visible group-hover:opacity-100">
+                        <div className="min-w-[220px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
+                          {link.subItems.map((subItem) => (
+                            <Link
+                              key={subItem.href}
+                              href={subItem.href}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#8E7AB5]" />
+                              {subItem.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+
+            {/* Actions desktop */}
+            <div className="hidden items-center gap-3 lg:flex">
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href="/explorer"
+                    className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                  >
+                    <Sparkles size={15} className="text-[#8E7AB5]" />
+                    Explorer
+                  </Link>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserDropdown((current) => !current);
+                        setNotifCount(0);
+                      }}
+                      className="flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 px-3 py-2 text-[#5B4B8A] transition-all hover:from-[#8E7AB5]/20 hover:to-[#D9B8FF]/20"
+                    >
+                      <div className="relative">
+                        {session?.user?.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={session.user.image}
+                            alt=""
+                            className="h-6 w-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User size={16} />
+                        )}
+
+                        {notifCount > 0 && (
+                          <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white">
+                            {notifCount > 9 ? '9+' : notifCount}
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="max-w-24 truncate text-sm font-medium">
+                        {session?.user?.name || 'Mon compte'}
+                      </span>
+
+                      <ChevronDown
+                        size={13}
+                        className={`transition-transform ${
+                          showUserDropdown ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    <AnimatePresence>
+                      {showUserDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                          className="absolute right-0 top-full z-50 mt-2 min-w-[220px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl"
+                        >
+                          <div className="mb-1 border-b border-[#F0F0F0] px-3 py-2">
+                            <p className="truncate text-xs font-semibold text-[#8E7AB5]">
+                              {session?.user?.email}
+                            </p>
+                          </div>
+
+                          <Link
+                            href="/mon-compte"
+                            onClick={() => setShowUserDropdown(false)}
+                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                          >
+                            <User size={15} />
+                            Mon compte
+                          </Link>
+
+                          <Link
+                            href="/mon-compte?tab=premium"
+                            onClick={() => setShowUserDropdown(false)}
+                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                          >
+                            <Crown size={15} />
+                            Premium
+                          </Link>
+
+                          <Link
+                            href="/messages"
+                            onClick={() => setShowUserDropdown(false)}
+                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                          >
+                            <MessageCircle size={15} />
+                            Messages
+                          </Link>
+
+                          <div className="my-1 h-px bg-[#F0F0F0]" />
+
+                          <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#999] transition-colors hover:bg-red-50 hover:text-red-500"
+                          >
+                            <LogOut size={15} />
+                            Déconnexion
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-full p-2 transition-colors hover:bg-[#F5F3F7]"
+                    aria-label="Mode nuit"
+                  >
+                    <Moon size={20} className="text-[#5E5E5E]" />
+                  </button>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowAuthDropdown((current) => !current)
+                      }
+                      className="flex items-center gap-2 rounded-full px-4 py-2 text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7]"
+                    >
+                      <User size={18} />
+                      <span>Connexion</span>
+
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform ${
+                          showAuthDropdown ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    <AnimatePresence>
+                      {showAuthDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                          className="absolute right-0 top-full z-50 mt-2 min-w-[190px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleAuthClick('login')}
+                            className="w-full rounded-xl px-4 py-3 text-left font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                          >
+                            Se connecter
+                          </button>
+
+                          <div className="my-1 h-px bg-gradient-to-r from-transparent via-[#8E7AB5]/20 to-transparent" />
+
+                          <button
+                            type="button"
+                            onClick={() => handleAuthClick('register')}
+                            className="w-full rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-left font-medium text-white transition-all duration-300 hover:shadow-lg"
+                          >
+                            S’inscrire gratuitement
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Actions mobile compactes */}
+            <div className="flex items-center gap-1.5 lg:hidden">
+              {/* Notifications ou accès compte */}
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(isLoggedIn ? '/mon-compte' : '/auth?mode=login')
+                }
+                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#8E7AB5]/10 bg-white/70 text-[#5B4B8A] shadow-sm backdrop-blur transition-colors hover:bg-[#F5F3F7]"
+                aria-label={isLoggedIn ? 'Mon compte' : 'Connexion'}
+              >
+                {isLoggedIn && session?.user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={session.user.image}
+                    alt=""
+                    className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <User size={18} />
+                )}
+
+                {isLoggedIn && notifCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    {notifCount > 9 ? '9+' : notifCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Burger original : pastille lunaire */}
+              <button
+                type="button"
+                onClick={() => setOpen((current) => !current)}
+                className={`relative z-[60] flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border shadow-sm transition-all ${
+                  open
+                    ? 'border-[#8E7AB5]/30 bg-[#1a0b2e] text-white'
+                    : 'border-[#8E7AB5]/15 bg-white/80 text-[#8E7AB5] backdrop-blur'
+                }`}
+                aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'}
+              >
+                <span className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5]/10 to-[#D9B8FF]/20" />
+
+                <AnimatePresence mode="wait">
+                  {open ? (
+                    <motion.span
+                      key="close"
+                      initial={{ rotate: -90, opacity: 0, scale: 0.7 }}
+                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                      exit={{ rotate: 90, opacity: 0, scale: 0.7 }}
+                      className="relative z-10"
+                    >
+                      <X size={20} />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="menu"
+                      initial={{ rotate: 90, opacity: 0, scale: 0.7 }}
+                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                      exit={{ rotate: -90, opacity: 0, scale: 0.7 }}
+                      className="relative z-10"
+                    >
+                      <Menu size={20} />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Menu mobile : Luna Dock */}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Overlay */}
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-40 bg-[#1a0b2e]/35 backdrop-blur-sm lg:hidden"
+              aria-label="Fermer le menu"
+            />
+
+            {/* Panneau flottant compact, pas un tiroir classique */}
+            <motion.div
+              variants={mobilePanelVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
+              className="fixed left-3 right-3 top-[4.15rem] z-50 max-h-[calc(100dvh-5rem)] overflow-hidden rounded-[2rem] border border-white/40 bg-white/92 shadow-[0_24px_80px_rgba(53,35,92,0.28)] backdrop-blur-2xl lg:hidden"
+            >
+              {/* Décor intérieur */}
+              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#D9B8FF]/40 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#8E7AB5]/25 blur-3xl" />
+
+              <div className="relative max-h-[calc(100dvh-5rem)] overflow-y-auto p-3">
+                {/* Capsule utilisateur compacte */}
+                <motion.div
+                  variants={mobileItemVariants}
+                  className="mb-3 rounded-[1.5rem] border border-[#8E7AB5]/15 bg-gradient-to-r from-[#F5F0FF] to-white p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8E7AB5] to-[#D9B8FF] text-white shadow-md">
+                      {isLoggedIn && session?.user?.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={session.user.image}
+                          alt=""
+                          className="h-full w-full rounded-2xl object-cover"
+                        />
+                      ) : (
+                        <Moon size={21} />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-[#1C1C1C]">
+                        {isLoggedIn
+                          ? session?.user?.name || 'Mon espace Luna'
+                          : 'Bienvenue sur SferaLuna'}
+                      </p>
+
+                      <p className="truncate text-xs text-[#6E6385]">
+                        {isLoggedIn
+                          ? session?.user?.email
+                          : 'Menu rapide, compact et sécurisé'}
+                      </p>
+                    </div>
+
+                    {isLoggedIn && notifCount > 0 && (
+                      <div className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-1 text-[10px] font-bold text-white">
+                        <Bell size={11} />
+                        {notifCount > 9 ? '9+' : notifCount}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Dock rapide */}
+                <motion.div
+                  variants={mobileItemVariants}
+                  className="mb-3 grid grid-cols-4 gap-2"
+                >
+                  {[
+                    { label: 'Accueil', href: '/', icon: <Home size={17} /> },
+                    {
+                      label: 'Explorer',
+                      href: '/explorer',
+                      icon: <Compass size={17} />,
+                    },
+                    {
+                      label: 'Matches',
+                      href: '/matches',
+                      icon: <Heart size={17} />,
+                    },
+                    {
+                      label: 'Compte',
+                      href: isLoggedIn ? '/mon-compte' : '/auth?mode=login',
+                      icon: <User size={17} />,
+                    },
+                  ].map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[#8E7AB5]/10 bg-white/75 px-2 py-2.5 text-[#5B4B8A] shadow-sm transition hover:bg-[#F5F0FF]"
+                    >
+                      {item.icon}
+                      <span className="text-[10px] font-semibold">
+                        {item.label}
+                      </span>
+                    </Link>
+                  ))}
+                </motion.div>
+
+                {/* Navigation accordéon */}
+                <div className="space-y-1.5">
+                  {links.map((link) => {
+                    const isOpen = openMobileGroup === link.href;
+                    const isActive =
+                      pathname === link.href ||
+                      Boolean(
+                        link.subItems?.some(
+                          (subItem) => pathname === subItem.href
+                        )
+                      );
+
+                    return (
+                      <motion.div
+                        key={link.href}
+                        variants={mobileItemVariants}
+                        className={`overflow-hidden rounded-2xl border transition-colors ${
+                          isActive
+                            ? 'border-[#8E7AB5]/25 bg-[#8E7AB5]/10'
+                            : 'border-[#8E7AB5]/10 bg-white/60'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <Link
+                            href={link.href}
+                            onClick={() => {
+                              if (!link.subItems) setOpen(false);
+                            }}
+                            className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-lg">
+                              {link.mobileIcon}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate text-sm font-bold text-[#5B4B8A]">
+                                  {link.label}
+                                </span>
+
+                                {link.badge && (
+                                  <span
+                                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                                      link.badge === 'Nouveau'
+                                        ? 'bg-red-100 text-red-500'
+                                        : 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
+                                    }`}
+                                  >
+                                    {link.badge}
+                                  </span>
+                                )}
+                              </div>
+
+                              {link.subItems && (
+                                <p className="truncate text-[10px] text-[#7A718A]">
+                                  {link.subItems.length} sous-sections
+                                </p>
+                              )}
+                            </div>
+                          </Link>
+
+                          {link.subItems && (
+                            <button
+                              type="button"
+                              onClick={() => toggleMobileGroup(link.href)}
+                              className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8E7AB5] transition hover:bg-[#8E7AB5]/10"
+                              aria-label={`Ouvrir ${link.label}`}
+                            >
+                              <ChevronDown
+                                size={17}
+                                className={`transition-transform ${
+                                  isOpen ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                          )}
+                        </div>
+
+                        <AnimatePresence initial={false}>
+                          {link.subItems && isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.22, ease: 'easeOut' }}
+                              className="overflow-hidden"
+                            >
+                              <div className="space-y-1 border-t border-[#8E7AB5]/10 px-3 pb-3 pt-2">
+                                {link.subItems.map((subItem) => (
+                                  <Link
+                                    key={subItem.href}
+                                    href={subItem.href}
+                                    onClick={() => setOpen(false)}
+                                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[#6E6385] transition hover:bg-white hover:text-[#8E7AB5]"
+                                  >
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#8E7AB5]" />
+                                    {subItem.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Actions mobile */}
+                <motion.div
+                  variants={mobileItemVariants}
+                  className="mt-3 border-t border-[#8E7AB5]/10 pt-3"
+                >
+                  {isLoggedIn ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          router.push('/mon-compte');
+                          setOpen(false);
+                        }}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-sm font-bold text-white shadow-lg"
+                      >
+                        <User size={16} />
+                        Compte
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-500"
+                      >
+                        <LogOut size={16} />
+                        Quitter
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAuthClick('login')}
+                        className="flex items-center justify-center gap-2 rounded-2xl border border-[#8E7AB5]/15 bg-white px-4 py-3 text-sm font-bold text-[#5B4B8A]"
+                      >
+                        <User size={16} />
+                        Connexion
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAuthClick('register')}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-sm font-bold text-white shadow-lg"
+                      >
+                        <Sparkles size={16} />
+                        Inscription
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+
+                <motion.p
+                  variants={mobileItemVariants}
+                  className="mt-3 text-center text-[10px] text-[#8A819A]"
+                >
+                  SferaLuna · Une communauté bienveillante pour femmes 💜
+                </motion.p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Bouton retour haut compact */}
+      <motion.div
+        className="fixed bottom-5 right-4 z-40 lg:hidden"
+        animate={{ y: scrolled ? 0 : 90, opacity: scrolled ? 1 : 0 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+      >
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white shadow-lg"
+          aria-label="Remonter en haut"
+        >
+          <ChevronDown size={20} className="rotate-180" />
+        </button>
+      </motion.div>
+    </>
+  );
 }
 
 

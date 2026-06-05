@@ -2,53 +2,56 @@
 
 "use client";
 
-import { useSession } from "next-auth/react";
-import { canUseFeature, isPremiumActive, getPlanLabel, PremiumFeatureManager } from "@/lib/premium";
-import type { LunaFeature } from "@/lib/premium";
-import type { IUser } from "@/models/User";
+import { useCallback } from "react";
+import { useSubscription } from "@/hooks/useSubscription";
 
 /**
- * Hook client pour vérifier l'accès premium dans les composants React.
+ * Hook premium simplifié.
  *
- * Usage :
- * ```tsx
- * const { isPremium, can, planLabel } = usePremium();
- * if (!can("invisible_mode")) return <UpgradePrompt />;
- * ```
+ * Il sert aux composants comme :
+ * - ExplorerPage
+ * - MonCompte
+ * - VibeSphere
+ *
+ * Il dépend maintenant de /api/subscription/status,
+ * donc il respecte vraiment Stripe et le webhook.
  */
 export function usePremium() {
-  const { data: session, status } = useSession();
+  const {
+    subscription,
+    loading,
+    error,
+    isPremium,
+    plan,
+    planLabel,
+    subscriptionStatus,
+    subscriptionStatusLabel,
+    hasFeature,
+    checkAction,
+    refresh,
+  } = useSubscription();
 
-  const user = session?.user as any;
-
-  const plan = user?.plan ?? "free";
-  const premium = user?.isPremium === true;
-  const subscriptionStatus = user?.subscriptionStatus ?? "inactive";
-
-  const userLike = { isPremium: premium, plan, subscriptionStatus } as Pick<
-    IUser,
-    "isPremium" | "plan" | "subscriptionStatus"
-  >;
-
-  const active = isPremiumActive(userLike);
+  const can = useCallback(
+    (feature: string) => {
+      return hasFeature(feature);
+    },
+    [hasFeature]
+  );
 
   return {
-    /** true si l'abonnement est réellement actif (active ou trialing) */
-    isPremium: active,
+    isPremium,
+    isLoading: loading,
+    error,
 
-    /** Plan actuel (ex: "premium-monthly") */
     plan,
+    planLabel,
+    subscriptionStatus,
+    subscriptionStatusLabel,
 
-    /** Label lisible (ex: "Premium") */
-    planLabel: getPlanLabel(plan),
+    subscription,
 
-    /** Vérifie l'accès à une fonctionnalité spécifique */
-    can: (feature: LunaFeature) => canUseFeature(userLike, feature),
-
-    /** Chargement de la session en cours */
-    isLoading: status === "loading",
-
-    /** Accès à l'objet session complet si besoin */
-    session,
+    can,
+    checkAction,
+    refresh,
   };
 }

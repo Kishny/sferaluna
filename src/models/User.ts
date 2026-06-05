@@ -62,6 +62,15 @@ export type SubscriptionStatus =
 export type ProfileVisibility = "public" | "matches" | "premium" | "invisible";
 
 /**
+ * Statut de vérification d'identité via Stripe Identity.
+ */
+export type IdentityVerificationStatus =
+  | "unverified"
+  | "pending"
+  | "verified"
+  | "failed";
+
+/**
  * Interface TypeScript principale de l'utilisateur SferaLuna.
  *
  * Elle décrit les champs que l'on manipule côté TypeScript.
@@ -126,7 +135,7 @@ export interface IUser extends Document {
 
   // Vérification d'identité Stripe Identity
   identityVerified: boolean;
-  identityVerificationStatus?: "unverified" | "pending" | "verified" | "failed";
+  identityVerificationStatus: IdentityVerificationStatus;
   stripeVerificationSessionId?: string | null;
 
   // Sécurité / suivi
@@ -143,8 +152,8 @@ export interface IUser extends Document {
  * Points importants :
  * - email est unique et normalisé en minuscules.
  * - pseudonyme a une valeur par défaut pour éviter les erreurs avec Google OAuth.
- * - les champs Stripe sont directement intégrés pour éviter que Mongoose les ignore.
- * - les anciennes valeurs premium-mensuel / premium-annuel ne sont plus utilisées.
+ * - les champs Stripe sont intégrés directement pour éviter que Mongoose les ignore.
+ * - les valeurs de plan doivent rester identiques entre frontend, API Stripe et webhook.
  */
 const UserSchema = new Schema<IUser>(
   {
@@ -156,13 +165,6 @@ const UserSchema = new Schema<IUser>(
      * - MongoDB
      * - Stripe customer
      */
-    bio: {
-      type: String,
-      default: "",
-      maxlength: [500, "La bio ne peut pas dépasser 500 caractères."],
-      trim: true,
-    },
-
     email: {
       type: String,
       required: [true, "L'email est obligatoire."],
@@ -196,7 +198,7 @@ const UserSchema = new Schema<IUser>(
 
     /**
      * Photo de profil.
-     * Peut venir de Google OAuth ou d'un upload futur.
+     * Peut venir de Google OAuth ou d'un upload utilisateur.
      */
     image: {
       type: String,
@@ -209,7 +211,7 @@ const UserSchema = new Schema<IUser>(
      *
      * Important :
      * - Pour Google OAuth, ce champ peut rester vide.
-     * - Pour credentials, il devrait être hashé avec bcrypt.
+     * - Pour credentials, il doit être hashé avec bcrypt avant sauvegarde.
      */
     password: {
       type: String,
@@ -227,12 +229,24 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
+     * Bio affichée sur le profil.
+     */
+    bio: {
+      type: String,
+      default: "",
+      maxlength: [500, "La bio ne peut pas dépasser 500 caractères."],
+      trim: true,
+    },
+
+    /**
      * Âge de l'utilisateur.
-     * SferaLuna vise actuellement les femmes de 28 ans et plus.
+     *
+     * SferaLuna vise les femmes de 28 ans et plus.
+     * On aligne donc MongoDB avec la validation frontend.
      */
     age: {
       type: Number,
-      min: [18, "L'âge minimum est de 18 ans."],
+      min: [28, "Vous devez avoir au moins 28 ans."],
       max: [120, "Âge invalide."],
       default: undefined,
     },
@@ -289,8 +303,8 @@ const UserSchema = new Schema<IUser>(
      * Réponse à la question de sécurité.
      *
      * Note :
-     * plus tard, il serait mieux de hasher cette réponse
-     * si elle sert réellement à récupérer un compte.
+     * si elle sert réellement à récupérer un compte,
+     * il faudra la hasher plus tard.
      */
     reponse: {
       type: String,
@@ -336,10 +350,13 @@ const UserSchema = new Schema<IUser>(
 
     /**
      * Consentement aux conditions / confidentialité.
+     *
+     * Important :
+     * false par défaut, car l'utilisateur doit cocher explicitement.
      */
     consentement: {
       type: Boolean,
-      default: true,
+      default: false,
     },
 
     /**
@@ -356,9 +373,9 @@ const UserSchema = new Schema<IUser>(
      * Plan choisi par l'utilisateur.
      *
      * free : compte gratuit
-     * essential-monthly : offre Essentiel à 9,99€/mois
-     * premium-monthly : offre Premium à 19,99€/mois
-     * elite-monthly : offre Elite à 34,99€/mois
+     * essential-monthly : offre Essentiel
+     * premium-monthly : offre Premium
+     * elite-monthly : offre Elite
      */
     plan: {
       type: String,
@@ -370,8 +387,7 @@ const UserSchema = new Schema<IUser>(
     /**
      * Statut réel de l'abonnement Stripe.
      *
-     * Ce champ est la vraie source de vérité pour savoir
-     * si l'abonnement est actif ou non.
+     * Stripe webhook doit rester la source de vérité.
      */
     subscriptionStatus: {
       type: String,
@@ -383,7 +399,7 @@ const UserSchema = new Schema<IUser>(
     /**
      * Booléen pratique pour l'interface.
      *
-     * Il doit rester synchronisé avec subscriptionStatus :
+     * Il doit rester cohérent avec subscriptionStatus :
      * - true si active ou trialing
      * - false sinon
      */
@@ -404,7 +420,7 @@ const UserSchema = new Schema<IUser>(
     /**
      * Date d'expiration théorique de l'accès premium.
      *
-     * Pour un abonnement Stripe actif, Stripe reste la source de vérité,
+     * Stripe reste la vraie source de vérité,
      * mais ce champ aide à l'affichage rapide côté frontend.
      */
     premiumExpiresAt: {
@@ -420,6 +436,7 @@ const UserSchema = new Schema<IUser>(
     stripeCustomerId: {
       type: String,
       default: "",
+      trim: true,
       index: true,
     },
 
@@ -431,47 +448,98 @@ const UserSchema = new Schema<IUser>(
     stripeSubscriptionId: {
       type: String,
       default: "",
+      trim: true,
       index: true,
     },
 
     /**
      * Dernière session Checkout Stripe.
      *
-     * Utile pour le debug ou pour retrouver une session de paiement.
+     * Utile pour le debug ou le support client.
      */
     stripeCheckoutSessionId: {
       type: String,
       default: "",
+      trim: true,
     },
 
     /**
-     * Date de dernière connexion.
-     * Tu pourras la mettre à jour dans NextAuth plus tard.
+     * Vérification email.
      */
-    // Vérification email
-    emailVerified: { type: Boolean, default: false },
-    emailVerificationToken: { type: String, default: null, select: false },
-    emailVerificationExpiry: { type: Date, default: null, select: false },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
 
-    // Reset mot de passe
-    resetPasswordToken: { type: String, default: null, select: false },
-    resetPasswordExpiry: { type: Date, default: null, select: false },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
 
-    // Modération
-    banned: { type: Boolean, default: false },
+    emailVerificationExpiry: {
+      type: Date,
+      default: null,
+      select: false,
+    },
 
-    // Notifications
-    lastSeenNotificationsAt: { type: Date, default: null },
+    /**
+     * Reset mot de passe.
+     */
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
 
-    // Vérification d'identité Stripe Identity
-    identityVerified: { type: Boolean, default: false },
+    resetPasswordExpiry: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    /**
+     * Modération.
+     */
+    banned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    /**
+     * Notifications.
+     */
+    lastSeenNotificationsAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Vérification d'identité Stripe Identity.
+     */
+    identityVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     identityVerificationStatus: {
       type: String,
       enum: ["unverified", "pending", "verified", "failed"],
       default: "unverified",
+      index: true,
     },
-    stripeVerificationSessionId: { type: String, default: null },
 
+    stripeVerificationSessionId: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+
+    /**
+     * Date de dernière connexion.
+     */
     lastLoginAt: {
       type: Date,
       default: null,
@@ -495,7 +563,12 @@ const UserSchema = new Schema<IUser>(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.password;
-        delete (ret as Record<string, any>).__v;
+        delete ret.reponse;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpiry;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpiry;
+        delete (ret as Record<string, unknown>).__v;
         return ret;
       },
     },
@@ -504,7 +577,12 @@ const UserSchema = new Schema<IUser>(
       virtuals: true,
       transform(_doc, ret) {
         delete ret.password;
-        delete (ret as Record<string, any>).__v;
+        delete ret.reponse;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpiry;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpiry;
+        delete (ret as Record<string, unknown>).__v;
         return ret;
       },
     },
@@ -547,18 +625,37 @@ UserSchema.virtual("subscriptionStatusLabel").get(function (this: IUser) {
 });
 
 /**
+ * Virtual : profil visible ou non.
+ *
+ * Pratique pour l'interface.
+ */
+UserSchema.virtual("isProfileVisible").get(function (this: IUser) {
+  return this.visibilite !== "invisible" && !this.banned;
+});
+
+/**
  * Middleware avant sauvegarde.
  *
  * Objectif :
  * garder isPremium cohérent avec subscriptionStatus.
  *
- * En Mongoose moderne, on peut ne pas utiliser next().
- * Si la fonction ne retourne pas d'erreur, Mongoose continue automatiquement.
+ * Attention :
+ * ce middleware se déclenche avec user.save().
+ * Il ne se déclenche pas avec findByIdAndUpdate().
+ * Dans les routes Stripe webhook, on met donc explicitement isPremium.
  */
 UserSchema.pre<IUser>("save", function () {
   this.isPremium =
     this.subscriptionStatus === "active" ||
     this.subscriptionStatus === "trialing";
+
+  /**
+   * Si le profil est marqué comme complété mais qu'aucune date n'existe,
+   * on ajoute automatiquement la date.
+   */
+  if (this.hasCompletedProfile && !this.profileCompletedAt) {
+    this.profileCompletedAt = new Date();
+  }
 });
 
 /**
@@ -570,6 +667,8 @@ UserSchema.pre<IUser>("save", function () {
 UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ plan: 1, subscriptionStatus: 1 });
 UserSchema.index({ isPremium: 1, hasCompletedProfile: 1 });
+UserSchema.index({ visibilite: 1, hasCompletedProfile: 1 });
+UserSchema.index({ localisation: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ updatedAt: -1 });
 

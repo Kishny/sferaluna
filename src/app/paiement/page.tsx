@@ -2,7 +2,26 @@
 
 "use client";
 
-import { useState } from "react";
+/**
+ * Page de paiement SferaLuna.
+ *
+ * Cette page permet :
+ * - de choisir une offre payante ;
+ * - de lancer Stripe Checkout ;
+ * - d'afficher un récapitulatif clair ;
+ * - de rassurer l'utilisateur sur la sécurité du paiement.
+ *
+ * Important :
+ * La vraie logique de paiement reste côté backend dans :
+ * src/app/api/stripe/create-checkout-session/route.ts
+ *
+ * Cette page envoie uniquement le plan sélectionné :
+ * {
+ *   plan: "essential-monthly" | "premium-monthly" | "elite-monthly"
+ * }
+ */
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,24 +34,21 @@ import {
   Sparkles,
   Star,
   Zap,
+  AlertCircle,
 } from "lucide-react";
 
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
 /**
- * Plans Stripe acceptés par ton API :
- * src/app/api/stripe/create-checkout-session/route.ts
+ * Plans Stripe acceptés par ton API.
  *
- * Très important :
- * Ces valeurs doivent être exactement les mêmes côté frontend et backend.
+ * Ces valeurs doivent être exactement identiques côté frontend et backend.
  */
 type LunaPlan = "essential-monthly" | "premium-monthly" | "elite-monthly";
 
-/**
- * Configuration des 3 offres SferaLuna.
- *
- * Le prix affiché ici est uniquement visuel.
- * Le vrai prix utilisé par Stripe vient des Price ID dans .env.local.
- */
-const plans: {
+interface PlanConfig {
   id: LunaPlan;
   name: string;
   price: string;
@@ -41,7 +57,19 @@ const plans: {
   description: string;
   features: string[];
   highlighted?: boolean;
-}[] = [
+}
+
+// ─────────────────────────────────────────────
+// Configuration des offres
+// ─────────────────────────────────────────────
+
+/**
+ * Le prix affiché ici est uniquement visuel.
+ *
+ * Le vrai montant Stripe vient des Price IDs configurés côté serveur
+ * dans .env.local et utilisés par ton endpoint Stripe.
+ */
+const plans: PlanConfig[] = [
   {
     id: "essential-monthly",
     name: "Essentiel",
@@ -91,36 +119,52 @@ const plans: {
   },
 ];
 
+// ─────────────────────────────────────────────
+// Page principale
+// ─────────────────────────────────────────────
+
 export default function PaiementPage() {
   /**
-   * Plan sélectionné par défaut.
-   * Ici on met Premium, car c’est souvent l’offre principale.
+   * Offre sélectionnée par défaut.
+   *
+   * On garde Premium par défaut, car c’est ton offre principale.
    */
   const [selectedPlan, setSelectedPlan] =
     useState<LunaPlan>("premium-monthly");
 
   /**
-   * Loader du bouton Stripe.
+   * Loader Stripe.
    */
   const [isLoading, setIsLoading] = useState(false);
 
   /**
-   * Message d’erreur visible côté utilisateur.
+   * Message d’erreur affiché dans la page.
    */
   const [error, setError] = useState("");
 
-  const selectedOffer =
-    plans.find((plan) => plan.id === selectedPlan) || plans[1];
+  /**
+   * Récupère la configuration complète de l'offre sélectionnée.
+   */
+  const selectedOffer = useMemo(() => {
+    return plans.find((plan) => plan.id === selectedPlan) || plans[1];
+  }, [selectedPlan]);
 
   /**
    * Lance Stripe Checkout.
    *
-   * Cette fonction appelle :
+   * Endpoint appelé :
    * POST /api/stripe/create-checkout-session
    *
-   * Le serveur récupère ensuite le bon priceId Stripe selon le plan choisi.
+   * Le backend doit ensuite :
+   * - vérifier la session utilisateur ;
+   * - vérifier le plan ;
+   * - récupérer le bon STRIPE_PRICE_ID ;
+   * - créer la session checkout ;
+   * - renvoyer { success: true, url }.
    */
   const handleStripePayment = async () => {
+    if (isLoading) return;
+
     setIsLoading(true);
     setError("");
 
@@ -135,13 +179,13 @@ export default function PaiementPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (!res.ok || !data.success || !data.url) {
+      if (!res.ok || !data?.success || !data?.url) {
         console.error("Erreur Stripe Checkout :", data);
 
         setError(
-          data.error ||
+          data?.error ||
             "Impossible de démarrer le paiement. Vérifiez votre configuration Stripe."
         );
 
@@ -161,57 +205,58 @@ export default function PaiementPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white relative overflow-hidden">
+    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
       {/* Décor lumineux */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 right-1/3 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl sm:h-80 sm:w-80" />
+        <div className="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl sm:h-96 sm:w-96" />
+        <div className="absolute right-1/3 top-1/3 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl sm:h-72 sm:w-72" />
       </div>
 
       {/* Étoiles globales depuis globals.css */}
       <div className="stars" />
 
-      <div className="relative z-10 container mx-auto px-4 py-10">
+      <div className="relative z-10 mx-auto max-w-7xl px-3 py-6 sm:px-4 sm:py-10">
         {/* Retour */}
         <Link
           href="/inscription"
-          className="inline-flex items-center gap-2 text-gray-300 hover:text-white transition-colors mb-10"
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-white/10 hover:text-white sm:mb-10"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           Retour à l’inscription
         </Link>
 
         {/* Header */}
-        <section className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-300 mb-5">
-            <Crown className="h-5 w-5" />
-            <span className="text-sm font-semibold">
+        <section className="mx-auto mb-8 max-w-3xl text-center sm:mb-12">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-yellow-300 sm:mb-5">
+            <Crown className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-xs font-semibold sm:text-sm">
               Activation Premium
             </span>
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-200 via-pink-200 to-yellow-100 bg-clip-text text-transparent">
+          <h1 className="bg-gradient-to-r from-purple-200 via-pink-200 to-yellow-100 bg-clip-text text-3xl font-bold leading-tight text-transparent sm:text-4xl md:text-5xl">
             Choisissez votre offre SferaLuna
           </h1>
 
-          <p className="mt-5 text-gray-300 text-lg">
-            Sélectionnez l’offre qui correspond le mieux à votre expérience.
-            Le paiement est sécurisé via Stripe.
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-300 sm:mt-5 sm:text-lg">
+            Sélectionnez l’offre qui correspond le mieux à votre expérience. Le
+            paiement est sécurisé via Stripe.
           </p>
         </section>
 
         {/* Message d’erreur */}
         {error && (
-          <div className="max-w-3xl mx-auto mb-8 rounded-2xl border border-red-400/30 bg-red-500/10 px-5 py-4 text-red-100">
-            {error}
+          <div className="mx-auto mb-6 flex max-w-3xl items-start gap-3 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100 sm:mb-8 sm:px-5 sm:py-4">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+            <p>{error}</p>
           </div>
         )}
 
-        <section className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
           {/* Liste des offres */}
           <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
               {plans.map((plan) => {
                 const isSelected = selectedPlan === plan.id;
 
@@ -219,37 +264,40 @@ export default function PaiementPage() {
                   <button
                     key={plan.id}
                     type="button"
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`relative text-left rounded-3xl border p-6 transition-all ${
+                    onClick={() => {
+                      setSelectedPlan(plan.id);
+                      setError("");
+                    }}
+                    className={`relative rounded-3xl border p-5 text-left transition-all sm:p-6 ${
                       isSelected
                         ? "border-pink-400 bg-pink-500/20 shadow-2xl shadow-pink-500/10"
-                        : "border-white/10 bg-white/10 hover:bg-white/15 hover:border-purple-300/50"
+                        : "border-white/10 bg-white/10 hover:border-purple-300/50 hover:bg-white/15"
                     }`}
                   >
                     {/* Badge : Plus populaire / VIP */}
                     {plan.badge && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-bold whitespace-nowrap">
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-3 py-1 text-xs font-bold text-white shadow-lg sm:-top-4 sm:px-4 sm:text-sm">
                         {plan.badge}
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                    <div className="mb-4 flex items-center justify-between sm:mb-5">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 sm:h-12 sm:w-12">
                         {plan.id === "essential-monthly" && (
-                          <Sparkles className="h-6 w-6" />
+                          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
 
                         {plan.id === "premium-monthly" && (
-                          <Crown className="h-6 w-6" />
+                          <Crown className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
 
                         {plan.id === "elite-monthly" && (
-                          <Star className="h-6 w-6" />
+                          <Star className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
                       </div>
 
                       <div
-                        className={`h-6 w-6 rounded-full border flex items-center justify-center ${
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border ${
                           isSelected
                             ? "border-pink-400 bg-pink-500"
                             : "border-white/30"
@@ -259,23 +307,28 @@ export default function PaiementPage() {
                       </div>
                     </div>
 
-                    <h2 className="text-2xl font-bold">{plan.name}</h2>
+                    <h2 className="text-xl font-bold sm:text-2xl">
+                      {plan.name}
+                    </h2>
 
-                    <p className="mt-2 text-gray-300 text-sm min-h-[44px]">
+                    <p className="mt-2 min-h-0 text-sm text-gray-300 md:min-h-[44px]">
                       {plan.description}
                     </p>
 
-                    <div className="mt-6 flex items-end gap-1">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      <span className="text-gray-300 mb-1">
+                    <div className="mt-5 flex items-end gap-1 sm:mt-6">
+                      <span className="text-3xl font-bold sm:text-4xl">
+                        {plan.price}
+                      </span>
+
+                      <span className="mb-1 text-sm text-gray-300 sm:text-base">
                         {plan.subtitle}
                       </span>
                     </div>
 
-                    <ul className="mt-6 space-y-3">
+                    <ul className="mt-5 space-y-2.5 sm:mt-6 sm:space-y-3">
                       {plan.features.map((feature) => (
                         <li key={feature} className="flex items-start gap-3">
-                          <div className="mt-0.5 h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                          <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/20">
                             <Check className="h-3 w-3 text-green-300" />
                           </div>
 
@@ -291,38 +344,39 @@ export default function PaiementPage() {
             </div>
 
             {/* Bloc rassurance Stripe */}
-            <div className="mt-8 rounded-3xl border border-blue-400/20 bg-blue-500/10 p-6 flex gap-4">
-              <ShieldCheck className="h-6 w-6 text-blue-300 flex-shrink-0" />
+            <div className="mt-6 flex gap-4 rounded-3xl border border-blue-400/20 bg-blue-500/10 p-5 sm:mt-8 sm:p-6">
+              <ShieldCheck className="h-6 w-6 shrink-0 text-blue-300" />
 
               <div>
                 <h3 className="font-bold text-blue-100">
                   Paiement sécurisé Stripe
                 </h3>
 
-                <p className="text-sm text-blue-100/80 mt-1">
+                <p className="mt-1 text-sm leading-relaxed text-blue-100/80">
                   Vous serez redirigé vers Stripe Checkout pour finaliser votre
-                  abonnement. Aucune donnée bancaire n’est stockée sur SferaLuna.
+                  abonnement. Aucune donnée bancaire n’est stockée sur
+                  SferaLuna.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Récapitulatif */}
-          <aside className="rounded-3xl border border-purple-400/20 bg-gradient-to-br from-purple-900/40 to-pink-900/30 backdrop-blur-xl p-6 md:p-8 shadow-2xl h-fit">
-            <div className="flex items-center gap-3 mb-6">
-              <Sparkles className="h-6 w-6 text-pink-300" />
+          <aside className="h-fit rounded-3xl border border-purple-400/20 bg-gradient-to-br from-purple-900/40 to-pink-900/30 p-5 shadow-2xl backdrop-blur-xl sm:p-6 md:p-8 lg:sticky lg:top-6">
+            <div className="mb-5 flex items-center gap-3 sm:mb-6">
+              <Sparkles className="h-5 w-5 text-pink-300 sm:h-6 sm:w-6" />
 
-              <h2 className="text-2xl font-bold">Votre offre</h2>
+              <h2 className="text-xl font-bold sm:text-2xl">Votre offre</h2>
             </div>
 
-            <div className="rounded-2xl bg-white/10 border border-white/10 p-5 mb-6">
-              <p className="text-gray-300 text-sm">Formule sélectionnée</p>
+            <div className="mb-5 rounded-2xl border border-white/10 bg-white/10 p-4 sm:mb-6 sm:p-5">
+              <p className="text-sm text-gray-300">Formule sélectionnée</p>
 
-              <h3 className="text-2xl font-bold mt-1">
+              <h3 className="mt-1 text-xl font-bold sm:text-2xl">
                 SferaLuna {selectedOffer.name}
               </h3>
 
-              <p className="text-4xl font-bold mt-4">
+              <p className="mt-4 text-3xl font-bold sm:text-4xl">
                 {selectedOffer.price}
                 <span className="text-base font-normal text-gray-300">
                   {" "}
@@ -331,30 +385,32 @@ export default function PaiementPage() {
               </p>
             </div>
 
-            <ul className="space-y-4 mb-8">
+            <ul className="mb-6 space-y-3 sm:mb-8 sm:space-y-4">
               {selectedOffer.features.slice(0, 5).map((item) => (
                 <li key={item} className="flex items-center gap-3">
-                  <div className="h-6 w-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/20">
                     <Check className="h-4 w-4 text-green-300" />
                   </div>
 
-                  <span className="text-gray-100">{item}</span>
+                  <span className="text-sm text-gray-100 sm:text-base">
+                    {item}
+                  </span>
                 </li>
               ))}
             </ul>
 
-            <div className="border-t border-white/10 pt-5 space-y-3">
-              <div className="flex justify-between text-gray-300">
+            <div className="space-y-3 border-t border-white/10 pt-5">
+              <div className="flex justify-between text-sm text-gray-300 sm:text-base">
                 <span>Sous-total</span>
                 <span>{selectedOffer.price}</span>
               </div>
 
-              <div className="flex justify-between text-gray-300">
+              <div className="flex justify-between text-sm text-gray-300 sm:text-base">
                 <span>TVA</span>
                 <span>Incluse</span>
               </div>
 
-              <div className="flex justify-between text-white text-xl font-bold pt-3 border-t border-white/10">
+              <div className="flex justify-between border-t border-white/10 pt-3 text-lg font-bold text-white sm:text-xl">
                 <span>Total</span>
                 <span>{selectedOffer.price}</span>
               </div>
@@ -364,12 +420,12 @@ export default function PaiementPage() {
               type="button"
               onClick={handleStripePayment}
               disabled={isLoading}
-              className="w-full mt-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-8 sm:py-4 sm:text-lg"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Redirection vers Stripe...
+                  Redirection...
                 </>
               ) : (
                 <>
@@ -379,14 +435,16 @@ export default function PaiementPage() {
               )}
             </button>
 
-            <div className="mt-6 flex items-center gap-2 text-sm text-gray-300">
-              <Lock className="h-4 w-4" />
-              Paiement sécurisé SSL
-            </div>
+            <div className="mt-5 space-y-3 sm:mt-6">
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <Lock className="h-4 w-4" />
+                Paiement sécurisé SSL
+              </div>
 
-            <div className="mt-3 flex items-center gap-2 text-sm text-gray-300">
-              <BadgeCheck className="h-4 w-4" />
-              Annulation possible à tout moment
+              <div className="flex items-center gap-2 text-sm text-gray-300">
+                <BadgeCheck className="h-4 w-4" />
+                Annulation possible à tout moment
+              </div>
             </div>
           </aside>
         </section>

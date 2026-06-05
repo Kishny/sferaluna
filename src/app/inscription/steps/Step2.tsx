@@ -1,6 +1,19 @@
+// src/app/inscription/steps/Step2.tsx
+
 "use client";
 
+/**
+ * Étape 2 du formulaire d'inscription SferaLuna.
+ *
+ * Objectif :
+ * - choisir une orientation ;
+ * - choisir une ou plusieurs intentions relationnelles ;
+ * - mettre à jour React Hook Form avec setValue pour les tableaux ;
+ * - afficher clairement les erreurs de validation.
+ */
+
 import { useFormContext } from "react-hook-form";
+import { Check } from "lucide-react";
 
 /**
  * Liste des orientations proposées.
@@ -35,30 +48,18 @@ export default function Step2() {
     formState: { errors },
   } = useFormContext();
 
-  /**
-   * Orientation actuellement sélectionnée.
-   * Sert uniquement à appliquer un style visuel actif.
-   */
   const selectedOrientation = watch("orientation");
-
-  /**
-   * Intentions actuellement sélectionnées.
-   * Si rien n'est sélectionné, on force un tableau vide.
-   */
   const selectedIntentions: string[] = watch("intentions") || [];
 
   /**
    * Ajoute ou retire une intention du tableau.
-   *
-   * shouldValidate: true permet de relancer la validation Zod.
-   * shouldDirty: true indique que le champ a été modifié.
    */
   const toggleIntention = (value: string) => {
-    const newIntentions = selectedIntentions.includes(value)
-      ? selectedIntentions.filter((item: string) => item !== value)
+    const nextIntentions = selectedIntentions.includes(value)
+      ? selectedIntentions.filter((item) => item !== value)
       : [...selectedIntentions, value];
 
-    setValue("intentions", newIntentions, {
+    setValue("intentions", nextIntentions, {
       shouldValidate: true,
       shouldDirty: true,
       shouldTouch: true,
@@ -66,35 +67,36 @@ export default function Step2() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Titre de l'étape */}
       <div>
-        <h2 className="text-2xl font-bold text-purple-300">
+        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
           Orientation et intentions
         </h2>
-        <p className="mt-2 text-sm text-gray-300">
+
+        <p className="mt-2 text-sm leading-relaxed text-gray-300">
           Ces informations nous aident à proposer des rencontres plus
           compatibles avec vos attentes.
         </p>
       </div>
 
       {/* Bloc orientation */}
-      <div className="space-y-4">
+      <section className="space-y-4">
         <label className="block text-sm font-semibold text-gray-100">
           Orientation <span className="text-pink-400">*</span>
         </label>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {orientations.map((orientation) => {
             const isSelected = selectedOrientation === orientation.value;
 
             return (
               <label
                 key={orientation.value}
-                className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${
+                className={`flex cursor-pointer items-center rounded-xl border p-3 transition-all sm:p-4 ${
                   isSelected
                     ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:bg-white/10 hover:border-purple-300"
+                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
                 }`}
               >
                 <input
@@ -117,26 +119,26 @@ export default function Step2() {
         </div>
 
         {errors.orientation && (
-          <p className="mt-1 text-sm text-red-300">
+          <p className="text-sm text-red-300">
             {errors.orientation.message as string}
           </p>
         )}
-      </div>
+      </section>
 
       {/* Bloc intentions */}
-      <div className="space-y-4">
+      <section className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-100">
             Quelles sont vos intentions ?{" "}
             <span className="text-pink-400">*</span>
           </label>
 
-          <p className="text-sm text-gray-300 mt-2">
+          <p className="mt-2 text-sm text-gray-300">
             Sélectionnez une ou plusieurs options.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {intentions.map((intention) => {
             const isSelected = selectedIntentions.includes(intention.value);
 
@@ -145,35 +147,21 @@ export default function Step2() {
                 key={intention.value}
                 type="button"
                 onClick={() => toggleIntention(intention.value)}
-                className={`p-4 border rounded-xl text-left transition-all ${
+                className={`rounded-xl border p-3 text-left transition-all sm:p-4 ${
                   isSelected
                     ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:bg-white/10 hover:border-purple-300"
+                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
                 }`}
               >
                 <div className="flex items-center">
                   <div
-                    className={`h-5 w-5 border rounded-md mr-3 flex items-center justify-center ${
+                    className={`mr-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
                       isSelected
-                        ? "bg-pink-500 border-pink-500"
+                        ? "border-pink-500 bg-pink-500"
                         : "border-gray-300 bg-white/5"
                     }`}
                   >
-                    {isSelected && (
-                      <svg
-                        className="h-4 w-4 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    )}
+                    {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
                   </div>
 
                   <span
@@ -189,19 +177,12 @@ export default function Step2() {
           })}
         </div>
 
-        {/* 
-          Champ caché supprimé volontairement.
-          Ici, on gère intentions via setValue("intentions", newIntentions).
-          Ajouter un input hidden avec register("intentions") peut créer
-          des comportements bizarres avec un tableau.
-        */}
-
         {errors.intentions && (
-          <p className="mt-1 text-sm text-red-300">
+          <p className="text-sm text-red-300">
             {errors.intentions.message as string}
           </p>
         )}
-      </div>
+      </section>
     </div>
   );
 }

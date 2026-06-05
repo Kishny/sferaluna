@@ -2,6 +2,18 @@
 
 "use client";
 
+/**
+ * Page d'authentification SferaLuna.
+ *
+ * Version optimisée mobile :
+ * - formulaire plus compact ;
+ * - flèche retour corrigée pour ne plus toucher la carte ;
+ * - accordéons pour les blocs secondaires ;
+ * - padding mobile réduit ;
+ * - inputs et boutons moins hauts sur téléphone ;
+ * - meilleur confort sur iPhone/Safari mobile.
+ */
+
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
@@ -26,20 +38,10 @@ import {
   Users,
   Heart,
   Moon,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
-/**
- * Type minimal de l'utilisateur enrichi par NextAuth.
- *
- * Ces champs viennent normalement de :
- * src/app/api/auth/[...nextauth]/route.ts
- *
- * Grâce aux callbacks jwt() et session(), on récupère :
- * - hasCompletedProfile
- * - plan
- * - isPremium
- * - subscriptionStatus
- */
 type LunaSessionUser = {
   id?: string;
   email?: string | null;
@@ -58,18 +60,12 @@ type LunaSessionUser = {
 };
 
 /**
- * Styles des étoiles.
- *
- * On les garde dans ce fichier pour que la page soit autonome.
- * L'injection se fait dans un useEffect, donc uniquement côté navigateur.
+ * Fond étoilé léger.
  */
 const starsStyles = `
 .stars {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   pointer-events: none;
   z-index: 1;
 }
@@ -79,8 +75,6 @@ const starsStyles = `
   content: '';
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
   background-image:
     radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
     radial-gradient(1px 1px at 40px 70px, rgba(255, 255, 255, 0.6), transparent),
@@ -114,22 +108,8 @@ const starsStyles = `
 function PremiumAuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  /**
-   * Session NextAuth.
-   *
-   * C'est elle qui permet de savoir :
-   * - si l'utilisateur est connecté ;
-   * - s'il a déjà terminé son profil ;
-   * - s'il doit aller vers /mon-compte ou /inscription.
-   */
   const { data: session, status } = useSession();
 
-  /**
-   * mode vient de l'URL :
-   * /auth?mode=login
-   * /auth?mode=register
-   */
   const mode = searchParams.get("mode");
 
   const [isLogin, setIsLogin] = useState(true);
@@ -141,19 +121,25 @@ function PremiumAuthContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
   const [passwordStrength, setPasswordStrength] = useState(0);
+
   const [showFeatures, setShowFeatures] = useState(false);
 
   /**
-   * Animations Framer Motion.
+   * Accordéons mobile.
+   * Fermés par défaut pour garder la page courte.
    */
+  const [openMobileFeatures, setOpenMobileFeatures] = useState(false);
+  const [openMobileStats, setOpenMobileStats] = useState(false);
+  const [openSocialLogin, setOpenSocialLogin] = useState(false);
+
   const containerVariants = useMemo(
     () => ({
       hidden: { opacity: 0 },
       visible: {
         opacity: 1,
         transition: {
-          staggerChildren: 0.1,
-          delayChildren: 0.2,
+          staggerChildren: 0.08,
+          delayChildren: 0.15,
         },
       },
     }),
@@ -162,18 +148,14 @@ function PremiumAuthContent() {
 
   const itemVariants = useMemo(
     () => ({
-      hidden: { y: 20, opacity: 0 },
+      hidden: { y: 16, opacity: 0 },
       visible: { y: 0, opacity: 1 },
     }),
     []
   );
 
   /**
-   * Injection des styles étoiles.
-   *
-   * Important :
-   * On évite de manipuler document directement en dehors d'un useEffect,
-   * sinon Next.js peut provoquer des comportements bizarres.
+   * Injection du CSS étoilé côté client.
    */
   useEffect(() => {
     const styleId = "sferaluna-auth-stars-style";
@@ -192,11 +174,12 @@ function PremiumAuthContent() {
   }, []);
 
   /**
-   * Active le bon onglet selon l'URL.
+   * Synchronisation URL -> onglet actif.
    */
   useEffect(() => {
     if (mode === "register") {
       setIsLogin(false);
+      return;
     }
 
     if (mode === "login") {
@@ -204,24 +187,13 @@ function PremiumAuthContent() {
     }
   }, [mode]);
 
-  /**
-   * Animation automatique des features.
-   */
   useEffect(() => {
-    const timer = setTimeout(() => setShowFeatures(true), 1000);
+    const timer = setTimeout(() => setShowFeatures(true), 700);
     return () => clearTimeout(timer);
   }, []);
 
   /**
-   * Redirection automatique si l'utilisateur est déjà connecté.
-   *
-   * C'est la correction essentielle.
-   *
-   * Si Google revient sur /auth après connexion :
-   * - profil terminé => /mon-compte
-   * - profil incomplet => /inscription
-   *
-   * Donc on ne force plus Google vers /inscription directement.
+   * Redirection si déjà connecté.
    */
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -238,13 +210,6 @@ function PremiumAuthContent() {
     }
   }, [status, session, router]);
 
-  /**
-   * Fonction utilitaire.
-   *
-   * Elle récupère la session fraîche depuis NextAuth juste après connexion.
-   * C'est plus fiable que de lire immédiatement la variable session,
-   * car elle peut prendre quelques millisecondes à se mettre à jour.
-   */
   const redirectAfterLogin = async () => {
     const sessionRes = await fetch("/api/auth/session", {
       cache: "no-store",
@@ -261,9 +226,6 @@ function PremiumAuthContent() {
     router.push("/inscription");
   };
 
-  /**
-   * Vérification simple de la force du mot de passe.
-   */
   const checkPasswordStrength = (password: string) => {
     let strength = 0;
 
@@ -275,9 +237,6 @@ function PremiumAuthContent() {
     setPasswordStrength(strength);
   };
 
-  /**
-   * Validation simple des formulaires login/register.
-   */
   const validateForm = (formData: FormData, loginMode: boolean) => {
     const newErrors: Record<string, string> = {};
 
@@ -303,17 +262,9 @@ function PremiumAuthContent() {
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
-  /**
-   * Connexion classique email + mot de passe.
-   *
-   * Important :
-   * signIn("credentials", { redirect: false }) évite une redirection brutale.
-   * Ensuite on récupère la session fraîche et on choisit la bonne page.
-   */
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -347,9 +298,6 @@ function PremiumAuthContent() {
         return;
       }
 
-      /**
-       * Petite pause pour laisser NextAuth écrire le JWT.
-       */
       setTimeout(async () => {
         await redirectAfterLogin();
       }, 400);
@@ -363,13 +311,6 @@ function PremiumAuthContent() {
     }
   };
 
-  /**
-   * Inscription classique email + mot de passe.
-   *
-   * Après création :
-   * - on connecte automatiquement l'utilisateur ;
-   * - puis on l'envoie vers /inscription pour compléter le profil.
-   */
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -440,18 +381,9 @@ function PremiumAuthContent() {
     }
   };
 
-  /**
-   * Connexion sociale : Google / Facebook / Apple.
-   *
-   * Correction importante :
-   * callbackUrl pointe vers /auth, pas /inscription.
-   *
-   * Pourquoi ?
-   * Parce que /auth va ensuite lire la session et décider :
-   * - hasCompletedProfile true => /mon-compte
-   * - hasCompletedProfile false => /inscription
-   */
-  const handleSocialLogin = async (provider: "google" | "facebook" | "apple") => {
+  const handleSocialLogin = async (
+    provider: "google" | "facebook" | "apple"
+  ) => {
     if (isLoading) return;
 
     setIsLoading(true);
@@ -472,521 +404,741 @@ function PremiumAuthContent() {
     }
   };
 
-  /**
-   * Fonctionnalités affichées à gauche.
-   */
+  const switchMode = (loginMode: boolean) => {
+    setIsLogin(loginMode);
+    setErrors({});
+    setSuccess("");
+    setOpenSocialLogin(false);
+
+    const nextMode = loginMode ? "login" : "register";
+
+    router.replace(`/auth?mode=${nextMode}`, {
+      scroll: false,
+    });
+  };
+
   const premiumFeatures = [
-    { icon: <Crown className="h-5 w-5" />, text: "Profils vérifiés" },
-    { icon: <Shield className="h-5 w-5" />, text: "Sécurité maximale" },
-    { icon: <Smartphone className="h-5 w-5" />, text: "App mobile exclusive" },
-    { icon: <Gift className="h-5 w-5" />, text: "Cadeaux premium" },
-    { icon: <Users className="h-5 w-5" />, text: "Événements VIP" },
-    { icon: <Heart className="h-5 w-5" />, text: "Matchs compatibles" },
+    {
+      icon: <Crown className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "Profils vérifiés",
+    },
+    {
+      icon: <Shield className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "Sécurité maximale",
+    },
+    {
+      icon: <Smartphone className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "App mobile exclusive",
+    },
+    {
+      icon: <Gift className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "Cadeaux premium",
+    },
+    {
+      icon: <Users className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "Événements VIP",
+    },
+    {
+      icon: <Heart className="h-4 w-4 sm:h-5 sm:w-5" />,
+      text: "Matchs compatibles",
+    },
   ];
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] font-sans text-white">
-      {/* Décor */}
+    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] font-sans text-white">
+      {/* Décor de fond */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 left-1/3 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl" />
+        <div className="absolute -top-16 left-1/4 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl sm:h-96 sm:w-96" />
+        <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl sm:h-80 sm:w-80" />
+        <div className="absolute top-1/3 left-1/3 h-56 w-56 rounded-full bg-pink-500/10 blur-3xl sm:h-64 sm:w-64" />
       </div>
 
       <div className="stars" />
 
-      {/* Retour accueil */}
+      {/* 
+        Bouton retour corrigé :
+        - plus haut ;
+        - plus petit sur mobile ;
+        - ne touche plus la carte.
+      */}
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
+        initial={{ opacity: 0, x: -16 }}
         animate={{ opacity: 1, x: 0 }}
-        className="absolute top-8 left-8 z-30"
+        className="fixed left-4 top-4 z-40 sm:left-6 sm:top-6"
       >
         <Link
           href="/"
-          className="flex items-center gap-2 text-gray-300 hover:text-white transition-all group"
+          aria-label="Retour à l'accueil"
+          className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-gray-200 shadow-lg shadow-black/20 backdrop-blur-xl transition-all hover:bg-white/15 hover:text-white sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
         >
-          <motion.div
-            whileHover={{ x: -5 }}
-            className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </motion.div>
+          <ArrowLeft className="h-5 w-5 sm:h-5 sm:w-5" />
 
-          <span className="text-sm font-medium">Retour à l'accueil</span>
+          <span className="hidden text-sm font-medium sm:inline">
+            Retour
+          </span>
         </Link>
       </motion.div>
 
-      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center z-10 py-8">
-        {/* Colonne gauche */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-white px-4 lg:px-8"
-        >
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 blur-lg opacity-50" />
-                <Moon className="h-12 w-12 relative text-white" />
-              </div>
-
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
-                SferaLuna
-              </h1>
-            </div>
-
-            <h2 className="text-3xl font-bold mb-4">
-              Rencontrez l'amour sous un{" "}
-              <span className="text-purple-300">nouvel angle</span>
-            </h2>
-
-            <p className="text-gray-300 text-lg mb-8">
-              Rejoignez notre communauté exclusive où les rencontres sont
-              magiques et authentiques. Votre histoire commence ici.
-            </p>
-          </div>
-
+      {/* 
+        Contenu principal :
+        - padding top augmenté pour éviter le conflit avec la flèche ;
+        - gap réduit ;
+        - meilleur rendu sur petit écran.
+      */}
+      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-start px-4 pb-10 pt-20 sm:px-6 sm:pb-16 sm:pt-24 lg:items-center lg:px-8 lg:py-20">
+        <div className="grid w-full grid-cols-1 items-start gap-5 lg:grid-cols-2 lg:items-center lg:gap-12">
+          {/* Colonne gauche : branding + arguments */}
           <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate={showFeatures ? "visible" : "hidden"}
-            className="grid grid-cols-2 gap-4 mb-8"
+            initial={{ opacity: 0, x: -32 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55 }}
+            className="order-2 px-0 text-white lg:order-1 lg:px-4"
           >
-            {premiumFeatures.map((feature, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-500/30 transition-all"
-              >
-                <div className="text-purple-400">{feature.icon}</div>
-                <span className="text-sm font-medium">{feature.text}</span>
-              </motion.div>
-            ))}
-          </motion.div>
+            <div className="mb-4 sm:mb-8">
+              <div className="mb-3 flex items-center justify-center gap-2.5 lg:justify-start">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-50 blur-lg" />
+                  <Moon className="relative h-7 w-7 text-white sm:h-12 sm:w-12" />
+                </div>
 
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-purple-900/40 to-pink-900/40 backdrop-blur-sm border border-purple-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-3xl font-bold">—</div>
-                <div className="text-gray-300 text-sm">Rencontres réussies</div>
+                <h1 className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-2xl font-bold text-transparent sm:text-4xl md:text-5xl">
+                  SferaLuna
+                </h1>
               </div>
 
-              <div>
-                <div className="text-3xl font-bold">—</div>
-                <div className="text-gray-300 text-sm">Satisfaction</div>
-              </div>
+              <h2 className="text-center text-lg font-bold leading-tight sm:text-3xl md:text-4xl lg:text-left">
+                Rencontrez l'amour sous un{" "}
+                <span className="text-purple-300">nouvel angle</span>
+              </h2>
 
-              <div>
-                <div className="text-3xl font-bold">24h</div>
-                <div className="text-gray-300 text-sm">Support premium</div>
-              </div>
+              <p className="mx-auto mt-2 max-w-xl text-center text-xs leading-relaxed text-gray-300 sm:text-base md:text-lg lg:mx-0 lg:text-left">
+                Une expérience élégante, sûre et authentique pour créer des
+                rencontres plus profondes.
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              {[...Array(5)].map((_, index) => (
-                <Star
+            {/* Desktop : fonctionnalités visibles */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate={showFeatures ? "visible" : "hidden"}
+              className="mb-6 hidden grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid"
+            >
+              {premiumFeatures.map((feature, index) => (
+                <motion.div
                   key={index}
-                  className="h-4 w-4 text-yellow-400 fill-current"
-                />
+                  variants={itemVariants}
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm transition-all hover:border-purple-500/30"
+                >
+                  <div className="text-purple-400">{feature.icon}</div>
+                  <span className="text-sm font-medium">{feature.text}</span>
+                </motion.div>
               ))}
+            </motion.div>
 
-              <span className="text-sm text-gray-300">
-                Bientôt sur l'App Store
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Colonne droite */}
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex justify-center"
-        >
-          <div className="relative w-full max-w-md">
-            <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden">
-              {/* Onglets */}
-              <div className="p-6 border-b border-white/10">
-                <div className="flex gap-2 mb-6">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLogin(true);
-                      setErrors({});
-                      setSuccess("");
-                    }}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                      isLogin
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <User className="h-5 w-5" />
-                    Connexion
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLogin(false);
-                      setErrors({});
-                      setSuccess("");
-                    }}
-                    className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-                      !isLogin
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                    Inscription
-                  </button>
+            {/* Mobile : fonctionnalités en accordéon */}
+            <div className="mb-3 lg:hidden">
+              <button
+                type="button"
+                onClick={() => setOpenMobileFeatures(!openMobileFeatures)}
+                className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left backdrop-blur-sm transition-all hover:bg-white/10"
+                aria-expanded={openMobileFeatures}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    Pourquoi SferaLuna ?
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Profils vérifiés, sécurité, matchs compatibles...
+                  </p>
                 </div>
 
-                <AnimatePresence mode="wait">
-                  {isLogin ? (
-                    <motion.div
-                      key="login-title"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="space-y-2"
-                    >
-                      <h2 className="text-2xl font-bold text-white">
-                        Bienvenue de retour
-                      </h2>
+                {openMobileFeatures ? (
+                  <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
+                )}
+              </button>
 
-                      <p className="text-gray-400">
-                        Connectez-vous à votre espace SferaLuna
-                      </p>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="register-title"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="space-y-2"
-                    >
-                      <h2 className="text-2xl font-bold text-white">
-                        Rejoignez l'aventure
-                      </h2>
-
-                      <p className="text-gray-400">
-                        Créez votre compte en quelques secondes
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="p-6">
-                {/* Messages */}
-                <AnimatePresence>
-                  {errors.form && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-400" />
-                        <span className="text-red-300 text-sm">
-                          {errors.form}
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {success && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-400" />
-                        <span className="text-green-300 text-sm">
-                          {success}
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence mode="wait">
-                  {isLogin ? (
-                    <motion.form
-                      key="login-form"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      onSubmit={handleLogin}
-                      className="space-y-4"
-                    >
-                      <AuthInput
-                        label="Adresse email"
-                        name="email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        icon={<Mail className="h-5 w-5 text-gray-500" />}
-                        error={errors.email}
-                      />
-
-                      <PasswordInput
-                        label="Mot de passe"
-                        name="password"
-                        placeholder="Votre mot de passe"
-                        showPassword={showPassword}
-                        setShowPassword={setShowPassword}
-                        error={errors.password}
-                      />
-
-                      <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="remember"
-                            className="h-4 w-4 rounded bg-white/5 border border-white/10 checked:bg-purple-500 checked:border-purple-500 focus:ring-purple-500/20"
-                          />
-                          <span className="text-sm text-gray-400">
-                            Se souvenir de moi
-                          </span>
-                        </label>
-
-                        <Link
-                          href="/auth/reset-password"
-                          className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              <AnimatePresence>
+                {openMobileFeatures && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 grid grid-cols-1 gap-3">
+                      {premiumFeatures.map((feature, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm"
                         >
-                          Mot de passe oublié ?
-                        </Link>
-                      </div>
-
-                      <SubmitButton
-                        isLoading={isLoading}
-                        loadingText="Connexion en cours..."
-                        text="Se connecter"
-                      />
-                    </motion.form>
-                  ) : (
-                    <motion.form
-                      key="register-form"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      onSubmit={handleRegister}
-                      className="space-y-4"
-                    >
-                      <AuthInput
-                        label="Nom complet"
-                        name="name"
-                        type="text"
-                        placeholder="Votre nom et prénom"
-                        icon={<User className="h-5 w-5 text-gray-500" />}
-                        error={errors.name}
-                      />
-
-                      <AuthInput
-                        label="Adresse email"
-                        name="email"
-                        type="email"
-                        placeholder="votre@email.com"
-                        icon={<Mail className="h-5 w-5 text-gray-500" />}
-                        error={errors.email}
-                      />
-
-                      <PasswordInput
-                        label="Mot de passe"
-                        name="password"
-                        placeholder="Minimum 8 caractères"
-                        showPassword={showPassword}
-                        setShowPassword={setShowPassword}
-                        error={errors.password}
-                        onChange={(value) => checkPasswordStrength(value)}
-                      />
-
-                      {passwordStrength > 0 && (
-                        <div>
-                          <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                passwordStrength < 50
-                                  ? "bg-red-500"
-                                  : passwordStrength < 75
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
-                              }`}
-                              style={{ width: `${passwordStrength}%` }}
-                            />
-                          </div>
-
-                          <p className="text-xs text-gray-400 mt-1">
-                            {passwordStrength < 50
-                              ? "Faible"
-                              : passwordStrength < 75
-                                ? "Moyen"
-                                : "Fort"}
-                          </p>
+                          <div className="text-purple-400">{feature.icon}</div>
+                          <span className="text-sm font-medium">
+                            {feature.text}
+                          </span>
                         </div>
-                      )}
-
-                      <PasswordInput
-                        label="Confirmer le mot de passe"
-                        name="confirmPassword"
-                        placeholder="Retapez votre mot de passe"
-                        showPassword={showConfirmPassword}
-                        setShowPassword={setShowConfirmPassword}
-                        error={errors.confirmPassword}
-                      />
-
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="terms"
-                          required
-                          className="h-5 w-5 mt-0.5 rounded bg-white/5 border border-white/10 checked:bg-purple-500 checked:border-purple-500 focus:ring-purple-500/20"
-                        />
-
-                        <span className="text-sm text-gray-400">
-                          J'accepte les{" "}
-                          <Link
-                            href="/conditions"
-                            className="text-purple-400 hover:text-purple-300"
-                          >
-                            conditions d'utilisation
-                          </Link>{" "}
-                          et la{" "}
-                          <Link
-                            href="/confidentialite"
-                            className="text-purple-400 hover:text-purple-300"
-                          >
-                            politique de confidentialité
-                          </Link>
-                        </span>
-                      </label>
-
-                      <SubmitButton
-                        isLoading={isLoading}
-                        loadingText="Création du compte..."
-                        text="Créer mon compte"
-                      />
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-
-                {/* Séparateur */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/10" />
-                  </div>
-
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-3 bg-gray-900 text-gray-500">
-                      Ou continuer avec
-                    </span>
-                  </div>
-                </div>
-
-                {/* Connexions sociales */}
-                <div className="grid grid-cols-2 gap-3">
-                  <SocialButton
-                    label="Google"
-                    imageSrc="/google-icon.svg"
-                    onClick={() => handleSocialLogin("google")}
-                    disabled={isLoading}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin("facebook")}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group disabled:opacity-50"
-                  >
-                    <div className="h-5 w-5 flex items-center justify-center bg-blue-600 rounded-full">
-                      <span className="text-xs font-bold text-white">f</span>
+                      ))}
                     </div>
-
-                    <span className="text-sm font-medium">Facebook</span>
-                  </button>
-                </div>
-
-                <SocialButton
-                  label="Continuer avec Apple"
-                  imageSrc="/Apple-icon.svg"
-                  onClick={() => handleSocialLogin("apple")}
-                  disabled={isLoading}
-                  fullWidth
-                />
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 pt-4 border-t border-white/10">
-                <p className="text-center text-sm text-gray-400">
-                  {isLogin ? (
-                    <>
-                      Pas encore de compte ?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsLogin(false);
-                          setErrors({});
-                          setSuccess("");
-                        }}
-                        className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-                      >
-                        S'inscrire maintenant
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      Vous avez déjà un compte ?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsLogin(true);
-                          setErrors({});
-                          setSuccess("");
-                        }}
-                        className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-                      >
-                        Se connecter
-                      </button>
-                    </>
-                  )}
-                </p>
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            {/* Badge sécurité */}
-            <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 backdrop-blur-sm">
-                <Shield className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-green-300">
-                  Sécurité SSL 256-bit
+            {/* Desktop : statistiques visibles */}
+            <div className="hidden rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-900/40 to-pink-900/40 p-4 backdrop-blur-sm sm:p-6 lg:block">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <div className="text-2xl font-bold sm:text-3xl">—</div>
+                  <div className="text-xs text-gray-300 sm:text-sm">
+                    Rencontres
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-2xl font-bold sm:text-3xl">—</div>
+                  <div className="text-xs text-gray-300 sm:text-sm">
+                    Satisfaction
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-2xl font-bold sm:text-3xl">24h</div>
+                  <div className="text-xs text-gray-300 sm:text-sm">
+                    Support
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                {[...Array(5)].map((_, index) => (
+                  <Star
+                    key={index}
+                    className="h-4 w-4 fill-current text-yellow-400"
+                  />
+                ))}
+
+                <span className="text-xs text-gray-300 sm:text-sm">
+                  Bientôt sur l'App Store
                 </span>
               </div>
             </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
+
+            {/* Mobile : statistiques en accordéon */}
+            <div className="lg:hidden">
+              <button
+                type="button"
+                onClick={() => setOpenMobileStats(!openMobileStats)}
+                className="flex w-full items-center justify-between rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-900/30 to-pink-900/30 px-4 py-3 text-left backdrop-blur-sm transition-all hover:from-purple-900/40 hover:to-pink-900/40"
+                aria-expanded={openMobileStats}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    Chiffres et avantages
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Support, satisfaction et expérience premium
+                  </p>
+                </div>
+
+                {openMobileStats ? (
+                  <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {openMobileStats && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-900/30 to-pink-900/30 p-4 backdrop-blur-sm">
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                          <div className="text-xl font-bold">—</div>
+                          <div className="text-[11px] text-gray-300">
+                            Rencontres
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xl font-bold">—</div>
+                          <div className="text-[11px] text-gray-300">
+                            Satisfaction
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xl font-bold">24h</div>
+                          <div className="text-[11px] text-gray-300">
+                            Support
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                        {[...Array(5)].map((_, index) => (
+                          <Star
+                            key={index}
+                            className="h-3.5 w-3.5 fill-current text-yellow-400"
+                          />
+                        ))}
+
+                        <span className="text-xs text-gray-300">
+                          Bientôt sur l'App Store
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* Colonne droite : formulaire */}
+          <motion.div
+            initial={{ opacity: 0, x: 32 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.55 }}
+            className="order-1 flex justify-center lg:order-2"
+          >
+            <div className="relative w-full max-w-[360px] sm:max-w-md">
+              <div className="overflow-hidden rounded-[1.35rem] border border-white/10 bg-gradient-to-br from-gray-900/90 to-gray-800/90 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
+                {/* Haut du formulaire */}
+                <div className="border-b border-white/10 p-3.5 sm:p-6">
+                  <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-6">
+                    <button
+                      type="button"
+                      onClick={() => switchMode(true)}
+                      className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base ${
+                        isLogin
+                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
+                          : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Connexion
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => switchMode(false)}
+                      className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base ${
+                        !isLogin
+                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
+                          : "text-gray-400 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+                      Inscription
+                    </button>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {isLogin ? (
+                      <motion.div
+                        key="login-title"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -16 }}
+                        className="space-y-1"
+                      >
+                        <h2 className="text-lg font-bold text-white sm:text-2xl">
+                          Bienvenue de retour
+                        </h2>
+
+                        <p className="text-xs text-gray-400 sm:text-base">
+                          Connectez-vous à votre espace SferaLuna
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="register-title"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -16 }}
+                        className="space-y-1"
+                      >
+                        <h2 className="text-lg font-bold text-white sm:text-2xl">
+                          Rejoignez l'aventure
+                        </h2>
+
+                        <p className="text-xs text-gray-400 sm:text-base">
+                          Créez votre compte en quelques secondes
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="p-3.5 sm:p-6">
+                  <AnimatePresence>
+                    {errors.form && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 sm:p-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
+                          <span className="text-sm text-red-300">
+                            {errors.form}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {success && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mb-3 rounded-xl border border-green-500/30 bg-green-500/10 p-3 sm:p-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 shrink-0 text-green-400" />
+                          <span className="text-sm text-green-300">
+                            {success}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence mode="wait">
+                    {isLogin ? (
+                      <motion.form
+                        key="login-form"
+                        initial={{ opacity: 0, x: 16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -16 }}
+                        onSubmit={handleLogin}
+                        className="space-y-2.5 sm:space-y-4"
+                      >
+                        <AuthInput
+                          label="Adresse email"
+                          name="email"
+                          type="email"
+                          placeholder="votre@email.com"
+                          icon={<Mail className="h-5 w-5 text-gray-500" />}
+                          error={errors.email}
+                        />
+
+                        <PasswordInput
+                          label="Mot de passe"
+                          name="password"
+                          placeholder="Votre mot de passe"
+                          showPassword={showPassword}
+                          setShowPassword={setShowPassword}
+                          error={errors.password}
+                        />
+
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              name="remember"
+                              className="h-4 w-4 rounded border border-white/10 bg-white/5 checked:border-purple-500 checked:bg-purple-500 focus:ring-purple-500/20"
+                            />
+                            <span className="text-xs text-gray-400 sm:text-sm">
+                              Se souvenir de moi
+                            </span>
+                          </label>
+
+                          <Link
+                            href="/auth/reset-password"
+                            className="text-xs text-purple-400 transition-colors hover:text-purple-300 sm:text-sm"
+                          >
+                            Mot de passe oublié ?
+                          </Link>
+                        </div>
+
+                        <SubmitButton
+                          isLoading={isLoading}
+                          loadingText="Connexion..."
+                          text="Se connecter"
+                        />
+                      </motion.form>
+                    ) : (
+                      <motion.form
+                        key="register-form"
+                        initial={{ opacity: 0, x: 16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -16 }}
+                        onSubmit={handleRegister}
+                        className="space-y-2.5 sm:space-y-4"
+                      >
+                        <AuthInput
+                          label="Nom complet"
+                          name="name"
+                          type="text"
+                          placeholder="Votre nom et prénom"
+                          icon={<User className="h-5 w-5 text-gray-500" />}
+                          error={errors.name}
+                        />
+
+                        <AuthInput
+                          label="Adresse email"
+                          name="email"
+                          type="email"
+                          placeholder="votre@email.com"
+                          icon={<Mail className="h-5 w-5 text-gray-500" />}
+                          error={errors.email}
+                        />
+
+                        <PasswordInput
+                          label="Mot de passe"
+                          name="password"
+                          placeholder="Minimum 8 caractères"
+                          showPassword={showPassword}
+                          setShowPassword={setShowPassword}
+                          error={errors.password}
+                          onChange={(value) => checkPasswordStrength(value)}
+                        />
+
+                        {passwordStrength > 0 && (
+                          <div>
+                            <div className="h-1 overflow-hidden rounded-full bg-gray-700">
+                              <div
+                                className={`h-full transition-all duration-300 ${
+                                  passwordStrength < 50
+                                    ? "bg-red-500"
+                                    : passwordStrength < 75
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                }`}
+                                style={{ width: `${passwordStrength}%` }}
+                              />
+                            </div>
+
+                            <p className="mt-1 text-xs text-gray-400">
+                              {passwordStrength < 50
+                                ? "Faible"
+                                : passwordStrength < 75
+                                  ? "Moyen"
+                                  : "Fort"}
+                            </p>
+                          </div>
+                        )}
+
+                        <PasswordInput
+                          label="Confirmer le mot de passe"
+                          name="confirmPassword"
+                          placeholder="Retapez votre mot de passe"
+                          showPassword={showConfirmPassword}
+                          setShowPassword={setShowConfirmPassword}
+                          error={errors.confirmPassword}
+                        />
+
+                        <label className="flex cursor-pointer items-start gap-2.5">
+                          <input
+                            type="checkbox"
+                            name="terms"
+                            required
+                            className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/10 bg-white/5 checked:border-purple-500 checked:bg-purple-500 focus:ring-purple-500/20 sm:h-5 sm:w-5"
+                          />
+
+                          <span className="text-xs leading-relaxed text-gray-400 sm:text-sm">
+                            J'accepte les{" "}
+                            <Link
+                              href="/conditions"
+                              className="text-purple-400 hover:text-purple-300"
+                            >
+                              conditions d'utilisation
+                            </Link>{" "}
+                            et la{" "}
+                            <Link
+                              href="/confidentialite"
+                              className="text-purple-400 hover:text-purple-300"
+                            >
+                              politique de confidentialité
+                            </Link>
+                          </span>
+                        </label>
+
+                        <SubmitButton
+                          isLoading={isLoading}
+                          loadingText="Création..."
+                          text="Créer mon compte"
+                        />
+                      </motion.form>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Connexions sociales en accordéon */}
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSocialLogin(!openSocialLogin)}
+                      className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-left transition-all hover:bg-white/10 sm:px-4 sm:py-3"
+                      aria-expanded={openSocialLogin}
+                    >
+                      <div>
+                        <p className="text-xs font-medium text-white sm:text-sm">
+                          Autres méthodes de connexion
+                        </p>
+                        <p className="text-[11px] text-gray-400 sm:text-xs">
+                          Google, Facebook ou Apple
+                        </p>
+                      </div>
+
+                      {openSocialLogin ? (
+                        <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
+                      )}
+                    </button>
+
+                    <AnimatePresence>
+                      {openSocialLogin && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pt-4">
+                            <div className="relative mb-4">
+                              <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-white/10" />
+                              </div>
+
+                              <div className="relative flex justify-center text-sm">
+                                <span className="bg-gray-900 px-3 text-gray-500">
+                                  Ou continuer avec
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <SocialButton
+                                label="Google"
+                                imageSrc="/google-icon.svg"
+                                onClick={() => handleSocialLogin("google")}
+                                disabled={isLoading}
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() => handleSocialLogin("facebook")}
+                                disabled={isLoading}
+                                className="group flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 transition-all hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
+                              >
+                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
+                                  <span className="text-xs font-bold text-white">
+                                    f
+                                  </span>
+                                </div>
+
+                                <span className="text-sm font-medium">
+                                  Facebook
+                                </span>
+                              </button>
+                            </div>
+
+                            <SocialButton
+                              label="Continuer avec Apple"
+                              imageSrc="/Apple-icon.svg"
+                              onClick={() => handleSocialLogin("apple")}
+                              disabled={isLoading}
+                              fullWidth
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Footer du formulaire */}
+                <div className="border-t border-white/10 p-3.5 pt-3 sm:p-6 sm:pt-4">
+                  <p className="text-center text-xs text-gray-400 sm:text-sm">
+                    {isLogin ? (
+                      <>
+                        Pas encore de compte ?{" "}
+                        <button
+                          type="button"
+                          onClick={() => switchMode(false)}
+                          className="font-medium text-purple-400 transition-colors hover:text-purple-300"
+                        >
+                          S'inscrire maintenant
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Vous avez déjà un compte ?{" "}
+                        <button
+                          type="button"
+                          onClick={() => switchMode(true)}
+                          className="font-medium text-purple-400 transition-colors hover:text-purple-300"
+                        >
+                          Se connecter
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* 
+                Badge sécurité :
+                - caché sur très petit mobile pour éviter de gêner ;
+                - visible à partir de sm.
+              */}
+              <div className="pointer-events-none absolute -bottom-6 left-1/2 hidden w-max -translate-x-1/2 sm:block">
+                <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-gradient-to-r from-green-500/20 to-emerald-500/20 px-4 py-2 backdrop-blur-sm">
+                  <Shield className="h-4 w-4 text-green-400" />
+                  <span className="text-xs text-green-300 sm:text-sm">
+                    Sécurité SSL 256-bit
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </main>
   );
 }
 
+/**
+ * Export principal.
+ *
+ * Suspense est utile avec useSearchParams dans l'App Router.
+ */
 export default function PremiumAuthPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#1a0b2e] text-white">
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <span>Chargement...</span>
+          </div>
+        </main>
+      }
+    >
       <PremiumAuthContent />
     </Suspense>
   );
 }
 
 /**
- * Champ input réutilisable.
+ * Input classique réutilisable.
+ *
+ * Version mobile compacte :
+ * - label plus petit ;
+ * - padding vertical réduit ;
+ * - meilleure hauteur sur mobile.
  */
 function AuthInput({
   label,
@@ -1005,7 +1157,7 @@ function AuthInput({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-400 mb-2">
+      <label className="mb-1.5 block text-xs font-medium text-gray-400 sm:mb-2 sm:text-sm">
         {label}
       </label>
 
@@ -1017,17 +1169,22 @@ function AuthInput({
           type={type}
           placeholder={placeholder}
           required
-          className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-gray-500"
+          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:py-3 sm:pl-12 sm:text-base"
         />
       </div>
 
-      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-400 sm:text-sm">{error}</p>}
     </div>
   );
 }
 
 /**
- * Champ mot de passe réutilisable.
+ * Input mot de passe réutilisable.
+ *
+ * Version mobile compacte :
+ * - hauteur réduite ;
+ * - texte plus petit ;
+ * - icône alignée proprement.
  */
 function PasswordInput({
   label,
@@ -1048,12 +1205,12 @@ function PasswordInput({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-400 mb-2">
+      <label className="mb-1.5 block text-xs font-medium text-gray-400 sm:mb-2 sm:text-sm">
         {label}
       </label>
 
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+        <Lock className="absolute left-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-500 sm:h-5 sm:w-5" />
 
         <input
           name={name}
@@ -1061,29 +1218,32 @@ function PasswordInput({
           placeholder={placeholder}
           required
           onChange={(event) => onChange?.(event.target.value)}
-          className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-gray-500"
+          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-11 text-sm text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:py-3 sm:pl-12 sm:pr-12 sm:text-base"
         />
 
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-white"
+          aria-label={
+            showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
+          }
         >
           {showPassword ? (
-            <EyeOff className="h-5 w-5" />
+            <EyeOff className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           ) : (
-            <Eye className="h-5 w-5" />
+            <Eye className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           )}
         </button>
       </div>
 
-      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-400 sm:text-sm">{error}</p>}
     </div>
   );
 }
 
 /**
- * Bouton principal de formulaire.
+ * Bouton principal compact.
  */
 function SubmitButton({
   isLoading,
@@ -1100,11 +1260,11 @@ function SubmitButton({
       disabled={isLoading}
       whileHover={{ scale: isLoading ? 1 : 1.02 }}
       whileTap={{ scale: isLoading ? 1 : 0.98 }}
-      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
     >
       {isLoading ? (
         <div className="flex items-center justify-center gap-2">
-          <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5" />
           {loadingText}
         </div>
       ) : (
@@ -1115,7 +1275,11 @@ function SubmitButton({
 }
 
 /**
- * Bouton social réutilisable.
+ * Bouton de connexion sociale.
+ *
+ * Les fichiers doivent exister dans /public :
+ * - public/google-icon.svg
+ * - public/Apple-icon.svg
  */
 function SocialButton({
   label,
@@ -1135,8 +1299,8 @@ function SocialButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group disabled:opacity-50 ${
-        fullWidth ? "w-full mt-3" : ""
+      className={`group flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm transition-all hover:border-white/20 hover:bg-white/10 disabled:opacity-50 sm:p-3 ${
+        fullWidth ? "mt-3 w-full" : ""
       }`}
     >
       <Image
@@ -1144,10 +1308,10 @@ function SocialButton({
         alt={label}
         width={20}
         height={20}
-        className="group-hover:scale-110 transition-transform"
+        className="transition-transform group-hover:scale-110"
       />
 
-      <span className="text-sm font-medium">{label}</span>
+      <span className="font-medium">{label}</span>
     </button>
   );
 }
