@@ -353,7 +353,7 @@ export default function Header() {
             </motion.div>
 
             {/* Menu desktop */}
-            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-hidden lg:flex">
+            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex">
               {links.map((link) => {
                 const isActive =
                   pathname === link.href ||
