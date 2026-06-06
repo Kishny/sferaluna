@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
      * - _id pour identifier le visiteur ;
      * - visibilite pour savoir si le mode fantôme est actif.
      */
-    const currentUser = await User.findOne({ email }).select("_id visibilite");
+    const currentUser = await User.findOne({ email }).select("_id visibilite role");
 
     if (!currentUser) {
       return NextResponse.json(
@@ -299,14 +299,13 @@ export async function POST(req: NextRequest) {
      * - son passage ne doit pas apparaître dans les visiteurs.
      */
     if (currentUser.visibilite === "invisible") {
-      return NextResponse.json(
-        {
-          success: true,
-          skipped: true,
-          reason: "ghost_mode",
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, skipped: true, reason: "ghost_mode" }, { status: 200 });
+    }
+
+    // Les admins naviguent en mode fantôme permanent :
+    // aucune visite n'est enregistrée, aucune notification envoyée.
+    if ((currentUser as any).role === "admin") {
+      return NextResponse.json({ success: true, skipped: true, reason: "admin_stealth" }, { status: 200 });
     }
 
     const visitDay = getVisitDay();
