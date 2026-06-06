@@ -506,7 +506,7 @@ export default function Header() {
                           </Link>
 
                           <Link
-                            href="/messages"
+                            href="/matches"
                             onClick={() => setShowUserDropdown(false)}
                             className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
                           >
