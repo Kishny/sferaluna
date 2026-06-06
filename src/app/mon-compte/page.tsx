@@ -123,7 +123,8 @@ interface LunaUser {
   localisation?: string;
   rayon?: string;
   question?: string;
-  reponse?: string;
+  reponse?: string;       // champ local uniquement : jamais retourné par l'API
+  hasReponse?: boolean;   // true si réponse secrète déjà enregistrée en BDD
   interets: string[];
   visibilite: ProfileVisibility;
 
@@ -143,6 +144,8 @@ interface LunaUser {
   stripeSubscriptionId?: string;
   stripeCheckoutSessionId?: string;
   lastPaymentAt?: string | null;
+  subscriptionCancelAtPeriodEnd?: boolean;
+  subscriptionPaused?: boolean;
 
   // Sécurité
   lastLoginAt?: string | null;
@@ -433,7 +436,8 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     localisation: rawUser?.localisation || "",
     rayon: rawUser?.rayon || "10 km",
     question: rawUser?.question || "",
-    reponse: rawUser?.reponse || "",
+    reponse: "",          // toujours vide au chargement (jamais renvoyée par l'API)
+    hasReponse: Boolean(rawUser?.hasReponse), // true si déjà renseignée en BDD
     interets: Array.isArray(rawUser?.interets) ? rawUser.interets : [],
     visibilite: isValidVisibility(rawVisibility) ? rawVisibility : "matches",
 
@@ -458,6 +462,8 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     stripeSubscriptionId: rawUser?.stripeSubscriptionId || "",
     stripeCheckoutSessionId: rawUser?.stripeCheckoutSessionId || "",
     lastPaymentAt: rawUser?.lastPaymentAt || null,
+    subscriptionCancelAtPeriodEnd: Boolean(rawUser?.subscriptionCancelAtPeriodEnd),
+    subscriptionPaused: Boolean(rawUser?.subscriptionPaused),
 
     lastLoginAt: rawUser?.lastLoginAt || null,
 
@@ -625,7 +631,9 @@ function MonCompteContent() {
       user.localisation,
       user.rayon,
       user.question,
-      user.reponse,
+      // user.reponse est toujours "" (jamais renvoyée par l'API pour sécurité).
+      // On utilise hasReponse qui indique si la réponse est enregistrée en BDD.
+      user.hasReponse,
       user.interets?.length,
       user.visibilite,
       user.consentement,
@@ -676,18 +684,13 @@ function MonCompteContent() {
           localisation: draftUser.localisation,
           rayon: draftUser.rayon,
           question: draftUser.question,
-          reponse: draftUser.reponse,
+          // N'envoyer reponse que si l'utilisatrice a tapé quelque chose.
+          // Une chaîne vide ne doit jamais écraser une réponse déjà en BDD.
+          ...(draftUser.reponse?.trim() ? { reponse: draftUser.reponse.trim() } : {}),
           interets: draftUser.interets,
           visibilite: draftUser.visibilite,
           consentement: draftUser.consentement,
           hasCompletedProfile: true,
-
-          /**
-           * Si ton API /api/users/profile accepte bio et image plus tard,
-           * ces champs seront déjà envoyés.
-           * Si l'API ne les accepte pas encore, Zod les ignorera sauf si ton
-           * schéma est strict().
-           */
           bio: draftUser.bio,
           image: draftUser.image,
         }),
@@ -970,29 +973,34 @@ function MonCompteContent() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/8 bg-white/5 p-3 text-center sm:flex sm:shrink-0 sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0 sm:pb-1 sm:text-right">
-                <div>
-                  <p className="text-base font-bold sm:text-lg">
-                    {user.age ?? "—"}
-                  </p>
-                  <p className="text-[11px] text-white/40 sm:text-xs">ans</p>
+              <div className="shrink-0 text-center sm:text-right">
+                {/* Stats */}
+                <div className="mb-2 flex justify-center gap-4 sm:justify-end sm:gap-5">
+                  <div>
+                    <p className="text-base font-bold sm:text-lg">{user.age ?? "—"}</p>
+                    <p className="text-[11px] text-white/40 sm:text-xs">ans</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold sm:text-lg">{user.interets?.length ?? 0}</p>
+                    <p className="text-[11px] text-white/40 sm:text-xs">intérêts</p>
+                  </div>
+                  <div>
+                    <p className="text-base font-bold sm:text-lg">{profileCompletion}%</p>
+                    <p className="text-[11px] text-white/40 sm:text-xs">profil</p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-base font-bold sm:text-lg">
-                    {user.interets?.length ?? 0}
-                  </p>
-                  <p className="text-[11px] text-white/40 sm:text-xs">
-                    intérêts
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-base font-bold sm:text-lg">
-                    {profileCompletion}%
-                  </p>
-                  <p className="text-[11px] text-white/40 sm:text-xs">profil</p>
-                </div>
+                {/* Aperçu profil public */}
+                {user._id && (
+                  <Link
+                    href={`/profil/${user._id}?preview=1`}
+                    target="_blank"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition hover:border-purple-400/40 hover:bg-purple-500/10 hover:text-white"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Voir mon profil public
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -1013,7 +1021,7 @@ function MonCompteContent() {
                 setActiveTab(tab.id);
                 if (isEditing) handleCancel();
               }}
-              className={`relative flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:px-4 sm:text-sm ${
+              className={`relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex-1 sm:px-4 sm:text-sm ${
                 activeTab === tab.id
                   ? "border border-purple-400/40 bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-white shadow-lg"
                   : "border border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
@@ -1693,12 +1701,26 @@ function ProfilTab({
         <Field label="Réponse secrète 🤫" className="sm:col-span-2">
           <input
             disabled={!isEditing}
-            type="text"
+            type={isEditing ? "text" : "password"}
             value={user.reponse || ""}
             onChange={(event) => updateDraft("reponse", event.target.value)}
             className="input-luna"
-            placeholder="Votre réponse secrète"
+            placeholder={
+              user.hasReponse && !isEditing
+                ? "••••••••"
+                : user.hasReponse
+                ? "Laisser vide pour conserver la réponse actuelle"
+                : "Votre réponse secrète"
+            }
           />
+          {user.hasReponse && !isEditing && (
+            <p className="mt-1 text-xs text-green-400">✓ Réponse secrète renseignée</p>
+          )}
+          {user.hasReponse && isEditing && (
+            <p className="mt-1 text-xs text-white/40">
+              Laissez vide pour conserver votre réponse actuelle.
+            </p>
+          )}
         </Field>
       </div>
     </div>
@@ -1878,6 +1900,59 @@ function PreferencesTab({
 // Onglet Premium
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// Bouton sync Stripe
+// ─────────────────────────────────────────────
+
+function StripeSyncButton({ onSuccess }: { onSuccess: () => void }) {
+  const [syncing, setSyncing] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/stripe/sync", { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        setResult(data.isPremium ? "✅ Abonnement activé !" : "ℹ️ " + (data.message ?? "Synchronisé."));
+        if (data.isPremium) {
+          setTimeout(() => { onSuccess(); }, 1200);
+        }
+      } else {
+        setResult("❌ " + (data?.error ?? "Erreur de synchronisation."));
+      }
+    } catch {
+      setResult("❌ Erreur réseau.");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={syncing}
+        className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+      >
+        {syncing ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        ) : (
+          "🔄"
+        )}
+        {syncing ? "Synchronisation…" : "Synchroniser avec Stripe"}
+      </button>
+      {result && <p className="text-xs text-white/60">{result}</p>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Onglet Premium
+// ─────────────────────────────────────────────
+
 function PremiumTab({
   user,
   router,
@@ -1887,136 +1962,182 @@ function PremiumTab({
 }) {
   const active = isPremiumActive(user);
   const planLabel = getPremiumLabel(user);
-
   const hasSelectedPaidPlan = user.plan !== "free";
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const stripeAction = async (endpoint: string, label: string) => {
+    setActionLoading(label);
+    setActionMsg(null);
+    try {
+      const res = await fetch(endpoint, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        setActionMsg({ text: data.message ?? "✅ Opération réussie.", ok: true });
+        setTimeout(() => router.refresh(), 1500);
+      } else {
+        setActionMsg({ text: data?.error ?? "❌ Erreur.", ok: false });
+      }
+    } catch {
+      setActionMsg({ text: "❌ Erreur réseau.", ok: false });
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const featuresByPlan: Record<LunaPlan, string[]> = {
     free: ["🌙 Profil public", "💌 5 likes / jour"],
-    "essential-monthly": [
-      "⭐ 50 likes / jour",
-      "📊 Voir ses visiteurs",
-      "🔍 Filtres avancés",
-    ],
-    "premium-monthly": [
-      "💎 Likes illimités",
-      "👻 Mode invisible",
-      "📩 Messages prioritaires",
-      "🔔 Alertes matches",
-      "📈 Statistiques",
-    ],
-    "elite-monthly": [
-      "👑 Toutes les fonctionnalités",
-      "⚡ Boost de profil quotidien",
-      "🎯 Filtres ultra-précis",
-      "🛡️ Badge VIP",
-      "💬 Support prioritaire 24/7",
-    ],
+    "essential-monthly": ["⭐ Likes illimités", "📅 VibePlanner", "🎪 Événements Luna", "💬 Support prioritaire"],
+    "premium-monthly": ["💎 Circle of Six", "👻 Mode invisible", "📊 Visiteurs de profil", "🔍 Filtres avancés", "✨ VibeSphere avancé"],
+    "elite-monthly": ["👑 Toutes les fonctionnalités", "⚡ 10 boosts / mois", "🎯 Filtres ultra-précis", "🛡️ Badge VIP", "💬 Support 24/7", "🏆 VibeMentor coaching"],
   };
 
   return (
     <div className="space-y-5 sm:space-y-6">
       <div>
         <h2 className="mb-1 text-lg font-bold sm:text-xl">👑 Mon abonnement</h2>
-
         <p className="text-sm text-white/50">Gérez votre plan SferaLuna.</p>
       </div>
 
-      <div
-        className={`rounded-2xl border p-4 sm:p-5 ${
-          active
-            ? "border-green-400/20 bg-gradient-to-br from-green-500/10 to-emerald-500/10"
-            : "border-yellow-400/20 bg-gradient-to-br from-yellow-500/8 to-amber-500/8"
-        }`}
-      >
-        <div className="mb-3 flex items-center gap-3">
+      {/* Carte statut */}
+      <div className={`rounded-2xl border p-4 sm:p-5 ${
+        user.subscriptionPaused
+          ? "border-blue-400/20 bg-gradient-to-br from-blue-500/10 to-indigo-500/10"
+          : user.subscriptionCancelAtPeriodEnd
+          ? "border-orange-400/20 bg-gradient-to-br from-orange-500/10 to-red-500/10"
+          : active
+          ? "border-green-400/20 bg-gradient-to-br from-green-500/10 to-emerald-500/10"
+          : "border-yellow-400/20 bg-gradient-to-br from-yellow-500/8 to-amber-500/8"
+      }`}>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
           <span className="text-3xl">{planEmoji[user.plan]}</span>
-
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-bold">{planLabel}</h3>
-
             <p className="text-sm text-white/60">
-              {subscriptionLabels[user.subscriptionStatus] || "—"}
+              {user.subscriptionPaused
+                ? "⏸️ En pause"
+                : user.subscriptionCancelAtPeriodEnd
+                ? "🔴 Annulation programmée"
+                : subscriptionLabels[user.subscriptionStatus] || "—"}
             </p>
           </div>
-
-          {active && (
-            <span className="ml-auto flex items-center gap-1 rounded-full border border-green-400/20 bg-green-400/10 px-2.5 py-1 text-xs font-bold text-green-300">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Actif
+          {active && !user.subscriptionCancelAtPeriodEnd && !user.subscriptionPaused && (
+            <span className="flex items-center gap-1 rounded-full border border-green-400/20 bg-green-400/10 px-2.5 py-1 text-xs font-bold text-green-300">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Actif
             </span>
           )}
         </div>
 
-        {!active && hasSelectedPaidPlan && (
+        {/* Alertes état */}
+        {user.subscriptionCancelAtPeriodEnd && user.premiumExpiresAt && (
+          <div className="mb-4 rounded-xl border border-orange-400/20 bg-orange-400/10 px-3 py-2 text-sm text-orange-200">
+            ⚠️ Votre abonnement se terminera le <strong>{formatDate(user.premiumExpiresAt)}</strong>. Vous conservez l&apos;accès Premium jusqu&apos;à cette date.
+          </div>
+        )}
+        {user.subscriptionPaused && (
+          <div className="mb-4 rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-sm text-blue-200">
+            ⏸️ Abonnement en pause — aucun prélèvement ce mois-ci. Réactivez à tout moment.
+          </div>
+        )}
+        {!active && hasSelectedPaidPlan && !user.subscriptionCancelAtPeriodEnd && (
           <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/10 px-3 py-2 text-sm text-yellow-100">
-            Offre sélectionnée, mais accès Premium non activé. Finalisez le
-            paiement ou attendez la confirmation Stripe.
+            Offre sélectionnée, accès non activé. Si vous avez payé, cliquez sur &quot;Synchroniser&quot;.
           </div>
         )}
 
+        {/* Infos renouvellement */}
         <div className="mb-4 space-y-1 text-sm text-white/70">
-          {user.premiumStartedAt && (
-            <p>📅 Démarré le {formatDate(user.premiumStartedAt)}</p>
-          )}
-
-          {user.premiumExpiresAt && (
-            <p>⏳ Expire le {formatDate(user.premiumExpiresAt)}</p>
-          )}
-
           {user.lastPaymentAt && (
-            <p>💳 Dernier paiement le {formatDate(user.lastPaymentAt)}</p>
+            <p>💳 Dernier paiement : <strong>{formatDate(user.lastPaymentAt)}</strong></p>
           )}
-
-          {user.stripeSubscriptionId && (
-            <p className="break-all text-xs text-white/40">
-              Abonnement Stripe : {user.stripeSubscriptionId}
-            </p>
+          {user.premiumExpiresAt && active && !user.subscriptionCancelAtPeriodEnd && (
+            <p>🔄 Prochain renouvellement : <strong>{formatDate(user.premiumExpiresAt)}</strong></p>
+          )}
+          {user.premiumStartedAt && (
+            <p>📅 Abonnée depuis : {formatDate(user.premiumStartedAt)}</p>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => router.push("/paiement")}
-          className={`w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto ${
-            active
-              ? "bg-gradient-to-r from-green-600 to-emerald-600"
-              : "bg-gradient-to-r from-yellow-500 to-orange-500"
-          }`}
-        >
-          {active ? "Changer d’offre" : "🚀 Finaliser le paiement"}
-        </button>
+        {/* Message retour action */}
+        {actionMsg && (
+          <div className={`mb-3 rounded-xl px-3 py-2 text-sm ${actionMsg.ok ? "border border-green-400/20 bg-green-400/10 text-green-200" : "border border-red-400/20 bg-red-400/10 text-red-200"}`}>
+            {actionMsg.text}
+          </div>
+        )}
+
+        {/* Boutons action */}
+        <div className="flex flex-wrap gap-2">
+          {!active && !user.subscriptionCancelAtPeriodEnd && (
+            <button type="button" onClick={() => router.push("/paiement")}
+              className="rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
+              🚀 S&apos;abonner
+            </button>
+          )}
+
+          {active && !user.subscriptionCancelAtPeriodEnd && !user.subscriptionPaused && (
+            <>
+              <button type="button" onClick={() => router.push("/paiement")}
+                className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
+                Changer d&apos;offre
+              </button>
+              <button type="button" disabled={actionLoading === "pause"}
+                onClick={() => stripeAction("/api/stripe/pause", "pause")}
+                className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-4 py-2.5 text-sm text-blue-200 transition hover:bg-blue-400/20 disabled:opacity-50">
+                {actionLoading === "pause" ? "⏳ Pause…" : "⏸️ Mettre en pause"}
+              </button>
+              <button type="button" disabled={actionLoading === "cancel"}
+                onClick={() => stripeAction("/api/stripe/cancel", "cancel")}
+                className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2.5 text-sm text-red-300 transition hover:bg-red-400/20 disabled:opacity-50">
+                {actionLoading === "cancel" ? "⏳ Annulation…" : "🔴 Annuler l’abonnement"}
+              </button>
+            </>
+          )}
+
+          {(user.subscriptionCancelAtPeriodEnd || user.subscriptionPaused) && (
+            <button type="button" disabled={actionLoading === "reactivate"}
+              onClick={() => stripeAction("/api/stripe/reactivate", "reactivate")}
+              className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+              {actionLoading === "reactivate" ? "⏳ Réactivation…" : "✅ Réactiver l’abonnement"}
+            </button>
+          )}
+
+          {/* Sync si paiement non reconnu */}
+          {!active && hasSelectedPaidPlan && !user.subscriptionCancelAtPeriodEnd && (
+            <StripeSyncButton onSuccess={() => router.refresh()} />
+          )}
+        </div>
       </div>
 
+      {/* Fonctionnalités */}
       <div>
-        <p className="mb-3 text-sm font-semibold text-white/60">
-          ✨ Fonctionnalités incluses dans votre plan :
-        </p>
-
+        <p className="mb-3 text-sm font-semibold text-white/60">✨ Fonctionnalités de votre plan :</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {(featuresByPlan[user.plan] || featuresByPlan.free).map((feature) => (
-            <div
-              key={feature}
-              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/5 px-3 py-2.5 text-sm"
-            >
+            <div key={feature} className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/5 px-3 py-2.5 text-sm">
               {feature}
             </div>
           ))}
         </div>
       </div>
 
-      {user.plan !== "elite-monthly" && (
+      {/* Moyens de paiement acceptés */}
+      <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+        <p className="mb-3 text-sm font-semibold text-white/60">💳 Moyens de paiement acceptés</p>
+        <div className="flex flex-wrap gap-2">
+          {["💳 Carte bancaire", "🅿️ PayPal", " Apple Pay", "🔵 Google Pay"].map((m) => (
+            <span key={m} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60">{m}</span>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-white/30">Transactions sécurisées par Stripe. SferaLuna ne stocke aucune donnée bancaire.</p>
+      </div>
+
+      {user.plan !== "elite-monthly" && active && (
         <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 p-5 text-center">
           <p className="mb-1 text-lg">✨ Passez à l&apos;offre Elite</p>
-
-          <p className="mb-4 text-sm text-white/60">
-            Accès complet à toutes les fonctionnalités SferaLuna.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => router.push("/paiement")}
-            className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-          >
+          <p className="mb-4 text-sm text-white/60">Accès complet + 10 boosts, Badge VIP et coaching VibeMentor.</p>
+          <button type="button" onClick={() => router.push("/paiement")}
+            className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
             Voir les offres 👑
           </button>
         </div>

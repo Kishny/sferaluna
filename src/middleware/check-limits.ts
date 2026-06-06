@@ -471,7 +471,7 @@ export class SubscriptionChecker {
       }
 
       case "use_boost": {
-        const limit = safeLimit(limits.boostPerMonth, 0);
+        const limit = safeLimit(limits.boostsPerMonth, 0);
         const current = await this.getMonthlyCount("boosts");
 
         return this.buildLimitResult({
@@ -484,8 +484,8 @@ export class SubscriptionChecker {
       }
 
       case "view_profile": {
-        const limit = safeLimit(limits.profileViews, 0);
-        const current = await this.getTotalCount("profileViews");
+        const limit = safeLimit(limits.profileVisits, 0);
+        const current = await this.getTotalCount("profileVisits");
 
         return this.buildLimitResult({
           plan,
@@ -680,12 +680,12 @@ export class SubscriptionChecker {
    */
   private async getTotalCount(action: string): Promise<number> {
     try {
-      if (action === "profileViews") {
+      if (action === "profileVisits") {
         try {
-          const { ProfileView } = await import("@/models/ProfileView");
+          const { ProfileVisit } = await import("@/models/ProfileVisit");
 
-          return await ProfileView.countDocuments({
-            viewerId: this.userId,
+          return await ProfileVisit.countDocuments({
+            visitorId: new (await import("mongoose")).default.Types.ObjectId(this.userId),
           });
         } catch {
           return 0;

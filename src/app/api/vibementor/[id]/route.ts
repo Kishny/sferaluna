@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 /** POST /api/vibementor/[id] — Répondre ou liker une question */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Utilisateur introuvable." }, { status: 404 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ success: false, error: "ID invalide." }, { status: 400 });
     }

@@ -93,6 +93,7 @@ function ProfilContent() {
    * /profil/123?from=messages
    */
   const from = searchParams.get("from");
+  const isPreview = searchParams.get("preview") === "1";
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,26 +179,47 @@ function ProfilContent() {
 
       <main className="flex-1 px-3 pb-12 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
         <div className="mx-auto max-w-2xl">
-          {/* Bouton retour + signaler */}
-          <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6">
-            <button
-              onClick={handleBack}
-              className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 transition hover:bg-white/10 hover:text-white"
-            >
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Retour
-            </button>
 
-            {profile && (
+          {/* Bandeau aperçu */}
+          {isPreview && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-purple-400/20 bg-purple-500/10 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-purple-200">
+                <span className="text-base">👁️</span>
+                <span>
+                  <span className="font-semibold">Mode aperçu</span> — voici ce que les autres membres voient de votre profil.
+                </span>
+              </div>
               <button
-                onClick={() => setReportId(profile._id)}
-                className="flex items-center gap-1.5 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/20"
+                onClick={() => window.close()}
+                className="shrink-0 rounded-lg border border-purple-400/20 px-3 py-1.5 text-xs text-purple-300 transition hover:bg-purple-500/20"
               >
-                <Flag className="h-3.5 w-3.5" />
-                Signaler
+                Fermer
               </button>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Bouton retour + signaler */}
+          {!isPreview && (
+            <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6">
+              <button
+                onClick={handleBack}
+                className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                Retour
+              </button>
+
+              {profile && (
+                <button
+                  onClick={() => setReportId(profile._id)}
+                  className="flex items-center gap-1.5 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/20"
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                  Signaler
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Chargement */}
           {loading && (

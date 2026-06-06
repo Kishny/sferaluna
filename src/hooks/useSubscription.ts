@@ -59,13 +59,13 @@ export interface SubscriptionData {
     likes: number | null;
     messages: number | null;
     boosts?: number | null;
-    profileViews?: number | null;
+    profileVisits?: number | null;
   };
   usage: {
     remainingSwipes?: number | null;
     remainingMessages?: number | null;
     remainingBoosts?: number | null;
-    remainingProfileViews?: number | null;
+    remainingProfileVisits?: number | null;
   };
 }
 
@@ -192,8 +192,8 @@ export function useSubscription() {
         case "boosts":
           return subscription.usage?.remainingBoosts ?? 0;
 
-        case "profileViews":
-          return subscription.usage?.remainingProfileViews ?? 0;
+        case "profileVisits":
+          return subscription.usage?.remainingProfileVisits ?? 0;
 
         default:
           return 0;

@@ -31,7 +31,7 @@ function isPremiumActive(user: any) {
 
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -47,7 +47,7 @@ export async function GET(
       );
     }
 
-    const profileId = context.params.id;
+    const { id: profileId } = await context.params;
 
     if (!mongoose.Types.ObjectId.isValid(profileId)) {
       return NextResponse.json(

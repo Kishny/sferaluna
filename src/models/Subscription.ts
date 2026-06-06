@@ -113,7 +113,6 @@ const SubscriptionSchema = new Schema<ISubscription>(
     stripeSubscriptionId: {
       type: String,
       default: null,
-      index: true,
     },
 
     stripePriceId: {

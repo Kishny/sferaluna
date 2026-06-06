@@ -104,14 +104,38 @@ type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
 // Helpers
 // ─────────────────────────────────────────────
 
+/**
+ * Lit la valeur brute d'un champ Mongoose select:false.
+ *
+ * user._doc contient toujours les données brutes avant toute transformation toJSON/toObject.
+ * C'est la seule méthode fiable pour lire un champ select:false après findOne("+field").
+ */
+function readRawField(user: any, field: string): string | undefined {
+  if (!user) return undefined;
+  // Priorité 1 : _doc (document Mongoose brut)
+  if (user._doc && field in user._doc) return user._doc[field];
+  // Priorité 2 : accès direct (si le champ a été sélectionné et n'est pas masqué par transform)
+  if (typeof user[field] === "string") return user[field];
+  // Priorité 3 : méthode get() Mongoose
+  if (typeof user.get === "function") {
+    const val = user.get(field);
+    if (typeof val === "string") return val;
+  }
+  return undefined;
+}
+
 function sanitizeUser(user: any) {
   if (!user) return null;
 
-  const plainUser = user.toObject ? user.toObject({ virtuals: true }) : user;
+  // Lire reponse depuis _doc AVANT toObject() qui la supprime via le transform
+  const rawReponse = readRawField(user, "reponse");
+  const hasReponse = typeof rawReponse === "string" && rawReponse.trim() !== "";
 
-  /**
-   * On ne renvoie jamais les champs sensibles au frontend.
-   */
+  const plainUser = user.toObject ? user.toObject({ virtuals: true }) : { ...user };
+
+  plainUser.hasReponse = hasReponse;
+
+  // Ne jamais renvoyer les champs sensibles
   delete plainUser.password;
   delete plainUser.reponse;
   delete plainUser.emailVerificationToken;
@@ -197,7 +221,13 @@ async function getSessionEmail() {
  * Mais on ne renvoie pas reponse au frontend.
  */
 function calculateProfileCompletion(user: any) {
-  const raw = user?.toObject ? user.toObject() : user;
+  // Utiliser _doc directement — seul moyen fiable de lire reponse (select:false)
+  // sans être affecté par le toObject.transform du modèle User.
+  const raw: Record<string, unknown> = user?._doc
+    ? { ...user._doc }          // données brutes Mongoose
+    : user?.toObject
+    ? user.toObject()           // fallback si pas de _doc
+    : { ...user };              // dernier recours (plain object)
 
   const fields = [
     "pseudonyme",
@@ -471,8 +501,10 @@ export async function PUT(req: NextRequest) {
       updateData.question = data.question;
     }
 
-    if (data.reponse !== undefined) {
-      updateData.reponse = data.reponse;
+    // Ne sauvegarder reponse que si l'utilisatrice a tapé quelque chose.
+    // Une chaîne vide ne doit JAMAIS écraser une réponse déjà sauvegardée.
+    if (data.reponse !== undefined && data.reponse.trim() !== "") {
+      updateData.reponse = data.reponse.trim();
     }
 
     if (data.interets !== undefined) {
@@ -518,20 +550,35 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const updatedUser = await User.findOneAndUpdate(
+    // Appliquer la mise à jour
+    const updateResult = await User.updateOne(
       { email: sessionEmail },
       { $set: updateData },
-      {
-        new: true,
-        runValidators: true,
-      }
-    ).select("+reponse -password -__v");
+      { runValidators: true }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Impossible de mettre à jour le profil.",
+          code: "UPDATE_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Relire le document APRÈS la mise à jour avec +reponse explicitement sélectionné.
+    // findOneAndUpdate + .select("+reponse") n'est pas fiable avec select:false en Mongoose.
+    const updatedUser = await User.findOne({ email: sessionEmail }).select(
+      "+reponse -password -__v"
+    );
 
     if (!updatedUser) {
       return NextResponse.json(
         {
           success: false,
-          error: "Impossible de mettre à jour le profil.",
+          error: "Utilisateur introuvable après mise à jour.",
           code: "UPDATE_FAILED",
         },
         { status: 500 }

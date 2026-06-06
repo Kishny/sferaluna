@@ -19,15 +19,17 @@ async function requireAdmin() {
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
 
+  const { id } = await params;
+
   await connectDB();
 
   const user = await User.findByIdAndUpdate(
-    params.id,
+    id,
     { $set: { banned: true, visibilite: "invisible", isPremium: false } },
     { new: true }
   );

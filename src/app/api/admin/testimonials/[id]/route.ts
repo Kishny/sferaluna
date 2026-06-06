@@ -16,11 +16,12 @@ async function requireAdmin() {
 /** PATCH /api/admin/testimonials/[id] — approuver ou rejeter */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
 
+  const { id } = await params;
   const { status } = await req.json();
 
   if (!["approved", "rejected", "pending"].includes(status)) {
@@ -30,7 +31,7 @@ export async function PATCH(
   await connectDB();
 
   const updated = await Testimonial.findByIdAndUpdate(
-    params.id,
+    id,
     { status },
     { new: true }
   );
@@ -45,13 +46,15 @@ export async function PATCH(
 /** DELETE /api/admin/testimonials/[id] — supprimer */
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
 
+  const { id } = await params;
+
   await connectDB();
-  await Testimonial.findByIdAndDelete(params.id);
+  await Testimonial.findByIdAndDelete(id);
 
   return NextResponse.json({ success: true });
 }

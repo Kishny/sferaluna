@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 /** POST /api/community/[id] — Liker ou commenter un post */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +28,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Utilisateur introuvable." }, { status: 404 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ success: false, error: "ID invalide." }, { status: 400 });
     }
@@ -93,7 +93,7 @@ export async function POST(
 /** DELETE /api/community/[id] — Supprimer un post (auteur ou admin) */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -110,7 +110,7 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: "Utilisateur introuvable." }, { status: 404 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ success: false, error: "ID invalide." }, { status: 400 });
     }

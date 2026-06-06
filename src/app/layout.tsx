@@ -7,6 +7,7 @@ import "./globals.css";
 
 import ClientProvider from "./ClientProvider";
 import JsonLd from "@/components/JsonLd";
+import CookieConsent from "@/components/CookieConsent";
 
 /**
  * Police principale du site.
@@ -187,6 +188,7 @@ export default function RootLayout({
 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ClientProvider>{children}</ClientProvider>
+        <CookieConsent />
       </body>
     </html>
   );

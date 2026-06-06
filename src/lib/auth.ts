@@ -1,7 +1,12 @@
-// lib/auth.ts
+// src/lib/auth.ts
+// Helper serveur pour récupérer la session NextAuth.
+// Utilise authOptions depuis la route NextAuth officielle.
+
 import { getServerSession } from "next-auth";
-import { authConfig } from "../../auth.config.backup";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function getAuthSession() {
-  return await getServerSession(authConfig);
+  return await getServerSession(authOptions);
 }
+
+export { authOptions };

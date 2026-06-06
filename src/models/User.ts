@@ -171,7 +171,6 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
 
     /**
@@ -449,7 +448,6 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     /**
@@ -461,6 +459,24 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: "",
       trim: true,
+    },
+
+    /**
+     * Annulation programmée en fin de période.
+     * true = l'abonnement sera annulé à premiumExpiresAt.
+     */
+    subscriptionCancelAtPeriodEnd: {
+      type: Boolean,
+      default: false,
+    },
+
+    /**
+     * Abonnement en pause (pause_collection Stripe).
+     * L'accès reste actif mais aucun prélèvement n'est effectué.
+     */
+    subscriptionPaused: {
+      type: Boolean,
+      default: false,
     },
 
     /**
@@ -661,10 +677,9 @@ UserSchema.pre<IUser>("save", function () {
 /**
  * Index utiles pour les recherches futures.
  *
- * Attention :
- * email est déjà unique plus haut.
+ * Note : l'index email est géré directement par { unique: true } dans le schéma.
+ * Ne pas l'ajouter ici pour éviter le warning Mongoose "Duplicate schema index".
  */
-UserSchema.index({ email: 1 }, { unique: true });
 UserSchema.index({ plan: 1, subscriptionStatus: 1 });
 UserSchema.index({ isPremium: 1, hasCompletedProfile: 1 });
 UserSchema.index({ visibilite: 1, hasCompletedProfile: 1 });

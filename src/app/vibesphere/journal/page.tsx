@@ -10,10 +10,10 @@
  * - la saisie d'une note personnelle ;
  * - le mode jour / nuit ;
  * - une analyse IA simulée ;
- * - une timeline émotionnelle stockée en localStorage ;
+ * - une timeline émotionnelle persistée en MongoDB (via /api/journal) ;
  * - des rituels quotidiens ;
  * - une playlist Luna selon l'humeur ;
- * - des statistiques locales.
+ * - des statistiques.
  *
  * Version mobile-first :
  * - hero compact ;
@@ -24,7 +24,7 @@
  * - footer masqué sur mobile.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -60,7 +60,7 @@ type MoodName =
   | "Heureux";
 
 type Entry = {
-  id: number;
+  id: string;
   mood: string;
   note: string;
   date: string;
@@ -72,8 +72,6 @@ type Entry = {
 // ─────────────────────────────────────────────
 // Constantes
 // ─────────────────────────────────────────────
-
-const STORAGE_KEY = "vibe-journal";
 
 const moodEmojiMap: Record<MoodName, string> = {
   Apaisé: "🌿",
@@ -198,6 +196,7 @@ export default function JournalPage() {
 
   const [error, setError] = useState("");
   const [loadedStorage, setLoadedStorage] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   /**
    * Accordéons mobile.
@@ -271,54 +270,35 @@ export default function JournalPage() {
   }, [entries]);
 
   // ─────────────────────────────────────────────
-  // localStorage
+  // Chargement initial depuis l'API
   // ─────────────────────────────────────────────
 
-  useEffect(() => {
-    const data = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!data || data === "undefined" || data === "null") {
-      window.localStorage.removeItem(STORAGE_KEY);
-      setLoadedStorage(true);
-      return;
-    }
-
+  const loadEntries = useCallback(async () => {
     try {
-      const parsed = JSON.parse(data);
+      const res = await fetch("/api/journal", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.entries)) return;
 
-      if (!Array.isArray(parsed)) {
-        window.localStorage.removeItem(STORAGE_KEY);
-        setLoadedStorage(true);
-        return;
+      setEntries(data.entries);
+
+      if (data.entries.length > 0) {
+        const last = data.entries[0] as Entry;
+        setMood(last.mood || "");
+        setSelectedMood(last.mood || "");
+        setAiAnalysis(last.aiAnalysis || null);
+        setPeriod(last.period || "jour");
       }
-
-      setEntries(parsed);
-
-      if (parsed.length > 0) {
-        const lastEntry = parsed[0] as Entry;
-
-        setMood(lastEntry.mood || "");
-        setSelectedMood(lastEntry.mood || "");
-        setAiAnalysis(lastEntry.aiAnalysis || null);
-        setPeriod(lastEntry.period || "jour");
-      }
-    } catch (storageError) {
-      console.error("Données localStorage invalides :", storageError);
-      window.localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.error("Erreur chargement journal :", err);
     } finally {
       setLoadedStorage(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!loadedStorage) return;
-
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-    } catch (storageError) {
-      console.error("Erreur lors de la sauvegarde :", storageError);
-    }
-  }, [entries, loadedStorage]);
+    loadEntries();
+  }, [loadEntries]);
 
   // ─────────────────────────────────────────────
   // Actions
@@ -352,7 +332,7 @@ export default function JournalPage() {
     setError("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!mood.trim() && !note.trim()) {
       setError("Veuillez sélectionner une humeur ou écrire une note.");
       return;
@@ -365,52 +345,85 @@ export default function JournalPage() {
       playMoodSound(mood);
     }
 
-    window.setTimeout(() => {
-      const analysis = mood
-        ? simulateAiAnalysis(mood)
-        : "Aucune humeur détectée. Ta note reste précieuse 💫";
+    // Simuler l'analyse IA (délai visuel 1,2s)
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
 
-      setAiAnalysis(analysis);
+    const analysis = mood
+      ? simulateAiAnalysis(mood)
+      : "Aucune humeur détectée. Ta note reste précieuse 💫";
 
-      const newEntry: Entry = {
-        id: Date.now(),
-        mood: mood || "Non spécifié",
-        note: note.trim() || "Aucune note",
-        date: createFormattedDate(),
-        ritualDone: false,
-        period,
-        aiAnalysis: analysis,
-      };
+    setAiAnalysis(analysis);
 
-      setEntries((prev) => [newEntry, ...prev]);
+    try {
+      setSaving(true);
+      const res = await fetch("/api/journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mood: mood || "Non spécifié",
+          note: note.trim() || "Aucune note",
+          date: createFormattedDate(),
+          period,
+          aiAnalysis: analysis,
+        }),
+      });
 
-      setMood("");
-      setNote("");
-      setSelectedMood("");
-      setIsAnalyzing(false);
-      setTimelineOpen(true);
-    }, 1200);
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success && data.entry) {
+        setEntries((prev) => [data.entry, ...prev]);
+      }
+    } catch (err) {
+      console.error("Erreur sauvegarde entrée :", err);
+    } finally {
+      setSaving(false);
+    }
+
+    setMood("");
+    setNote("");
+    setSelectedMood("");
+    setIsAnalyzing(false);
+    setTimelineOpen(true);
   };
 
-  const handleRitualToggle = (id: number) => {
+  const handleRitualToggle = async (id: string) => {
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+
+    const newValue = !entry.ritualDone;
+
+    // Optimistic update
     setEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              ritualDone: !entry.ritualDone,
-            }
-          : entry
-      )
+      prev.map((e) => (e.id === id ? { ...e, ritualDone: newValue } : e))
     );
+
+    try {
+      await fetch(`/api/journal/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ritualDone: newValue }),
+      });
+    } catch (err) {
+      console.error("Erreur toggle ritual :", err);
+      // Rollback
+      setEntries((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, ritualDone: !newValue } : e))
+      );
+    }
   };
 
-  const deleteEntry = (id: number) => {
+  const deleteEntry = async (id: string) => {
     const confirmed = window.confirm("Supprimer cette entrée ?");
-
     if (!confirmed) return;
 
-    setEntries((prev) => prev.filter((entry) => entry.id !== id));
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+
+    try {
+      await fetch(`/api/journal/${id}`, { method: "DELETE" });
+    } catch (err) {
+      console.error("Erreur suppression entrée :", err);
+      await loadEntries(); // Recharger si erreur
+    }
   };
 
   const clearCurrentInput = () => {
@@ -421,11 +434,10 @@ export default function JournalPage() {
     setError("");
   };
 
-  const resetJournal = () => {
+  const resetJournal = async () => {
     const confirmed = window.confirm(
-      "Voulez-vous vraiment supprimer tout votre journal local ?"
+      "Voulez-vous vraiment supprimer tout votre journal ?"
     );
-
     if (!confirmed) return;
 
     setEntries([]);
@@ -434,7 +446,12 @@ export default function JournalPage() {
     setSelectedMood("");
     setAiAnalysis(null);
     setError("");
-    window.localStorage.removeItem(STORAGE_KEY);
+
+    try {
+      await fetch("/api/journal", { method: "DELETE" });
+    } catch (err) {
+      console.error("Erreur reset journal :", err);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {

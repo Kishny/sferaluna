@@ -162,9 +162,7 @@ const limits = getLimits(plan);
           stripeCustomerId: user.stripeCustomerId ?? "",
           stripeSubscriptionId: user.stripeSubscriptionId ?? "",
 
-          features: Object.fromEntries(
-            Object.keys(features).map((feature) => [feature, true])
-          ),
+          features,
 
           limits,
 

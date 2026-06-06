@@ -8,11 +8,15 @@ Stack technique
 
 * Framework : Next.js 15 (App Router) / React 18 / TypeScript
 * Styles : Tailwind CSS 3, Framer Motion, Lucide React
-* Auth : NextAuth v4 — Google OAuth + Facebook OAuth + Apple Sign In (HTTPS) + credentials (bcrypt)
+* Auth : NextAuth v4 — Google OAuth + Facebook OAuth + Apple Sign In (HTTPS) + credentials (bcrypt) + vérification email (Resend)
 * BDD : MongoDB Atlas + Mongoose (base sferaluna)
-* Paiement : Stripe (abonnements mensuels)
+* Paiement : Stripe (abonnements mensuels) + Stripe Identity (vérification d'identité)
 * Validation : Zod + React Hook Form
 * SEO : Metadata Next.js, OpenGraph, Twitter Cards, sitemap, robots.txt, JSON-LD
+* Temps réel : Pusher (messagerie + notifications)
+* Upload media : Cloudinary (photos de profil)
+* Emails transactionnels : Resend (src/lib/resend.ts + src/lib/emails.ts)
+* Rate limiting : rate-limiter-flexible (src/lib/rate-limiter.ts)
 
 ⸻
 
@@ -38,6 +42,16 @@ src/
 │   │   ├── messages/[matchId]/route.ts       ← GET/POST messages d'un match
 │   │   ├── notifications/route.ts            ← GET notifications / POST mark as read
 │   │   ├── profiles/route.ts                 ← GET profils découverte (filtres)
+│   │   ├── profiles/[id]/route.ts            ← GET profil public d'une utilisatrice
+│   │   ├── pusher/auth/route.ts              ← Auth canaux privés Pusher
+│   │   ├── upload/avatar/route.ts            ← POST upload photo profil → Cloudinary
+│   │   ├── identity-verification/route.ts   ← POST création session Stripe Identity
+│   │   ├── reports/route.ts                  ← POST signalement (hors admin)
+│   │   ├── stats/route.ts                    ← GET statistiques publiques
+│   │   ├── users/visibility/route.ts         ← PUT mise à jour visibilité profil
+│   │   ├── auth/register/route.ts            ← POST inscription email/password
+│   │   ├── auth/verify-email/route.ts        ← GET vérification email token
+│   │   ├── auth/reset-password/route.ts      ← POST reset mot de passe
 │   │   ├── subscription/
 │   │   │   ├── check/route.ts                ← vérification quotas/features/plans
 │   │   │   └── status/route.ts               ← état abonnement connecté
@@ -48,15 +62,22 @@ src/
 │   │   ├── vibesphere/
 │   │   │   ├── route.ts                      ← GET feed, POST créer vibe
 │   │   │   └── [id]/route.ts                 ← POST toggle like, DELETE
+│   │   ├── journal/route.ts                  ← GET/POST/DELETE journal émotionnel
+│   │   ├── journal/[id]/route.ts             ← PATCH toggle ritual, DELETE entrée
 │   │   ├── visitors/route.ts                 ← GET visiteurs / POST enregistrer visite
 │   │   ├── newsletter/route.ts               ← POST abonnement newsletter (MongoDB)
 │   │   ├── testimonials/route.ts             ← GET approuvés (public) + POST (auth)
 │   │   ├── stripe/
-│   │   │   ├── create-checkout-session/route.ts
-│   │   │   └── webhook/route.ts
+│   │   │   ├── create-checkout-session/route.ts  ← PayPal + automatic_payment_methods
+│   │   │   ├── webhook/route.ts                  ← checkout + subscription + invoice events
+│   │   │   ├── sync/route.ts                     ← POST sync manuel abonnement Stripe → MongoDB
+│   │   │   ├── cancel/route.ts                   ← POST annuler à la fin de période
+│   │   │   ├── pause/route.ts                    ← POST mettre en pause (pause_collection)
+│   │   │   └── reactivate/route.ts               ← POST réactiver depuis pause ou annulation
 │   │   └── users/
 │   │       ├── profile/route.ts              ← GET/PUT profil connecté + protection ghostMode
-│   │       └── update-profile/route.ts
+│   │       ├── update-profile/route.ts
+│   │       └── visibility/route.ts           ← PUT visibilité profil
 │   ├── admin/page.tsx                        ← Dashboard admin (stats + gestion users)
 │   ├── auth/page.tsx                         ← Login/Register NextAuth
 │   ├── auth/reset-password/page.tsx          ← Mot de passe oublié
@@ -71,6 +92,7 @@ src/
 │   ├── mode-fantome/page.tsx                 ← Toggle invisible mode premium ✅
 │   ├── mon-compte/page.tsx                   ← Dashboard compte utilisateur
 │   ├── paiement/page.tsx                     ← Choix offre Stripe
+│   ├── profil/[id]/page.tsx                  ← Page profil public d'une utilisatrice ✅
 │   ├── vibementor/page.tsx                   ← Q&A mentorat communauté ✅
 │   ├── vibeplanner/page.tsx                  ← Idées rendez-vous + partage matches ✅
 │   ├── vibesphere/page.tsx                   ← Feed social mood board ✅
@@ -88,11 +110,23 @@ src/
 │   ├── ReportModal.tsx
 │   └── UsageLimits.tsx
 ├── hooks/
-│   └── usePremium.ts                         ← Hook client isPremium, can(feature)
+│   ├── usePremium.ts                         ← Hook client isPremium, can(feature)
+│   └── useSubscription.ts                    ← Hook complet abonnement + limites + features
 ├── lib/
 │   ├── db.ts                                 ← connectDB() avec cache global Mongoose
 │   ├── stripe.ts
 │   ├── premium.ts                            ← helpers premium legacy / UI
+│   ├── auth.ts                               ← getAuthSession() helper serveur (re-export authOptions)
+│   ├── cloudinary.ts                         ← client Cloudinary (CLOUDINARY_CLOUD_NAME/KEY/SECRET)
+│   ├── pusher.ts                             ← client Pusher serveur
+│   ├── pusher-client.ts                      ← client Pusher navigateur
+│   ├── resend.ts                             ← client Resend emails (RESEND_API_KEY)
+│   ├── emails.ts                             ← templates HTML emails transactionnels
+│   ├── rate-limiter.ts                       ← rate limiting par IP (rate-limiter-flexible)
+│   ├── audit.ts                              ← createAuditLog() helper
+│   ├── utils.ts
+│   ├── guards/
+│   │   └── premium-guard.ts                  ← guard serveur premium simplifié
 │   └── subscription/
 │       ├── config.ts                         ← plans, limites, features
 │       ├── service.ts
@@ -100,11 +134,12 @@ src/
 ├── models/
 │   ├── User.ts                               ← Modèle principal
 │   ├── Subscription.ts                       ← Abonnements MongoDB
+│   ├── AuditLog.ts                           ← Logs d'audit actions utilisateurs
 │   ├── Boost.ts                              ← Utilisation boosts
 │   ├── Like.ts                               ← like fromUserId → toUserId (unique)
 │   ├── Match.ts                              ← match mutuel user1Id/user2Id + lastMessageAt
 │   ├── Message.ts                            ← messages par matchId
-│   ├── ProfileVisit.ts                       ← visites profil unifiées
+│   ├── ProfileVisit.ts                       ← visites profil (visitorId / visitedId)
 │   ├── VibePost.ts                           ← posts VibeSphere
 │   ├── VibePlan.ts                           ← plans rendez-vous
 │   ├── LunaEvent.ts                          ← événements Luna
@@ -112,9 +147,10 @@ src/
 │   ├── MentorPost.ts                         ← Q&A VibeMentor
 │   ├── NewsletterSubscriber.ts               ← abonnés newsletter
 │   ├── Testimonial.ts                        ← témoignages
-│   └── Report.ts                             ← signalements
+│   ├── Report.ts                             ← signalements
+│   └── JournalEntry.ts                       ← entrées journal émotionnel (userId, mood, note, period)
 └── middleware/
-    └── check-limits.ts
+    └── check-limits.ts                       ← SubscriptionChecker + requireSubscription
 
     Modèle User.ts — référence : 
 
@@ -191,6 +227,20 @@ STRIPE_PRICE_ESSENTIAL_MONTHLY=...
 STRIPE_PRICE_PREMIUM_MONTHLY=...
 STRIPE_PRICE_ELITE_MONTHLY=...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Cloudinary (upload photos profil)
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+# Pusher (temps réel messagerie)
+PUSHER_APP_ID=...
+PUSHER_KEY=...
+PUSHER_SECRET=...
+PUSHER_CLUSTER=eu
+NEXT_PUBLIC_PUSHER_KEY=...
+NEXT_PUBLIC_PUSHER_CLUSTER=eu
+# Resend (emails transactionnels)
+RESEND_API_KEY=...
+RESEND_FROM_EMAIL=...
 
 Flux utilisateur complet :   /auth (login/register)
   → /inscription (5 étapes profil)
@@ -211,8 +261,9 @@ Découverte & match :
 
 Messagerie :
   /messages/[matchId]
-    → GET /api/messages/[matchId] (polling 3s)
+    → GET /api/messages/[matchId] (chargement initial)
     → POST /api/messages/[matchId] { content }
+    → Pusher canal private-match-{matchId} pour réception temps réel
 
 Notifications :
   GET /api/notifications
@@ -229,11 +280,11 @@ Notifications :
 * API profil GET/PUT.
 * Découverte profils /explorer : cards, filtres, like/pass, modal match.
 * Likes & Matches : détection match mutuel, création de Match, liste /matches.
-* Messagerie privée /messages/[matchId], polling 3s.
+* Messagerie privée /messages/[matchId], temps réel via Pusher.
 * Mode Fantôme /mode-fantome, avec protection premium côté API.
 * Circle of Six /circle, 6 profils curatés/semaine.
 * VibeSphere /vibesphere, feed social mood board.
-* Journal émotionnel /vibesphere/journal, localStorage, rituels, playlist, analyse IA simulée.
+* Journal émotionnel /vibesphere/journal, persisté en MongoDB, rituels, playlist, analyse IA simulée.
 * VibePlanner /vibeplanner, idées rendez-vous.
 * VibeMentor /vibementor, Q&A communauté.
 * Événements Luna /evenements, inscription/désinscription.
@@ -246,6 +297,20 @@ Notifications :
 * Signalements via ReportModal.
 * Pages légales : confidentialité, conditions, cookies, accessibilité.
 * SEO : metadata globale, helper buildMeta, sitemap, robots, JSON-LD.
+* Upload photo profil via Cloudinary (/api/upload/avatar).
+* Emails transactionnels via Resend (vérification email, reset password, etc.).
+* Temps réel via Pusher (messagerie + notifications).
+* Vérification d'identité via Stripe Identity (/api/identity-verification).
+* Rate limiting par IP (implémentation native Map, sans dépendance externe).
+* Audit logs centralisés (src/lib/audit.ts + AuditLog model).
+* Page profil public /profil/[id].
+* Consentement cookies RGPD (CookieConsent + useCookieConsent hook).
+* Tests unitaires Vitest (subscription, rate-limiter, cookie consent, premium).
+* Aperçu profil public depuis Mon Compte (/profil/[id]?preview=1).
+* Gestion abonnement Stripe : annulation fin période, pause, réactivation.
+* Webhooks invoice.payment_succeeded / invoice.payment_failed (renouvellement mensuel).
+* PayPal + Apple Pay + Google Pay via automatic_payment_methods Stripe.
+* Synchronisation manuelle abonnement (/api/stripe/sync).
 * Build Next.js validé avec succès.
 
 ⸻
@@ -385,102 +450,34 @@ Le build Next.js a été relancé : Résultat : build validé avec succès.
 
 Ce qui reste à faire 🚀
 
-1. Déploiement
-    * Vercel
-    * Stripe live keys
-    * Google OAuth prod
-    * domaine custom
-2. Notifications temps réel
-    * Remplacer polling par WebSockets, Pusher ou Server-Sent Events.
-3. Upload photos
-    * Profil avec vraie photo utilisateur.
-    * Gestion Cloudinary ou stockage sécurisé.
-4. Signalement avancé
-    * Bouton signaler sur profil et messages.
-    * Historique complet dans admin.
-5. Tests
-    * Tests unitaires.
-    * Tests API.
-    * Tests E2E sur auth, paiement, matching, messages.
-6. Nettoyage premium
-    * Vérifier que tous les fichiers utilisent les mêmes clés :
-        * profileVisits
-        * ghostMode
-        * premium-monthly
-        * elite-monthly
-7. Optimisation Mongoose
-    * Corriger les index dupliqués.
-    * Nettoyer les anciens fichiers legacy.
+1. Tests
+    * Tests unitaires Vitest — ✅ setup fait, 4 suites (lancer : npm install && npm test).
+    * Tests API (vitest + fetch mock) — à faire.
+    * Tests E2E Playwright — à faire après stabilisation en prod.
+2. PayPal
+    * En attente d'approbation Stripe (paiements récurrents). Code prêt, activation automatique dès validation.
+    * Activer Google Pay dans Dashboard Stripe (Settings → Payment Methods).
 
 ⸻
 
 ⚠️ Dette technique connue
 
-1. Warning Mongoose — index dupliqués
+Aucune dette bloquante connue à ce jour. Les corrections suivantes ont été appliquées :
 
-Pendant le build, Mongoose affiche plusieurs warnings du type : [MONGOOSE] Warning: Duplicate schema index on {"email":1} found.
-This is often due to declaring an index using both "index: true" and "schema.index()".
-Please remove the duplicate index definition.
-
-Cela signifie qu’un même index est déclaré deux fois.
-
-Exemple problématique : email: {
-  type: String,
-  index: true,
-}
-
-et plus bas : UserSchema.index({ email: 1 });
-
-Il faut choisir une seule méthode.
-
-Pour email, préférer généralement : email: {
-  type: String,
-  required: true,
-  unique: true,
-  lowercase: true,
-  trim: true,
-}
-
-et supprimer le doublon : UserSchema.index({ email: 1 });
-
-Même problème repéré sur : stripeSubscriptionId
-
-À vérifier dans : src/models/User.ts
-src/models/Subscription.ts
-
-Ce warning ne bloque pas forcément le build, mais il faut le corriger pour éviter :
-
-* indexes inutiles ;
-* ralentissements au démarrage ;
-* confusion sur les contraintes MongoDB ;
-* comportements inattendus en développement.
-
-2. src/lib/auth.ts
-
-Ce fichier importe depuis un ancien chemin backup : ../../auth.config.backup
-
-S’il n’est plus utilisé, le supprimer ou le corriger.
-
-3. Anciennes clés premium
-
-Certaines anciennes références peuvent encore exister : profileViews
-basic
-premium
-master
-
-Les valeurs actuelles à utiliser : profileVisits
-free
-essential-monthly
-premium-monthly
-elite-monthly
-
-4. Polling messagerie
-
-La messagerie utilise encore un polling toutes les 3 secondes. Pour la production, remplacer par :
-
-* WebSockets ;
-* Pusher ;
-* Server-Sent Events.
+* Index dupliqués Mongoose — corrigés dans User.ts (email, stripeSubscriptionId) et Subscription.ts.
+* src/lib/auth.ts — corrigé, importe désormais authOptions depuis la route NextAuth officielle.
+* Clés premium — toutes normalisées vers profileVisits, boostsPerMonth, etc.
+* Polling messagerie — remplacé par Pusher temps réel.
+* AuditLog model — créé dans src/models/AuditLog.ts.
+* ProfileView fantôme — corrigé dans check-limits.ts (utilise désormais ProfileVisit).
+* subscription/service.ts — réécrit en Mongoose (supprimé import Prisma/types obsolètes).
+* UsageLimits.tsx — réécrit pour utiliser useSubscription hook (supprimé appel Prisma côté client).
+* rate-limiter.ts — implémentation native Map (supprimé dépendance rate-limiter-flexible manquante).
+* Journal émotionnel — migré de localStorage vers MongoDB (model JournalEntry + API /api/journal).
+* Réponse secrète — bug sanitizeUser corrigé (_doc lu avant toObject transform), calcul completion côté client corrigé (hasReponse).
+* params Next.js 15 — toutes les routes dynamiques [id] migrées vers Promise<{id}>.
+* features status — bug status/route.ts corrigé (toutes les features renvoyées à true → corrigé).
+* Stripe forceActive — webhook corrigé pour ignorer le statut "incomplete" lors du checkout.session.completed.
 
 ⸻
 
@@ -518,8 +515,12 @@ Build :  npm run build
 
 Développement : npm run dev
 
+Tests unitaires :  npm test
+Tests en watch :  npm run test:watch
+Tests + couverture :  npm run test:coverage
+
 Git — commit et push :  git add .
-git commit -m "Correction abonnement notifications et visites profil"
+git commit -m "feat: cookie consent RGPD + tests unitaires Vitest"
 git push origin main
 
 Vérifier les références ProfileView / ProfileVisit :  grep -R "ProfileView" src/app src/lib src/models

@@ -138,15 +138,23 @@ async function syncPremiumUserFromSubscription({
 }) {
   const stripeStatus = subscription?.status;
 
-  const subscriptionStatus: SubscriptionStatus = stripeStatus
-    ? mapStripeSubscriptionStatus(stripeStatus)
-    : forceActive
-      ? "active"
-      : "inactive";
+  // Si forceActive = true (checkout.session.completed), on active toujours
+  // Premium même si l'abonnement Stripe est encore "incomplete" (délai Stripe
+  // entre checkout et première facture payée). Le webhook
+  // customer.subscription.updated se chargera de la mise à jour finale.
+  let subscriptionStatus: SubscriptionStatus;
+  let isPremium: boolean;
 
-  const isPremium = stripeStatus
-    ? isStripeSubscriptionPremiumActive(stripeStatus)
-    : forceActive;
+  if (forceActive) {
+    subscriptionStatus = "active";
+    isPremium = true;
+  } else if (stripeStatus) {
+    subscriptionStatus = mapStripeSubscriptionStatus(stripeStatus);
+    isPremium = isStripeSubscriptionPremiumActive(stripeStatus);
+  } else {
+    subscriptionStatus = "inactive";
+    isPremium = false;
+  }
 
   const subscriptionId = subscription?.id || "";
 
@@ -377,14 +385,19 @@ export async function POST(req: NextRequest) {
             eventId: event.id,
             subscriptionId: subscription.id,
           });
-
           break;
         }
 
-        await syncPremiumUserFromSubscription({
-          userId,
-          plan,
-          subscription,
+        await syncPremiumUserFromSubscription({ userId, plan, subscription });
+
+        // Synchroniser cancel_at_period_end et pause
+        const cancelAtEnd = (subscription as any).cancel_at_period_end === true;
+        const paused = !!(subscription as any).pause_collection;
+        await User.findByIdAndUpdate(userId, {
+          $set: {
+            subscriptionCancelAtPeriodEnd: cancelAtEnd,
+            subscriptionPaused: paused,
+          },
         });
 
         console.log("✅ Abonnement Stripe mis à jour :", {
@@ -392,16 +405,65 @@ export async function POST(req: NextRequest) {
           plan,
           subscriptionId: subscription.id,
           status: subscription.status,
+          cancelAtEnd,
+          paused,
         });
 
         break;
       }
 
-      /**
-       * 4. Abonnement supprimé ou annulé.
-       *
-       * Dans ce cas, on retire l'accès Premium.
-       */
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+
+        if (customerId) {
+          const periodEnd = typeof (invoice as any).period_end === "number"
+            ? new Date((invoice as any).period_end * 1000)
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+          await User.findOneAndUpdate(
+            { stripeCustomerId: customerId },
+            {
+              $set: {
+                isPremium: true,
+                subscriptionStatus: "active",
+                lastPaymentAt: new Date(),
+                premiumExpiresAt: periodEnd,
+                subscriptionCancelAtPeriodEnd: false,
+                subscriptionPaused: false,
+              },
+            }
+          );
+
+          console.log("✅ Renouvellement Stripe payé :", {
+            customerId,
+            invoiceId: invoice.id,
+            periodEnd: periodEnd.toISOString(),
+          });
+        }
+
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoiceFailed = event.data.object as Stripe.Invoice;
+        const customerIdFailed = invoiceFailed.customer as string;
+
+        if (customerIdFailed) {
+          await User.findOneAndUpdate(
+            { stripeCustomerId: customerIdFailed },
+            { $set: { subscriptionStatus: "past_due" } }
+          );
+
+          console.warn("⚠️ Paiement Stripe échoué :", {
+            customerId: customerIdFailed,
+            invoiceId: invoiceFailed.id,
+          });
+        }
+
+        break;
+      }
+
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
 
