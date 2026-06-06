@@ -154,10 +154,10 @@ export default function ConditionsPage() {
         <p>
           Pour toute question relative aux présentes CGU :{" "}
           <a
-            href="mailto:legal@sferaluna.com"
+            href="mailto:contact@sferaluna.com"
             className="font-medium text-[#8E7AB5] underline-offset-2 hover:underline"
           >
-            legal@sferaluna.com
+            contact@sferaluna.com
           </a>
         </p>
       ),

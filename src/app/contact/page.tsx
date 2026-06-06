@@ -78,7 +78,7 @@ export default function ContactPage() {
       id: "email",
       emoji: "📧",
       title: "Email",
-      value: "support@sferaluna.com",
+      value: "contact@sferaluna.com",
       description:
         "Notre équipe reçoit votre demande directement par email.",
     },

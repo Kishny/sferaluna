@@ -19,11 +19,11 @@ import type { MetadataRoute } from "next";
  * Le sitemap doit rester orienté SEO public.
  */
 
-const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.fr";
+const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.com";
 
 /**
  * Nettoie l'URL de base pour éviter :
- * https://sferaluna.fr//tarifs
+ * https://sferaluna.com//tarifs
  */
 const baseUrl = rawBaseUrl.replace(/\/$/, "");
 

@@ -85,10 +85,10 @@ export default function AccessibilitePage() {
             <li>
               Email :{" "}
               <a
-                href="mailto:accessibilite@sferaluna.com"
+                href="mailto:contact@sferaluna.com"
                 className="font-medium text-[#8E7AB5] underline-offset-2 hover:underline"
               >
-                accessibilite@sferaluna.com
+                contact@sferaluna.com
               </a>
             </li>
             <li>

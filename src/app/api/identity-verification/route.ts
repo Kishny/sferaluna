@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.com";
 
   const verificationSession = await stripe.identity.verificationSessions.create({
     type: "document",

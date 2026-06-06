@@ -29,9 +29,9 @@ const geistMono = Geist_Mono({
  * URL publique du site.
  *
  * En production, mets bien dans ton .env :
- * NEXT_PUBLIC_APP_URL=https://sferaluna.fr
+ * NEXT_PUBLIC_APP_URL=https://sferaluna.com
  */
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.fr";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.com";
 
 /**
  * Métadonnées globales du site.

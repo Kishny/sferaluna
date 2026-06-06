@@ -12,7 +12,7 @@ import type { MetadataRoute } from "next";
  */
 
 export default function robots(): MetadataRoute.Robots {
-  const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.fr";
+  const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.com";
 
   /**
    * Évite les doubles slashs si NEXT_PUBLIC_APP_URL finit par "/".

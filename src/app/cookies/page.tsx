@@ -98,7 +98,7 @@ const policySections = [
     icon: <Mail className="h-4 w-4" />,
     title: "Contact",
     content:
-      "Pour toute question liée aux cookies ou à la confidentialité, vous pouvez nous contacter à l'adresse privacy@sferaluna.com.",
+      "Pour toute question liée aux cookies ou à la confidentialité, vous pouvez nous contacter à l'adresse contact@sferaluna.com.",
   },
 ];
 
@@ -273,10 +273,10 @@ export default function CookiesPage() {
               <p>
                 Pour toute question :{" "}
                 <a
-                  href="mailto:privacy@sferaluna.com"
+                  href="mailto:contact@sferaluna.com"
                   className="text-[#8E7AB5] hover:underline"
                 >
-                  privacy@sferaluna.com
+                  contact@sferaluna.com
                 </a>
               </p>
             </section>
@@ -398,10 +398,10 @@ export default function CookiesPage() {
                                 Pour toute question liée aux cookies ou à la
                                 confidentialité :{" "}
                                 <a
-                                  href="mailto:privacy@sferaluna.com"
+                                  href="mailto:contact@sferaluna.com"
                                   className="font-medium text-[#8E7AB5] underline underline-offset-2"
                                 >
-                                  privacy@sferaluna.com
+                                  contact@sferaluna.com
                                 </a>
                               </p>
                             ) : (

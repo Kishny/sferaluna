@@ -27,15 +27,15 @@ import type { Metadata } from "next";
  *
  * Important :
  * NEXT_PUBLIC_APP_URL doit idéalement être :
- * https://sferaluna.fr
+ * https://sferaluna.com
  *
  * Sans slash final.
  */
-const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.fr";
+const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sferaluna.com";
 
 /**
  * Nettoie l'URL de base pour éviter :
- * https://sferaluna.fr//histoire
+ * https://sferaluna.com//histoire
  */
 const baseUrl = rawBaseUrl.replace(/\/$/, "");
 
@@ -56,10 +56,10 @@ const siteName = "SferaLuna";
  * Construit une URL absolue propre.
  *
  * Exemples :
- * buildAbsoluteUrl("") => https://sferaluna.fr
- * buildAbsoluteUrl("/") => https://sferaluna.fr
- * buildAbsoluteUrl("/histoire") => https://sferaluna.fr/histoire
- * buildAbsoluteUrl("histoire") => https://sferaluna.fr/histoire
+ * buildAbsoluteUrl("") => https://sferaluna.com
+ * buildAbsoluteUrl("/") => https://sferaluna.com
+ * buildAbsoluteUrl("/histoire") => https://sferaluna.com/histoire
+ * buildAbsoluteUrl("histoire") => https://sferaluna.com/histoire
  */
 function buildAbsoluteUrl(path: string = "") {
   if (!path || path === "/") return baseUrl;

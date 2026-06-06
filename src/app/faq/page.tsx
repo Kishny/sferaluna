@@ -454,7 +454,7 @@ export default function FAQPage() {
 
               <div className="grid gap-2 sm:grid-cols-3 sm:gap-6">
                 <a
-                  href="mailto:support@sferaluna.com"
+                  href="mailto:contact@sferaluna.com"
                   className="flex items-center gap-3 rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-sm transition hover:bg-white/20 sm:block sm:p-5 sm:text-center"
                 >
                   <MessageCircle className="h-6 w-6 shrink-0 sm:mx-auto sm:mb-3 sm:h-8 sm:w-8" />
