@@ -112,6 +112,22 @@ function PremiumAuthContent() {
 
   const mode = searchParams.get("mode");
 
+  // Erreurs OAuth renvoyées par NextAuth dans l'URL (?error=...)
+  const oauthError = searchParams.get("error");
+  const oauthErrorMessages: Record<string, string> = {
+    OAuthSignin: "Erreur lors de l'initiation de la connexion OAuth.",
+    OAuthCallback: "Erreur lors du retour OAuth. Vérifiez la configuration du provider.",
+    OAuthCreateAccount: "Impossible de créer le compte via ce provider.",
+    EmailCreateAccount: "Impossible de créer le compte avec cet email.",
+    Callback: "Erreur de callback OAuth.",
+    OAuthAccountNotLinked: "Cet email est déjà associé à une autre méthode de connexion.",
+    SessionRequired: "Vous devez être connectée pour accéder à cette page.",
+    Default: "Une erreur est survenue lors de la connexion.",
+  };
+  const oauthErrorMessage = oauthError
+    ? (oauthErrorMessages[oauthError] ?? oauthErrorMessages.Default)
+    : null;
+
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -780,6 +796,23 @@ function PremiumAuthContent() {
 
                 <div className="p-3.5 sm:p-6">
                   <AnimatePresence>
+                    {/* Erreur OAuth (ex: redirect_uri_mismatch, app non configurée) */}
+                    {oauthErrorMessage && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mb-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-3 sm:p-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="h-5 w-5 shrink-0 text-orange-400" />
+                          <span className="text-sm text-orange-300">
+                            {oauthErrorMessage}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+
                     {errors.form && (
                       <motion.div
                         initial={{ opacity: 0, y: -8 }}
