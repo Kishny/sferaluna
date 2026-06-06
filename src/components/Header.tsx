@@ -310,7 +310,7 @@ export default function Header() {
           <div className="flex h-14 items-center justify-between sm:h-16 lg:h-20">
             {/* Logo compact mobile */}
             <motion.div
-              className="flex min-w-0 items-center"
+              className="flex shrink-0 items-center"
               whileHover={{ scale: 1.03 }}
               transition={{ type: 'spring', stiffness: 400 }}
             >
@@ -342,7 +342,7 @@ export default function Header() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.25 }}
-                className="ml-4 hidden items-center gap-1.5 rounded-full border border-[#8E7AB5]/25 bg-white/60 px-3 py-1 backdrop-blur-sm md:flex"
+                className="ml-3 hidden items-center gap-1.5 rounded-full border border-[#8E7AB5]/25 bg-white/60 px-3 py-1 backdrop-blur-sm xl:flex"
               >
                 <Shield size={11} className="text-[#8E7AB5]" />
 
@@ -353,7 +353,7 @@ export default function Header() {
             </motion.div>
 
             {/* Menu desktop */}
-            <nav className="hidden items-center space-x-1 lg:flex">
+            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 overflow-hidden lg:flex">
               {links.map((link) => {
                 const isActive =
                   pathname === link.href ||
@@ -367,7 +367,7 @@ export default function Header() {
                       href={link.href}
                       onMouseEnter={() => setHoveredLink(link.href)}
                       onMouseLeave={() => setHoveredLink(null)}
-                      className={`relative flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-all duration-300 ${
+                      className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-medium transition-all duration-300 ${
                         isActive
                           ? 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
                           : 'text-[#5E5E5E] hover:bg-[#8E7AB5]/8 hover:text-[#8E7AB5]'
@@ -422,12 +422,12 @@ export default function Header() {
             </nav>
 
             {/* Actions desktop */}
-            <div className="hidden items-center gap-3 lg:flex">
+            <div className="hidden shrink-0 items-center gap-2 lg:flex">
               {isLoggedIn ? (
                 <>
                   <Link
                     href="/explorer"
-                    className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
+                    className="flex items-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
                   >
                     <Sparkles size={15} className="text-[#8E7AB5]" />
                     Explorer
