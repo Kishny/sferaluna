@@ -81,7 +81,7 @@ export async function GET(
 
     const profile = await User.findById(profileId)
       .select(
-        "pseudonyme age localisation interets intentions orientation bio image identityVerified visibilite hasCompletedProfile banned createdAt"
+        "pseudonyme age localisation interets intentions orientation bio image identityVerified visibilite hasCompletedProfile banned createdAt role"
       )
       .lean();
 
@@ -96,8 +96,15 @@ export async function GET(
       );
     }
 
-    const isOwnProfile =
-      String(profile._id) === String(currentUser._id);
+    const isOwnProfile = String(profile._id) === String(currentUser._id);
+
+    // Bloquer l'accès aux profils admin (invisibles pour les utilisatrices)
+    if ((profile as any).role === "admin" && !isOwnProfile) {
+      return NextResponse.json(
+        { success: false, error: "Profil introuvable.", code: "PROFILE_NOT_FOUND" },
+        { status: 404 }
+      );
+    }
 
     if (profile.banned && !isOwnProfile) {
       return NextResponse.json(

@@ -155,6 +155,13 @@ export default function AdminPage() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth?mode=login");
+      return;
+    }
+    // Vérifier le rôle côté client : si non-admin → rediriger vers accueil
+    if (status === "authenticated") {
+      fetch("/api/admin/stats", { cache: "no-store" }).then((res) => {
+        if (res.status === 403) router.replace("/");
+      });
     }
   }, [status, router]);
 

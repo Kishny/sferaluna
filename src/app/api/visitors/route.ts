@@ -278,14 +278,16 @@ export async function POST(req: NextRequest) {
      * On ne comptabilise pas une visite de son propre profil.
      */
     if (visitorId.equals(visitedId)) {
-      return NextResponse.json(
-        {
-          success: true,
-          skipped: true,
-          reason: "self_visit",
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, skipped: true, reason: "self_visit" }, { status: 200 });
+    }
+
+    /**
+     * Vérifier que le profil visité n'est pas un admin.
+     * Les comptes admin sont invisibles pour toutes les utilisatrices.
+     */
+    const visitedUser = await User.findById(visitedId).select("role").lean();
+    if (!visitedUser || (visitedUser as any).role === "admin") {
+      return NextResponse.json({ success: true, skipped: true, reason: "admin_profile" }, { status: 200 });
     }
 
     /**

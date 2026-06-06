@@ -235,14 +235,15 @@ export async function POST(req: NextRequest) {
      * - un profil invisible.
      */
     const targetUser = await User.findById(targetId).select(
-      "_id hasCompletedProfile banned visibilite"
+      "_id hasCompletedProfile banned visibilite role"
     );
 
     if (
       !targetUser ||
       !targetUser.hasCompletedProfile ||
       targetUser.banned ||
-      targetUser.visibilite === "invisible"
+      targetUser.visibilite === "invisible" ||
+      (targetUser as any).role === "admin"
     ) {
       return NextResponse.json(
         {
