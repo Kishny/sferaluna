@@ -17,7 +17,9 @@
  * - footer masqué sur mobile pour éviter de surcharger l'écran.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -25,6 +27,7 @@ import {
   ChevronDown,
   Heart,
   Lightbulb,
+  Loader2,
   MapPin,
   Sparkles,
   Users,
@@ -83,12 +86,57 @@ const futureFeatures = [
 ];
 
 export default function VibePlannerPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
   /**
    * Accordéon mobile.
    * null = aucun bloc ouvert.
    * 0 = premier bloc ouvert par défaut.
    */
   const [openIdeaIndex, setOpenIdeaIndex] = useState<number | null>(0);
+
+  /**
+   * VibePlanner est réservé aux utilisatrices connectées (même si l'aperçu
+   * actuel n'est qu'une vitrine "bientôt disponible" : l'API /api/vibeplanner
+   * existe déjà côté serveur et est protégée par session).
+   */
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth?mode=login");
+    }
+  }, [status, router]);
+
+  /**
+   * Loading global — le temps que useSession() résolve son statut.
+   */
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
+          <Header />
+
+          <main className="flex min-h-screen items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/10 backdrop-blur">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-200" />
+              </div>
+
+              <p className="text-sm text-white/60">Chargement…</p>
+            </motion.div>
+          </main>
+        </div>
+
+        <div className="hidden sm:block">
+          <Footer />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

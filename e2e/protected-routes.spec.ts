@@ -7,11 +7,6 @@
 // router.push("/auth?mode=login") quand status === "unauthenticated"
 // (voir explorer/page.tsx, mon-compte/page.tsx, matches/page.tsx, etc.).
 //
-// Note : /vibeplanner est volontairement exclue. C'est une page de
-// présentation publique ("bientôt disponible") sans aucun useSession()
-// ni redirection — elle ne fait pas partie des routes protégées
-// côté client malgré son apparition dans la liste des fonctionnalités.
-
 import { test, expect } from "@playwright/test";
 
 const PROTECTED_PATHS = [
@@ -21,6 +16,7 @@ const PROTECTED_PATHS = [
   "/circle",
   "/mode-fantome",
   "/vibesphere",
+  "/vibeplanner",
   "/vibementor",
 ];
 
