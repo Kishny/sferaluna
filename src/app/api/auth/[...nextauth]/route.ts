@@ -157,6 +157,19 @@ function getOAuthProviders() {
       AppleProvider({
         clientId: process.env.APPLE_ID,
         clientSecret: generateAppleClientSecret(),
+
+        /**
+         * Important — bug connu NextAuth + Apple :
+         * Apple répond via response_mode=form_post, donc le callback
+         * arrive en POST cross-site depuis appleid.apple.com. Le cookie
+         * PKCE "code_verifier" posé par NextAuth est SameSite=Lax par
+         * défaut : le navigateur ne le renvoie pas sur cette requête
+         * cross-origin, ce qui déclenche l'erreur OAUTH_CALLBACK_ERROR
+         * "Le cookie PKCE code_verifier est manquant".
+         * On désactive donc la vérification PKCE/state pour ce provider
+         * uniquement (workaround documenté pour Apple Sign In).
+         */
+        checks: ["none"],
       })
     );
   }
