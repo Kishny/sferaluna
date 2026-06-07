@@ -398,7 +398,7 @@ function PremiumAuthContent() {
   };
 
   const handleSocialLogin = async (
-    provider: "google" | "facebook" | "apple"
+    provider: "google" | "apple"
   ) => {
     if (isLoading) return;
 
@@ -1019,7 +1019,7 @@ function PremiumAuthContent() {
                           Autres méthodes de connexion
                         </p>
                         <p className="text-[11px] text-gray-400 sm:text-xs">
-                          Google, Facebook ou Apple
+                          Google ou Apple
                         </p>
                       </div>
 
@@ -1052,31 +1052,13 @@ function PremiumAuthContent() {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              <SocialButton
-                                label="Google"
-                                imageSrc="/google-icon.svg"
-                                onClick={() => handleSocialLogin("google")}
-                                disabled={isLoading}
-                              />
-
-                              <button
-                                type="button"
-                                onClick={() => handleSocialLogin("facebook")}
-                                disabled={isLoading}
-                                className="group flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 transition-all hover:border-white/20 hover:bg-white/10 disabled:opacity-50"
-                              >
-                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
-                                  <span className="text-xs font-bold text-white">
-                                    f
-                                  </span>
-                                </div>
-
-                                <span className="text-sm font-medium">
-                                  Facebook
-                                </span>
-                              </button>
-                            </div>
+                            <SocialButton
+                              label="Google"
+                              imageSrc="/google-icon.svg"
+                              onClick={() => handleSocialLogin("google")}
+                              disabled={isLoading}
+                              fullWidth
+                            />
 
                             <SocialButton
                               label="Continuer avec Apple"

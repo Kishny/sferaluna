@@ -8,7 +8,7 @@ Stack technique
 
 * Framework : Next.js 15 (App Router) / React 18 / TypeScript
 * Styles : Tailwind CSS 3, Framer Motion, Lucide React
-* Auth : NextAuth v4 — Google OAuth + Facebook OAuth + Apple Sign In (HTTPS) + credentials (bcrypt) + vérification email (Resend)
+* Auth : NextAuth v4 — Google OAuth + Apple Sign In (HTTPS) + credentials (bcrypt) + vérification email (Resend)
 * BDD : MongoDB Atlas + Mongoose (base sferaluna)
 * Paiement : Stripe (abonnements mensuels) + Stripe Identity (vérification d'identité)
 * Validation : Zod + React Hook Form
@@ -273,7 +273,7 @@ Notifications :
 
     Ce qui est fonctionnel ✅
 
-* Authentification Google OAuth + Facebook OAuth + Apple Sign In + email/password + bcrypt.
+* Authentification Google OAuth + Apple Sign In + email/password + bcrypt.
 * Onboarding profil multi-étapes.
 * Paiement Stripe avec 3 offres, checkout, webhook et mise à jour MongoDB.
 * Page Mon Compte avec onglets principaux.

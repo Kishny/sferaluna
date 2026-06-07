@@ -69,7 +69,7 @@ import ReportModal from "@/components/ReportModal";
 // Types
 // ─────────────────────────────────────────────
 
-type AuthProvider = "credentials" | "google" | "facebook" | "apple";
+type AuthProvider = "credentials" | "google" | "apple";
 type UserRole = "user" | "admin";
 
 type LunaPlan =

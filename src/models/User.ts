@@ -8,10 +8,9 @@ import mongoose, { Schema, Document, Model, models } from "mongoose";
  * Cela permet de savoir comment l'utilisateur s'est inscrit :
  * - credentials : email + mot de passe
  * - google : connexion Google OAuth
- * - facebook : prévu plus tard
- * - apple : prévu plus tard
+ * - apple : connexion Apple Sign In
  */
-export type AuthProvider = "credentials" | "google" | "facebook" | "apple";
+export type AuthProvider = "credentials" | "google" | "apple";
 
 /**
  * Rôles disponibles sur SferaLuna.
@@ -223,7 +222,7 @@ const UserSchema = new Schema<IUser>(
      */
     provider: {
       type: String,
-      enum: ["credentials", "google", "facebook", "apple"],
+      enum: ["credentials", "google", "apple"],
       default: "credentials",
     },
 

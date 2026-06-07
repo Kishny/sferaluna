@@ -3,7 +3,6 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import AppleProvider from "next-auth/providers/apple";
-import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -34,7 +33,7 @@ type SubscriptionStatus =
   | "past_due"
   | "canceled";
 
-type AuthProvider = "credentials" | "google" | "facebook" | "apple";
+type AuthProvider = "credentials" | "google" | "apple";
 
 type IdentityVerificationStatus =
   | "unverified"
@@ -50,7 +49,6 @@ function normalizeOAuthProvider(
   provider?: string
 ): Exclude<AuthProvider, "credentials"> {
   if (provider === "apple") return "apple";
-  if (provider === "facebook") return "facebook";
   return "google";
 }
 
@@ -128,7 +126,7 @@ async function getMongoUserByEmail(email: string) {
  * Providers OAuth activés selon les variables .env.
  *
  * Mobile-first :
- * on évite que le site plante si Apple/Facebook ne sont pas encore configurés.
+ * on évite que le site plante si Apple n'est pas encore configuré.
  */
 function getOAuthProviders() {
   const providers = [];
@@ -138,15 +136,6 @@ function getOAuthProviders() {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      })
-    );
-  }
-
-  if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
-    providers.push(
-      FacebookProvider({
-        clientId: process.env.FACEBOOK_CLIENT_ID,
-        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
       })
     );
   }
@@ -262,8 +251,7 @@ export const authOptions: NextAuthOptions = {
 
       if (
         account?.provider === "google" ||
-        account?.provider === "apple" ||
-        account?.provider === "facebook"
+        account?.provider === "apple"
       ) {
         const oauthProvider = normalizeOAuthProvider(account.provider);
 

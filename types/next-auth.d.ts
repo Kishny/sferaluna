@@ -17,7 +17,7 @@ import "next-auth/jwt";
 /**
  * Providers d'authentification utilisés dans le projet.
  */
-type AuthProvider = "credentials" | "google" | "facebook" | "apple";
+type AuthProvider = "credentials" | "google" | "apple";
 
 /**
  * Rôles utilisateurs.
