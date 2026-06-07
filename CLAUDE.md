@@ -448,6 +448,25 @@ Le build Next.js a été relancé : Résultat : build validé avec succès.
 
 ⸻
 
+Travail effectué récemment — session OAuth production ✅
+
+1. Google OAuth en production
+    * Bug `redirect_uri_mismatch` corrigé : la cause était un mismatch `www` / non-`www` (Vercel redirige `sferaluna.com` → `https://www.sferaluna.com` en 308, domaine canonique = version `www`).
+    * Ajout de `https://www.sferaluna.com` + callback associé dans Google Cloud Console, alignement de `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` sur `https://www.sferaluna.com`.
+    * ✅ Confirmé fonctionnel en production.
+2. Apple Sign In
+    * Domaine `www.sferaluna.com` + Return URL `https://www.sferaluna.com/api/auth/callback/apple` ajoutés dans la "Web Authentication Configuration" du Services ID Apple Developer.
+    * ✅ Configuration confirmée terminée par l'utilisateur.
+3. Suppression complète de Facebook Login
+    * Décision : retirer Facebook OAuth du site (processus de revue Meta jugé trop contraignant).
+    * Code nettoyé : `FacebookProvider` retiré de `route.ts` (NextAuth), bouton "Facebook" retiré de `/auth`, type `AuthProvider` mis à jour partout (`User.ts`, `mon-compte/page.tsx`, `next-auth.d.ts`), domaines Facebook retirés du CSP/`remotePatterns` dans `next.config.ts`, variables `FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET` supprimées de `.env.local`.
+    * Seules les méthodes de connexion restantes : email/mot de passe, Google OAuth, Apple Sign In.
+    * Le lien Facebook dans le Footer (icône réseau social, pas OAuth) a été conservé.
+4. Icône d'app générée
+    * Icône 1024x1024 générée à partir du logo SferaLuna (utile pour les configs OAuth/app stores nécessitant cette dimension).
+
+⸻
+
 Ce qui reste à faire 🚀
 
 1. Tests
@@ -457,6 +476,8 @@ Ce qui reste à faire 🚀
 2. PayPal
     * En attente d'approbation Stripe (paiements récurrents). Code prêt, activation automatique dès validation.
     * Activer Google Pay dans Dashboard Stripe (Settings → Payment Methods).
+3. Vérification finale OAuth
+    * Tester la connexion Apple Sign In de bout en bout en prod (`https://www.sferaluna.com/auth`) — Google déjà confirmé fonctionnel, Facebook retiré.
 
 ⸻
 

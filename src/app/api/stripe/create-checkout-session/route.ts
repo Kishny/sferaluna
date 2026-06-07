@@ -269,9 +269,11 @@ export async function POST(req: NextRequest) {
       customer: stripeCustomerId,
       client_reference_id: user._id.toString(),
 
-      // Active automatiquement CB, PayPal, Apple Pay, Google Pay, etc.
-      // selon ce qui est activé dans le Dashboard Stripe.
-      automatic_payment_methods: { enabled: true },
+      // Stripe Checkout affiche automatiquement les moyens de paiement
+      // activés dans le Dashboard (CB, PayPal, Apple Pay, Google Pay, etc.)
+      // sans qu'il soit nécessaire de préciser de paramètre ici.
+      // (`automatic_payment_methods` n'est pas un paramètre valide pour
+      // checkout.sessions.create — il appartient à l'API PaymentIntents.)
 
       // Désactiver la collecte d'identifiant fiscal (TVA / numéro fiscal).
       // Stripe le demande parfois pour PayPal en Europe — on le désactive
