@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
     const [profiles, total] = await Promise.all([
       User.find(query)
         .select(
-          "pseudonyme age localisation interets intentions visibilite image identityVerified createdAt updatedAt"
+          "pseudonyme age localisation interets intentions visibilite image photos identityVerified createdAt updatedAt"
         )
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)

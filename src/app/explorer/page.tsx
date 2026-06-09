@@ -460,7 +460,7 @@ export default function ExplorerPage() {
                     transition={{ delay: 0.3, type: "spring" }}
                     className="mb-5 bg-gradient-to-r from-pink-300 to-purple-200 bg-clip-text text-2xl font-bold text-transparent sm:mb-6 sm:text-3xl"
                   >
-                    💞 {matchModal.profile.pseudonyme}
+                    💞 {matchModal.profile.pseudonyme || "Luna"}
                   </motion.h2>
 
                   <motion.div
@@ -476,11 +476,11 @@ export default function ExplorerPage() {
                     {matchModal.profile.image ? (
                       <img
                         src={matchModal.profile.image}
-                        alt={matchModal.profile.pseudonyme}
+                        alt={matchModal.profile.pseudonyme || "Luna"}
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      matchModal.profile.pseudonyme.charAt(0).toUpperCase()
+                      (matchModal.profile.pseudonyme || "L").charAt(0).toUpperCase()
                     )}
                   </motion.div>
 
@@ -1077,14 +1077,14 @@ function ProfileStackCard({
         {profile.image ? (
           <img
             src={profile.image}
-            alt={profile.pseudonyme}
+            alt={profile.pseudonyme || "Luna"}
             className="h-full w-full object-cover"
             draggable={false}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-5xl font-black shadow-2xl sm:h-32 sm:w-32">
-              {profile.pseudonyme.charAt(0).toUpperCase()}
+              {(profile.pseudonyme || "L").charAt(0).toUpperCase()}
             </div>
           </div>
         )}
@@ -1109,7 +1109,7 @@ function ProfileStackCard({
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="max-w-[220px] truncate text-2xl font-black text-white sm:max-w-none sm:text-3xl">
-              {profile.pseudonyme}
+              {profile.pseudonyme || "Luna"}
               {profile.age ? `, ${profile.age}` : ""}
             </h2>
 

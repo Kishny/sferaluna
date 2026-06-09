@@ -46,6 +46,8 @@ import {
   Crown,
   Eye,
   Heart,
+  ImagePlus,
+  Info,
   Loader2,
   Lock,
   LogOut,
@@ -110,6 +112,7 @@ interface LunaUser {
   pseudonyme: string;
   name?: string;
   image?: string;
+  photos?: string[];
 
   // Auth
   password?: string;
@@ -146,6 +149,10 @@ interface LunaUser {
   lastPaymentAt?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   subscriptionPaused?: boolean;
+
+  // Cooldowns annuels
+  pseudonymeChangedAt?: string | null;
+  orientationChangedAt?: string | null;
 
   // Sécurité
   lastLoginAt?: string | null;
@@ -197,6 +204,7 @@ const emptyUser: LunaUser = {
   pseudonyme: "Utilisateur Luna",
   name: "",
   image: "",
+  photos: [],
   provider: "credentials",
 
   age: 28,
@@ -426,6 +434,7 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     pseudonyme: rawUser?.pseudonyme || sessionUser?.name || "Utilisateur Luna",
     name: rawUser?.name || sessionUser?.name || "",
     image: rawUser?.image || sessionUser?.image || "",
+    photos: Array.isArray(rawUser?.photos) ? rawUser.photos : [],
 
     provider: rawUser?.provider || "credentials",
 
@@ -466,6 +475,9 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     subscriptionPaused: Boolean(rawUser?.subscriptionPaused),
 
     lastLoginAt: rawUser?.lastLoginAt || null,
+
+    pseudonymeChangedAt: rawUser?.pseudonymeChangedAt || null,
+    orientationChangedAt: rawUser?.orientationChangedAt || null,
 
     identityVerified: Boolean(rawUser?.identityVerified),
     identityVerificationStatus: isValidIdentityStatus(rawIdentityStatus)
@@ -1064,6 +1076,7 @@ function MonCompteContent() {
                   isEditing={isEditing}
                   updateDraft={updateDraft}
                   splitToArray={splitToArray}
+                  onPhotosSaved={fetchProfile}
                 />
               )}
 
@@ -1452,11 +1465,13 @@ function ProfilTab({
   isEditing,
   updateDraft,
   splitToArray,
+  onPhotosSaved,
 }: {
   user: LunaUser;
   isEditing: boolean;
   updateDraft: <K extends keyof LunaUser>(key: K, value: LunaUser[K]) => void;
   splitToArray: (value: string) => string[];
+  onPhotosSaved: () => void;
 }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -1604,6 +1619,11 @@ function ProfilTab({
         </div>
       </div>
 
+      <PhotosSection
+        photos={user.photos ?? []}
+        onPhotosSaved={onPhotosSaved}
+      />
+
       <Field label="Bio ✨" className="mb-4">
         <textarea
           disabled={!isEditing}
@@ -1627,6 +1647,7 @@ function ProfilTab({
             onChange={(event) => updateDraft("pseudonyme", event.target.value)}
             className="input-luna"
           />
+          <CooldownInfo changedAt={user.pseudonymeChangedAt} />
         </Field>
 
         <Field label="Email 📧">
@@ -1850,6 +1871,7 @@ function PreferencesTab({
               </option>
             ))}
           </select>
+          <CooldownInfo changedAt={user.orientationChangedAt} />
         </Field>
 
         <Field label="Intentions 💞">
@@ -2709,6 +2731,210 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
         onClose={() => setReportUserId(null)}
       />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Composant : section galerie photos
+// ─────────────────────────────────────────────
+
+function PhotosSection({
+  photos,
+  onPhotosSaved,
+}: {
+  photos: string[];
+  onPhotosSaved: () => void;
+}) {
+  const [slotLoading, setSlotLoading] = useState<Record<number, boolean>>({});
+  const [pendingSlot, setPendingSlot] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleClickAdd = (slotIndex: number) => {
+    setPendingSlot(slotIndex);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || pendingSlot === null) return;
+    const slot = pendingSlot;
+    event.target.value = "";
+    setPendingSlot(null);
+
+    setSlotLoading((prev) => ({ ...prev, [slot]: true }));
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/photo", { method: "POST", body: formData });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        setError(data?.error ?? "Erreur lors de l'upload.");
+        return;
+      }
+
+      onPhotosSaved();
+    } catch {
+      setError("Erreur de connexion au serveur.");
+    } finally {
+      setSlotLoading((prev) => ({ ...prev, [slot]: false }));
+    }
+  };
+
+  const handleDelete = async (photoUrl: string, slotIndex: number) => {
+    setSlotLoading((prev) => ({ ...prev, [slotIndex]: true }));
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/upload/photo?url=${encodeURIComponent(photoUrl)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        setError(data?.error ?? "Erreur lors de la suppression.");
+        return;
+      }
+
+      onPhotosSaved();
+    } catch {
+      setError("Erreur de connexion au serveur.");
+    } finally {
+      setSlotLoading((prev) => ({ ...prev, [slotIndex]: false }));
+    }
+  };
+
+  const slots = [0, 1, 2];
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-white/50">
+          Mes photos 📸
+        </p>
+        <p className="text-xs text-white/30">
+          Jusqu&apos;à 3 photos · JPG, PNG, WebP · recadrées 4:5
+        </p>
+      </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="flex items-center gap-2 overflow-hidden rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+        >
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="ml-auto"
+            aria-label="Fermer"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+        {slots.map((slotIndex) => {
+          const photoUrl = photos[slotIndex];
+          const isLoading = slotLoading[slotIndex] ?? false;
+
+          return (
+            <div
+              key={slotIndex}
+              className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
+            >
+              {photoUrl ? (
+                <>
+                  <img
+                    src={photoUrl}
+                    alt={`Photo ${slotIndex + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+
+                  {isLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                      <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(photoUrl, slotIndex)}
+                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/80 backdrop-blur-sm transition hover:border-red-400/60 hover:bg-red-500/70 hover:text-white"
+                      aria-label="Supprimer la photo"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleClickAdd(slotIndex)}
+                  disabled={isLoading}
+                  className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/25 transition hover:bg-white/5 hover:text-white/50 disabled:opacity-40"
+                  aria-label="Ajouter une photo"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-7 w-7 animate-spin" />
+                  ) : (
+                    <>
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5">
+                        <ImagePlus className="h-4 w-4" />
+                      </span>
+                      <span className="text-[11px]">Ajouter</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFileChange}
+        className="sr-only"
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// CooldownInfo — message de cooldown annuel
+// ─────────────────────────────────────────────
+
+function CooldownInfo({ changedAt }: { changedAt?: string | null }) {
+  if (!changedAt) return null;
+
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const lastChanged = new Date(changedAt).getTime();
+
+  if (Number.isNaN(lastChanged) || Date.now() - lastChanged >= ONE_YEAR_MS) {
+    return null;
+  }
+
+  const nextAllowed = new Date(lastChanged + ONE_YEAR_MS);
+  const formatted = nextAllowed.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  return (
+    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-amber-400/80">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      Modifiable une fois par an · prochain changement le {formatted}
+    </p>
   );
 }
 

@@ -26,6 +26,7 @@ import {
   Mail,
   Lock,
   User,
+  AtSign,
   Sparkles,
   Star,
   ArrowLeft,
@@ -256,21 +257,42 @@ function PremiumAuthContent() {
   const validateForm = (formData: FormData, loginMode: boolean) => {
     const newErrors: Record<string, string> = {};
 
-    const email = String(formData.get("email") || "").trim();
+    const identifier = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
     const confirmPassword = String(formData.get("confirmPassword") || "");
     const name = String(formData.get("name") || "").trim();
+    const pseudonyme = String(formData.get("pseudonyme") || "").trim();
 
-    if (!loginMode && name.length < 2) {
-      newErrors.name = "Le nom doit contenir au moins 2 caractères";
-    }
+    if (loginMode) {
+      // En connexion : email ou pseudonyme accepté
+      if (!identifier || identifier.length < 2) {
+        newErrors.email = "Saisissez votre email ou votre pseudonyme";
+      }
+    } else {
+      // En inscription
+      if (name.length < 2) {
+        newErrors.name = "Le nom doit contenir au moins 2 caractères";
+      }
 
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      newErrors.email = "Adresse email invalide";
+      // Pseudonyme optionnel — validé uniquement si renseigné
+      if (pseudonyme.length > 0) {
+        if (pseudonyme.length < 2 || pseudonyme.length > 50) {
+          newErrors.pseudonyme =
+            "Le pseudonyme doit contenir entre 2 et 50 caractères";
+        } else if (!/^[a-zA-ZÀ-ÿ0-9 _-]+$/.test(pseudonyme)) {
+          newErrors.pseudonyme =
+            "Lettres, chiffres, espaces, tirets ou underscores uniquement";
+        }
+      }
+
+      if (!identifier || !/^\S+@\S+\.\S+$/.test(identifier)) {
+        newErrors.email = "Adresse email invalide";
+      }
     }
 
     if (!password || password.length < 6) {
-      newErrors.password = "Le mot de passe doit contenir au moins 6 caractères";
+      newErrors.password =
+        "Le mot de passe doit contenir au moins 6 caractères";
     }
 
     if (!loginMode && password !== confirmPassword) {
@@ -344,6 +366,7 @@ function PremiumAuthContent() {
     }
 
     const name = String(formData.get("name") || "").trim();
+    const pseudonyme = String(formData.get("pseudonyme") || "").trim();
     const email = String(formData.get("email") || "").toLowerCase().trim();
     const password = String(formData.get("password") || "");
 
@@ -355,6 +378,7 @@ function PremiumAuthContent() {
         },
         body: JSON.stringify({
           name,
+          pseudonyme,
           email,
           password,
         }),
@@ -857,11 +881,11 @@ function PremiumAuthContent() {
                         className="space-y-2.5 sm:space-y-4"
                       >
                         <AuthInput
-                          label="Adresse email"
+                          label="Email ou pseudonyme"
                           name="email"
-                          type="email"
-                          placeholder="votre@email.com"
-                          icon={<Mail className="h-5 w-5 text-gray-500" />}
+                          type="text"
+                          placeholder="votre@email.com ou votre pseudo"
+                          icon={<AtSign className="h-5 w-5 text-gray-500" />}
                           error={errors.email}
                         />
 
@@ -916,6 +940,17 @@ function PremiumAuthContent() {
                           placeholder="Votre nom et prénom"
                           icon={<User className="h-5 w-5 text-gray-500" />}
                           error={errors.name}
+                        />
+
+                        <AuthInput
+                          label="Pseudonyme (optionnel)"
+                          name="pseudonyme"
+                          type="text"
+                          placeholder="Votre pseudonyme visible par les autres"
+                          icon={<AtSign className="h-5 w-5 text-gray-500" />}
+                          error={errors.pseudonyme}
+                          required={false}
+                          hint="Seul votre pseudonyme sera visible sur votre profil public. Vous pourrez le définir plus tard."
                         />
 
                         <AuthInput
@@ -1162,6 +1197,8 @@ function AuthInput({
   placeholder,
   icon,
   error,
+  required = true,
+  hint,
 }: {
   label: string;
   name: string;
@@ -1169,6 +1206,8 @@ function AuthInput({
   placeholder: string;
   icon: React.ReactNode;
   error?: string;
+  required?: boolean;
+  hint?: string;
 }) {
   return (
     <div>
@@ -1183,11 +1222,14 @@ function AuthInput({
           name={name}
           type={type}
           placeholder={placeholder}
-          required
+          required={required}
           className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:py-3 sm:pl-12 sm:text-base"
         />
       </div>
 
+      {hint && !error && (
+        <p className="mt-1 text-[11px] text-gray-500 sm:text-xs">{hint}</p>
+      )}
       {error && <p className="mt-1 text-xs text-red-400 sm:text-sm">{error}</p>}
     </div>
   );

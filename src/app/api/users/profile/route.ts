@@ -461,6 +461,76 @@ export async function PUT(req: NextRequest) {
     }
 
     /**
+     * Cooldowns annuels : pseudonyme et orientation.
+     *
+     * Règle : modifiable une seule fois par période de 365 jours.
+     */
+    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+    if (data.pseudonyme !== undefined && data.pseudonyme !== user.pseudonyme) {
+      const lastChanged = user.pseudonymeChangedAt
+        ? new Date(user.pseudonymeChangedAt).getTime()
+        : null;
+
+      if (lastChanged && Date.now() - lastChanged < ONE_YEAR_MS) {
+        const nextAllowed = new Date(lastChanged + ONE_YEAR_MS);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Vous ne pouvez modifier votre pseudonyme qu'une fois par an.",
+            code: "COOLDOWN_ACTIVE",
+            field: "pseudonyme",
+            nextAllowedDate: nextAllowed.toISOString(),
+          },
+          { status: 403 }
+        );
+      }
+
+      // Unicité du nouveau pseudonyme (hors utilisatrice actuelle)
+      const pseudoRegex = new RegExp(
+        `^${data.pseudonyme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        "i"
+      );
+      const existingPseudo = await User.findOne({
+        pseudonyme: pseudoRegex,
+        _id: { $ne: user._id },
+      });
+
+      if (existingPseudo) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Ce pseudonyme est déjà utilisé. Choisissez-en un autre.",
+            code: "PSEUDO_TAKEN",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    if (data.orientation !== undefined && data.orientation !== user.orientation) {
+      const lastChanged = user.orientationChangedAt
+        ? new Date(user.orientationChangedAt).getTime()
+        : null;
+
+      if (lastChanged && Date.now() - lastChanged < ONE_YEAR_MS) {
+        const nextAllowed = new Date(lastChanged + ONE_YEAR_MS);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Vous ne pouvez modifier votre orientation qu'une fois par an.",
+            code: "COOLDOWN_ACTIVE",
+            field: "orientation",
+            nextAllowedDate: nextAllowed.toISOString(),
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    /**
      * Construction sécurisée.
      * On ignore volontairement tous les champs non autorisés.
      *
@@ -471,6 +541,10 @@ export async function PUT(req: NextRequest) {
 
     if (data.pseudonyme !== undefined) {
       updateData.pseudonyme = data.pseudonyme;
+      // Horodater le changement uniquement si la valeur a réellement changé
+      if (data.pseudonyme !== user.pseudonyme) {
+        updateData.pseudonymeChangedAt = new Date();
+      }
     }
 
     if (data.age !== undefined) {
@@ -483,6 +557,9 @@ export async function PUT(req: NextRequest) {
 
     if (data.orientation !== undefined) {
       updateData.orientation = data.orientation;
+      if (data.orientation !== user.orientation) {
+        updateData.orientationChangedAt = new Date();
+      }
     }
 
     if (data.intentions !== undefined) {

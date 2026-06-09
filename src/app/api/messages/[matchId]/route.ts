@@ -10,6 +10,7 @@ import { User } from "@/models/User";
 import { Match } from "@/models/Match";
 import { Message } from "@/models/Message";
 import { pusher } from "@/lib/pusher";
+import { sendNewMessagePush } from "@/lib/push";
 
 /**
  * API Messages SferaLuna.
@@ -391,6 +392,20 @@ export async function POST(
       });
     } catch (pusherError) {
       console.warn("Pusher trigger new-message échoué :", pusherError);
+    }
+
+    // Push notification vers le destinataire (silencieux si échec)
+    try {
+      const otherUserId = getOtherUserId(match, access.currentUserId);
+      const sender = await User.findById(access.currentUserId).select("pseudonyme").lean() as { pseudonyme?: string } | null;
+      await sendNewMessagePush({
+        recipientUserId: otherUserId,
+        senderName: sender?.pseudonyme ?? "Quelqu'un",
+        preview: content,
+        matchId: match._id.toString(),
+      });
+    } catch (pushErr) {
+      console.warn("Push notification message échouée :", pushErr);
     }
 
     return NextResponse.json(

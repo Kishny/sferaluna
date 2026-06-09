@@ -10,6 +10,7 @@ import { User } from "@/models/User";
 import { Like } from "@/models/Like";
 import { Match } from "@/models/Match";
 import { pusher } from "@/lib/pusher";
+import { sendNewMatchPush } from "@/lib/push";
 
 /**
  * Route Likes SferaLuna.
@@ -150,6 +151,20 @@ async function notifyNewMatch({
     ]);
   } catch (pusherError) {
     console.error("Erreur notification Pusher new-match :", pusherError);
+  }
+
+  // Push notifications (silencieux si échec)
+  try {
+    const [currentUserProfile, targetUserProfile] = await Promise.all([
+      getPublicUserProfile(currentUserId),
+      getPublicUserProfile(targetId),
+    ]);
+    await Promise.all([
+      sendNewMatchPush({ recipientUserId: currentUserId.toString(), matchedWithName: targetUserProfile?.pseudonyme ?? "quelqu'un" }),
+      sendNewMatchPush({ recipientUserId: targetId.toString(), matchedWithName: currentUserProfile?.pseudonyme ?? "quelqu'un" }),
+    ]);
+  } catch (pushErr) {
+    console.warn("Push notification match échouée :", pushErr);
   }
 }
 

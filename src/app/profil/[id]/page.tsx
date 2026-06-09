@@ -41,11 +41,12 @@ import ReportModal from "@/components/ReportModal";
 
 interface Profile {
   _id: string;
-  pseudonyme: string;
+  pseudonyme?: string;
   age?: number;
   localisation?: string;
   bio?: string;
   image?: string;
+  photos?: string[];
   interets: string[];
   intentions: string[];
   orientation?: string;
@@ -282,11 +283,11 @@ function ProfilContent() {
                       {profile.image ? (
                         <img
                           src={profile.image}
-                          alt={profile.pseudonyme}
+                          alt={profile.pseudonyme || "Luna"}
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        profile.pseudonyme.charAt(0).toUpperCase()
+                        (profile.pseudonyme || "L").charAt(0).toUpperCase()
                       )}
                     </div>
 
@@ -294,7 +295,7 @@ function ProfilContent() {
                     <div className="min-w-0 flex-1 pb-1">
                       <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                         <h1 className="max-w-full truncate text-2xl font-bold sm:text-3xl">
-                          {profile.pseudonyme}
+                          {profile.pseudonyme || "Luna"}
                         </h1>
 
                         {profile.identityVerified && (
@@ -325,6 +326,26 @@ function ProfilContent() {
                     </div>
                   </div>
                 </section>
+
+                {/* Galerie photos */}
+                {profile.photos && profile.photos.length > 0 && (
+                  <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    <div className="scrollbar-none flex gap-2.5 overflow-x-auto p-3 sm:p-4">
+                      {profile.photos.map((photoUrl, i) => (
+                        <div
+                          key={i}
+                          className="relative aspect-[4/5] w-36 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 sm:w-44"
+                        >
+                          <img
+                            src={photoUrl}
+                            alt={`Photo de ${profile.pseudonyme || "Luna"} ${i + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 {/* Bio */}
                 {profile.bio && (
@@ -423,9 +444,19 @@ function ProfilContent() {
 
       <Footer />
 
-      {/* 
+      <style jsx global>{`
+        .scrollbar-none::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+
+      {/*
         Modale signalement.
-        
+
         Correction TypeScript :
         ReportModal exige isOpen.
       */}

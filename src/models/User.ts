@@ -82,6 +82,7 @@ export interface IUser extends Document {
   pseudonyme: string;
   name?: string;
   image?: string;
+  photos: string[];
 
   // Authentification
   password?: string;
@@ -136,6 +137,10 @@ export interface IUser extends Document {
   identityVerified: boolean;
   identityVerificationStatus: IdentityVerificationStatus;
   stripeVerificationSessionId?: string | null;
+
+  // Verrouillage changements annuels
+  pseudonymeChangedAt?: Date | null;
+  orientationChangedAt?: Date | null;
 
   // Sécurité / suivi
   lastLoginAt?: Date | null;
@@ -195,13 +200,27 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
-     * Photo de profil.
+     * Photo de profil principale.
      * Peut venir de Google OAuth ou d'un upload utilisateur.
      */
     image: {
       type: String,
       default: "",
       trim: true,
+    },
+
+    /**
+     * Photos supplémentaires du profil (galerie).
+     * Maximum 3 URLs Cloudinary.
+     * Gérées via POST/DELETE /api/upload/photo.
+     */
+    photos: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (arr: string[]) => arr.length <= 3,
+        message: "Maximum 3 photos supplémentaires autorisées.",
+      },
     },
 
     /**
@@ -564,6 +583,41 @@ const UserSchema = new Schema<IUser>(
      * Date du dernier paiement confirmé.
      */
     lastPaymentAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Token Expo Push Notifications pour l'app mobile.
+     * Enregistré par l'app au démarrage via PUT /api/users/push-token.
+     * Format : ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]
+     */
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+
+    expoPushTokenUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Garde temporelle — changement de pseudonyme.
+     * Une seule modification autorisée par an.
+     * null = jamais modifié (premier changement toujours autorisé).
+     */
+    pseudonymeChangedAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Garde temporelle — changement d'orientation.
+     * Une seule modification autorisée par an.
+     * null = jamais modifié (premier changement toujours autorisé).
+     */
+    orientationChangedAt: {
       type: Date,
       default: null,
     },

@@ -92,6 +92,13 @@ function generateAppleClientSecret() {
   });
 }
 
+/**
+ * Échappe les caractères spéciaux d'une chaîne pour une utilisation dans une regex.
+ */
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function getMongoUserByEmail(email: string) {
   await connectDB();
 
@@ -186,8 +193,8 @@ export const authOptions: NextAuthOptions = {
 
       credentials: {
         email: {
-          label: "Email",
-          type: "email",
+          label: "Email ou pseudonyme",
+          type: "text",
         },
         password: {
           label: "Mot de passe",
@@ -198,14 +205,29 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         await connectDB();
 
-        const email = normalizeEmail(credentials?.email);
+        const identifier = (credentials?.email || "").trim();
         const password = credentials?.password || "";
 
-        if (!email || !password) {
+        if (!identifier || !password) {
           return null;
         }
 
-        const user = await User.findOne({ email }).select(
+        /**
+         * Recherche par email (normalisation minuscules) OU par pseudonyme
+         * (insensible à la casse grâce à la regex).
+         * On essaie d'abord l'email car c'est plus courant et plus rapide.
+         */
+        const isEmail = identifier.includes("@");
+        const query = isEmail
+          ? { email: normalizeEmail(identifier) }
+          : {
+              $or: [
+                { email: normalizeEmail(identifier) },
+                { pseudonyme: new RegExp(`^${escapeRegex(identifier)}$`, "i") },
+              ],
+            };
+
+        const user = await User.findOne(query).select(
           "+password _id email pseudonyme name image banned"
         );
 
