@@ -213,24 +213,33 @@ export async function GET(
     const orderedMessages = messages.reverse().map(serializeMessage);
 
     /**
-     * Marquer les messages reçus comme lus.
-     *
-     * On ne bloque pas la réponse si rien n'est modifié.
+     * Marquer les messages reçus comme lus + émettre l'event Pusher
+     * pour que l'expéditeur voie la double-coche bleue en temps réel.
      */
-    await Message.updateMany(
+    const readNow = new Date();
+    const updateResult = await Message.updateMany(
       {
         matchId: match._id,
         senderId: { $ne: currentUserId },
         readAt: null,
       },
-      {
-        $set: {
-          readAt: new Date(),
-        },
-      }
+      { $set: { readAt: readNow } }
     );
 
     const otherUserId = getOtherUserId(match, currentUserId);
+
+    // Notifier l'expéditeur si des messages viennent d'être lus
+    if (updateResult.modifiedCount > 0) {
+      try {
+        await pusher.trigger(
+          `private-match-${match._id.toString()}`,
+          'messages-read',
+          { readerId: currentUserId.toString(), readAt: readNow.toISOString() }
+        );
+      } catch {
+        // non bloquant
+      }
+    }
 
     return NextResponse.json(
       {
