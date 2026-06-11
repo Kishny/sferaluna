@@ -602,6 +602,12 @@ const UserSchema = new Schema<IUser>(
       default: null,
     },
 
+    /** Utilisatrices bloquées — leurs profils sont masqués partout. */
+    blockedUsers: {
+      type: [{ type: String }],
+      default: [],
+    },
+
     /**
      * Garde temporelle — changement de pseudonyme.
      * Une seule modification autorisée par an.

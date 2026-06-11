@@ -15,21 +15,32 @@ import mongoose, { Schema, Document, Model, models } from "mongoose";
  * - l'affichage dans /matches et /mon-compte?tab=connexions.
  */
 
+export interface IMutedBy {
+  userId: mongoose.Types.ObjectId;
+  until: Date;
+}
+
 export interface IMatch extends Document {
   user1Id: mongoose.Types.ObjectId;
   user2Id: mongoose.Types.ObjectId;
 
-  /**
-   * Date du dernier message envoyé dans ce match.
-   * Sert à trier les conversations.
-   */
+  /** Date du dernier message envoyé — sert à trier les conversations. */
   lastMessageAt: Date | null;
 
-  /**
-   * true : match actif
-   * false : match masqué, bloqué, supprimé ou désactivé.
-   */
+  /** true : match actif ; false : supprimé par les deux parties ou désactivé. */
   isActive: boolean;
+
+  /** Utilisateurs ayant archivé cette conversation (par user, sans affecter l'autre). */
+  archivedBy: mongoose.Types.ObjectId[];
+
+  /** Sourdine par utilisateur, avec date d'expiration. */
+  mutedBy: IMutedBy[];
+
+  /**
+   * Utilisateurs ayant supprimé cette conversation.
+   * Quand les deux ont supprimé → isActive passe à false.
+   */
+  deletedBy: mongoose.Types.ObjectId[];
 
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +72,26 @@ const MatchSchema = new Schema<IMatch>(
       type: Boolean,
       default: true,
       index: true,
+    },
+
+    archivedBy: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
+    },
+
+    mutedBy: {
+      type: [
+        {
+          userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+          until: { type: Date, required: true },
+        },
+      ],
+      default: [],
+    },
+
+    deletedBy: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+      default: [],
     },
   },
   {

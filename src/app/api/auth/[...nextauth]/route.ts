@@ -449,6 +449,58 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+
+  /**
+   * En développement, la web preview Expo (localhost:8082) appelle le backend
+   * (localhost:3000) cross-origin. Les cookies SameSite=Lax (défaut NextAuth)
+   * ne sont pas envoyés sur les requêtes fetch cross-origin.
+   *
+   * On passe à SameSite=none pour localhost. Chrome l'accepte sans Secure
+   * sur localhost (exception trustworthy origin depuis Chrome 91).
+   * Cette config ne s'applique qu'en NODE_ENV=development.
+   */
+  ...(process.env.NODE_ENV === "development"
+    ? {
+        cookies: {
+          sessionToken: {
+            name: "next-auth.session-token",
+            options: {
+              httpOnly: true,
+              sameSite: "none" as const,
+              path: "/",
+              secure: false,
+            },
+          },
+          callbackUrl: {
+            name: "next-auth.callback-url",
+            options: {
+              httpOnly: false,
+              sameSite: "none" as const,
+              path: "/",
+              secure: false,
+            },
+          },
+          csrfToken: {
+            name: "next-auth.csrf-token",
+            options: {
+              httpOnly: false,
+              sameSite: "none" as const,
+              path: "/",
+              secure: false,
+            },
+          },
+          pkceCodeVerifier: {
+            name: "next-auth.pkce.code_verifier",
+            options: {
+              httpOnly: true,
+              sameSite: "none" as const,
+              path: "/",
+              secure: false,
+            },
+          },
+        },
+      }
+    : {}),
 };
 
 const handler = NextAuth(authOptions);
