@@ -546,6 +546,20 @@ function MonCompteContent() {
   }, [status, router]);
 
   /**
+   * La vérification d'identité est obligatoire pour accéder au compte.
+   * Si le profil est chargé et que l'identité n'est pas vérifiée, on
+   * renvoie vers /inscription qui affichera l'étape de vérification.
+   */
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (isLoadingProfile) return;
+
+    if (user.hasCompletedProfile && !user.identityVerified) {
+      router.replace("/inscription");
+    }
+  }, [status, isLoadingProfile, user.hasCompletedProfile, user.identityVerified, router]);
+
+  /**
    * Récupération du profil connecté.
    *
    * On fusionne :

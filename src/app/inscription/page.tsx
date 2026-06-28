@@ -18,7 +18,7 @@
  * Maintenant chaque étape valide son groupe de champs dédié.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   useForm,
   FormProvider,
@@ -28,7 +28,7 @@ import {
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import Step1 from "./steps/Step1";
@@ -210,8 +210,11 @@ function getStepFromErrors(errors: Partial<Record<keyof FormData, unknown>>) {
   return 0;
 }
 
-export default function InscriptionPage() {
+type IdentityVerificationStatus = "unverified" | "pending" | "verified" | "failed";
+
+function InscriptionPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
   /**
@@ -231,6 +234,44 @@ export default function InscriptionPage() {
    * Loader pendant l'enregistrement du profil.
    */
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
+
+  /**
+   * Profil déjà enregistré en base (hasCompletedProfile).
+   * Permet de savoir si l'utilisatrice revient sur cette page
+   * uniquement pour finaliser la vérification d'identité.
+   */
+  const [isProfileSaved, setIsProfileSaved] = useState(false);
+
+  /**
+   * Statut de vérification d'identité — obligatoire pour accéder au compte.
+   */
+  const [identityStatus, setIdentityStatus] =
+    useState<IdentityVerificationStatus>("unverified");
+  const [isCheckingIdentity, setIsCheckingIdentity] = useState(false);
+  const [isLaunchingVerification, setIsLaunchingVerification] = useState(false);
+
+  /**
+   * Statistiques réelles (MongoDB), affichées dans la colonne latérale.
+   * Remplacent les chiffres marketing en dur — se mettent à jour
+   * automatiquement à chaque inscription, message, match, etc.
+   */
+  const [liveStats, setLiveStats] = useState<{
+    membres: number;
+    matchs: number;
+    messages: number;
+    evenements: number;
+  } | null>(null);
+
+  /**
+   * Témoignage réel le plus récent (modèle Testimonial, validé par un admin).
+   * Tant qu'aucun témoignage n'est approuvé, on n'affiche aucun témoignage
+   * fictif.
+   */
+  const [latestTestimonial, setLatestTestimonial] = useState<{
+    authorName: string;
+    age?: number;
+    content: string;
+  } | null>(null);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema) as Resolver<FormData>,
@@ -287,6 +328,101 @@ export default function InscriptionPage() {
       });
     }
   }, [session, setValue]);
+
+  /**
+   * Récupère le statut de vérification d'identité depuis l'API.
+   * Source de vérité : MongoDB (mis à jour par le webhook Stripe Identity),
+   * plus fiable que la session NextAuth qui peut être en cache.
+   */
+  const refreshIdentityStatus = async () => {
+    setIsCheckingIdentity(true);
+
+    try {
+      const res = await fetch("/api/identity-verification", {
+        cache: "no-store",
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.identityVerificationStatus) {
+        setIdentityStatus(data.identityVerificationStatus);
+      }
+    } catch {
+      /* on garde le statut précédent en cas d'erreur réseau */
+    } finally {
+      setIsCheckingIdentity(false);
+    }
+  };
+
+  /**
+   * Si l'utilisatrice a déjà un profil complété (ex: retour après
+   * vérification d'identité), on l'amène directement à l'écran final
+   * au lieu de lui refaire remplir les 5 étapes.
+   */
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const currentUser = session?.user as
+      | { hasCompletedProfile?: boolean; identityVerified?: boolean }
+      | undefined;
+
+    if (currentUser?.hasCompletedProfile) {
+      setIsProfileSaved(true);
+      setStep(steps.length);
+    }
+
+    if (currentUser?.identityVerified) {
+      setIdentityStatus("verified");
+    }
+  }, [status, session]);
+
+  /**
+   * Vérifie le statut de vérification d'identité :
+   * - au chargement de l'écran final ;
+   * - au retour depuis Stripe Identity (?verification=success).
+   */
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (step !== steps.length) return;
+
+    refreshIdentityStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, step, searchParams?.get("verification")]);
+
+  /**
+   * Charge les statistiques réelles et le dernier témoignage approuvé.
+   * Données réelles uniquement — aucune valeur marketing en dur.
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/stats")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.success) {
+          setLiveStats(data.stats);
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/testimonials")
+      .then((res) => res.json())
+      .then((data) => {
+        const first = data?.testimonials?.[0];
+        if (isMounted && first) {
+          setLatestTestimonial({
+            authorName: first.authorName,
+            age: first.age,
+            content: first.content,
+          });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   /**
    * Progression visuelle.
@@ -363,10 +499,12 @@ export default function InscriptionPage() {
    *
    * Cette fonction :
    * - enregistre le profil dans MongoDB via /api/users/update-profile ;
-   * - marque hasCompletedProfile à true ;
-   * - redirige vers /paiement.
+   * - marque hasCompletedProfile à true.
    *
-   * Elle n'envoie plus de plan Stripe.
+   * Important : elle ne redirige plus automatiquement vers /paiement.
+   * La vérification d'identité est désormais obligatoire avant tout accès
+   * au compte (gratuit ou payant) — l'utilisatrice reste sur cet écran
+   * pour la réaliser.
    */
   const onSubmit = async (data: FormData) => {
     setSubmitError("");
@@ -394,13 +532,8 @@ export default function InscriptionPage() {
         return;
       }
 
-      /**
-       * Redirection unique vers /paiement.
-       *
-       * Correction :
-       * l'ancien code appelait router.push("/paiement") deux fois.
-       */
-      router.push("/paiement");
+      setIsProfileSaved(true);
+      await refreshIdentityStatus();
     } catch {
       setSubmitError("Erreur de connexion au serveur.");
     } finally {
@@ -409,16 +542,18 @@ export default function InscriptionPage() {
   };
 
   /**
-   * Bouton final : Continuer vers les offres.
+   * Bouton "Enregistrer mon profil" sur l'écran final.
    *
    * Cette fonction évite le blocage silencieux.
    * Elle :
    * 1. valide tout le profil ;
    * 2. si erreur, renvoie vers l'étape concernée ;
-   * 3. si tout est bon, enregistre le profil ;
-   * 4. redirige vers /paiement.
+   * 3. si tout est bon, enregistre le profil.
+   *
+   * L'accès au compte (gratuit ou payant) n'est débloqué qu'après
+   * vérification d'identité — gérée plus bas sur le même écran.
    */
-  const handleContinueToOffers = async () => {
+  const handleSaveProfile = async () => {
     setSubmitError("");
 
     const isValid = await trigger(allProfileFields, {
@@ -438,6 +573,54 @@ export default function InscriptionPage() {
 
     const data = methods.getValues();
     await onSubmit(data);
+  };
+
+  /**
+   * Lance la session Stripe Identity.
+   */
+  const handleStartIdentityVerification = async () => {
+    setSubmitError("");
+    setIsLaunchingVerification(true);
+
+    try {
+      const res = await fetch("/api/identity-verification", {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.url) {
+        setSubmitError(
+          data?.error || "Impossible de lancer la vérification d'identité."
+        );
+        return;
+      }
+
+      setIdentityStatus("pending");
+      window.location.href = data.url;
+    } catch {
+      setSubmitError("Impossible de lancer la vérification d'identité.");
+    } finally {
+      setIsLaunchingVerification(false);
+    }
+  };
+
+  /**
+   * Accès au compte gratuit — uniquement possible une fois l'identité
+   * vérifiée. Le paiement reste optionnel et accessible plus tard depuis
+   * Mon Compte.
+   */
+  const handleAccessFreeAccount = () => {
+    if (identityStatus !== "verified") return;
+    router.push("/mon-compte");
+  };
+
+  /**
+   * Accès aux offres Premium — également conditionné à la vérification
+   * d'identité.
+   */
+  const handleGoToOffers = () => {
+    if (identityStatus !== "verified") return;
+    router.push("/paiement");
   };
 
   /**
@@ -584,8 +767,9 @@ export default function InscriptionPage() {
                       </h2>
 
                       <p className="text-sm leading-relaxed text-gray-300 sm:text-base">
-                        Dernière étape : enregistrez votre profil puis
-                        choisissez votre offre SferaLuna sur la page paiement.
+                        Dernière étape : enregistrez votre profil, puis
+                        vérifiez votre identité. C&apos;est obligatoire pour
+                        accéder à votre compte — gratuit ou payant.
                       </p>
                     </div>
 
@@ -611,8 +795,14 @@ export default function InscriptionPage() {
                       ))}
                     </div>
 
-                    {/* Vérification d'identité */}
-                    <div className="rounded-xl border border-purple-700/30 bg-gradient-to-r from-purple-900/30 to-pink-900/30 p-5 sm:p-6">
+                    {/* Vérification d'identité — obligatoire */}
+                    <div
+                      className={`rounded-xl border p-5 sm:p-6 ${
+                        identityStatus === "verified"
+                          ? "border-green-500/30 bg-gradient-to-r from-green-900/30 to-emerald-900/20"
+                          : "border-purple-700/30 bg-gradient-to-r from-purple-900/30 to-pink-900/30"
+                      }`}
+                    >
                       <div className="mb-3 flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20 text-xl">
                           🪪
@@ -623,47 +813,80 @@ export default function InscriptionPage() {
                             Vérification d&apos;identité
                           </h3>
 
-                          <p className="text-xs text-white/40">
-                            Recommandé — obtenir le badge &quot;Profil vérifié&quot;
+                          <p className="text-xs font-semibold text-pink-300">
+                            Obligatoire — requise pour accéder à votre compte
                           </p>
                         </div>
                       </div>
 
-                      <p className="mb-4 text-sm leading-relaxed text-gray-300">
-                        Vérifiez votre identité avec une pièce d&apos;identité
-                        officielle pour rassurer les autres utilisatrices et
-                        booster votre visibilité. Cette étape est optionnelle
-                        mais fortement recommandée.
-                      </p>
+                      {identityStatus === "verified" ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                          <Check className="h-4 w-4 shrink-0" />
+                          <span>
+                            Identité vérifiée. Vous pouvez maintenant accéder
+                            à votre compte.
+                          </span>
+                        </div>
+                      ) : identityStatus === "pending" ? (
+                        <>
+                          <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
+                            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                            <span>
+                              Vérification en cours de traitement. Cela peut
+                              prendre quelques minutes.
+                            </span>
+                          </div>
 
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch("/api/identity-verification", {
-                              method: "POST",
-                            });
-                            const data = await res.json();
+                          <button
+                            type="button"
+                            onClick={refreshIdentityStatus}
+                            disabled={isCheckingIdentity}
+                            className="w-full rounded-xl border border-white/20 bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
+                          >
+                            {isCheckingIdentity
+                              ? "Vérification du statut..."
+                              : "Rafraîchir le statut"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="mb-4 text-sm leading-relaxed text-gray-300">
+                            Pour la sécurité de toutes les utilisatrices,
+                            SferaLuna exige une pièce d&apos;identité officielle
+                            et une photo prise en direct correspondant au
+                            visage sur la pièce. Sans cette vérification,
+                            l&apos;inscription n&apos;est pas validée et l&apos;accès au
+                            compte reste bloqué.
+                            {identityStatus === "failed" && (
+                              <span className="mt-2 block font-medium text-red-300">
+                                La vérification précédente n&apos;a pas pu être
+                                validée. Merci de réessayer.
+                              </span>
+                            )}
+                          </p>
 
-                            if (data.url) window.open(data.url, "_blank");
-                          } catch {
-                            setSubmitError(
-                              "Impossible de lancer la vérification d'identité."
-                            );
-                          }
-                        }}
-                        className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-                      >
-                        Vérifier mon identité maintenant
-                      </button>
+                          <button
+                            type="button"
+                            onClick={handleStartIdentityVerification}
+                            disabled={isLaunchingVerification || !isProfileSaved}
+                            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isLaunchingVerification
+                              ? "Préparation..."
+                              : "Vérifier mon identité maintenant"}
+                          </button>
 
-                      <p className="mt-2 text-center text-xs text-white/30">
-                        Vous pouvez aussi le faire plus tard depuis Mon Compte →
-                        Sécurité
-                      </p>
+                          {!isProfileSaved && (
+                            <p className="mt-2 text-center text-xs text-white/40">
+                              Enregistrez d&apos;abord votre profil ci-dessous
+                              pour lancer la vérification.
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
 
-                    {/* Bloc Stripe */}
+                    {/* Bloc Stripe — paiement optionnel, possible plus tard */}
                     <div className="rounded-xl border border-blue-700/30 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-5 sm:p-6">
                       <div className="mb-3 flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20">
@@ -671,47 +894,77 @@ export default function InscriptionPage() {
                         </div>
 
                         <h3 className="text-lg font-bold text-white">
-                          Paiement sécurisé via Stripe
+                          Paiement — facultatif pour le moment
                         </h3>
                       </div>
 
                       <p className="text-sm leading-relaxed text-gray-300 sm:text-base">
-                        Sur la page suivante, vous pourrez choisir entre
-                        Essentiel, Premium ou Elite. Votre accès sera activé
-                        après validation du paiement par Stripe.
+                        Une fois votre identité vérifiée, vous pouvez accéder
+                        gratuitement à votre compte avec les fonctionnalités
+                        de base. Vous pourrez choisir une offre Essentiel,
+                        Premium ou Elite à tout moment depuis Mon Compte.
                       </p>
                     </div>
 
                     {/* Boutons finaux */}
-                    <div className="flex flex-col-reverse gap-3 border-t border-gray-700 pt-5 sm:flex-row sm:items-center sm:justify-between sm:pt-6">
-                      <button
-                        type="button"
-                        onClick={() => setStep(steps.length - 1)}
-                        disabled={isSubmittingProfile}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50 sm:w-auto"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Retour
-                      </button>
+                    <div className="flex flex-col gap-3 border-t border-gray-700 pt-5 sm:pt-6">
+                      {!isProfileSaved ? (
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <button
+                            type="button"
+                            onClick={() => setStep(steps.length - 1)}
+                            disabled={isSubmittingProfile}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50 sm:w-auto"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                            Retour
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={handleContinueToOffers}
-                        disabled={isSubmittingProfile}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-lg"
-                      >
-                        {isSubmittingProfile ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Enregistrement...
-                          </>
-                        ) : (
-                          <>
+                          <button
+                            type="button"
+                            onClick={handleSaveProfile}
+                            disabled={isSubmittingProfile}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-lg"
+                          >
+                            {isSubmittingProfile ? (
+                              <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Enregistrement...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-5 w-5" />
+                                Enregistrer mon profil
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : identityStatus === "verified" ? (
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <button
+                            type="button"
+                            onClick={handleGoToOffers}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white sm:w-auto"
+                          >
+                            <Star className="h-4 w-4" />
+                            Voir les offres Premium
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleAccessFreeAccount}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 sm:w-auto sm:text-lg"
+                          >
                             <Sparkles className="h-5 w-5" />
-                            Continuer vers les offres
-                          </>
-                        )}
-                      </button>
+                            Accéder à mon compte gratuit
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-center text-sm text-gray-400">
+                          Vérifiez votre identité ci-dessus pour débloquer
+                          l&apos;accès à votre compte.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </FormProvider>
@@ -747,57 +1000,62 @@ export default function InscriptionPage() {
                 <div className="mt-5 border-t border-purple-500/30 pt-5 sm:mt-6 sm:pt-6">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-sm text-gray-300">
-                      Statistiques premium :
+                      Matches créés sur SferaLuna :
                     </span>
 
                     <span className="font-bold text-white">
-                      +300% de matches
+                      {liveStats ? liveStats.matchs : "—"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Témoignage */}
-              <div className="rounded-2xl border border-gray-700 bg-gray-900/60 p-5 backdrop-blur-sm sm:p-6">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
+              {/* Témoignage — uniquement des témoignages réels et approuvés */}
+              {latestTestimonial && (
+                <div className="rounded-2xl border border-gray-700 bg-gray-900/60 p-5 backdrop-blur-sm sm:p-6">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
+                      <Users className="h-6 w-6 text-white" />
+                    </div>
 
-                  <div>
-                    <h4 className="font-bold text-white">Marie, 34 ans</h4>
+                    <div>
+                      <h4 className="font-bold text-white">
+                        {latestTestimonial.authorName}
+                        {latestTestimonial.age
+                          ? `, ${latestTestimonial.age} ans`
+                          : ""}
+                      </h4>
 
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, index) => (
-                        <Star
-                          key={index}
-                          className="h-4 w-4 fill-current text-yellow-400"
-                        />
-                      ))}
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, index) => (
+                          <Star
+                            key={index}
+                            className="h-4 w-4 fill-current text-yellow-400"
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
+
+                  <p className="text-sm italic leading-relaxed text-gray-300 sm:text-base">
+                    “{latestTestimonial.content}”
+                  </p>
                 </div>
+              )}
 
-                <p className="text-sm italic leading-relaxed text-gray-300 sm:text-base">
-                  “Grâce à SferaLuna, j’ai rencontré mon compagnon en seulement
-                  2 semaines. Les filtres avancés m’ont permis de trouver
-                  exactement ce que je cherchais.”
-                </p>
-              </div>
-
-              {/* Compteur */}
+              {/* Compteur — données réelles, mises à jour automatiquement */}
               <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-blue-900/40 to-cyan-900/40 p-5 backdrop-blur-sm sm:p-6">
                 <div className="text-center">
                   <div className="mb-2 text-sm font-medium text-cyan-400">
-                    MEMBRES EN LIGNE
+                    MEMBRES INSCRITS
                   </div>
 
                   <div className="mb-2 text-3xl font-bold text-white sm:text-4xl">
-                    2,847
+                    {liveStats ? liveStats.membres : "—"}
                   </div>
 
                   <div className="text-sm text-gray-300">
-                    Dont 64% de membres premium
+                    {liveStats ? liveStats.messages : "—"} messages échangés
                   </div>
                 </div>
               </div>
@@ -830,5 +1088,24 @@ export default function InscriptionPage() {
         </footer>
       </div>
     </main>
+  );
+}
+
+export default function InscriptionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] px-4 text-white">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <p className="text-sm text-gray-300 sm:text-base">
+              Chargement de votre espace SferaLuna...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <InscriptionPageContent />
+    </Suspense>
   );
 }

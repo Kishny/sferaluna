@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         require_matching_selfie: true,
       },
     },
-    return_url: `${appUrl}/mon-compte?verification=success`,
+    return_url: `${appUrl}/inscription?verification=success`,
   });
 
   // Sauvegarder l'ID de session en base
