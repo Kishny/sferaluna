@@ -149,6 +149,24 @@ const planLabel: Record<string, string> = {
   "elite-monthly": "Elite",
 };
 
+/**
+ * Accent couleur par tier — utilisé pour le badge plan dans la liste
+ * des utilisatrices et pour la barre "Répartition des plans".
+ */
+const planBadgeColor: Record<string, string> = {
+  free: "border-white/10 bg-white/5 text-white/70",
+  "essential-monthly": "border-violet-400/25 bg-violet-500/15 text-violet-200",
+  "premium-monthly": "border-pink-400/25 bg-pink-500/15 text-pink-200",
+  "elite-monthly": "border-amber-300/30 bg-amber-400/15 text-amber-200",
+};
+
+const planBarGradient: Record<string, string> = {
+  free: "from-white/40 to-white/20",
+  "essential-monthly": "from-violet-500 to-purple-500",
+  "premium-monthly": "from-pink-500 to-purple-500",
+  "elite-monthly": "from-amber-400 to-yellow-500",
+};
+
 const statusColor: Record<string, string> = {
   active: "text-green-300 bg-green-400/10 border-green-400/20",
   trialing: "text-blue-300 bg-blue-400/10 border-blue-400/20",
@@ -721,7 +739,9 @@ export default function AdminPage() {
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
                             transition={{ duration: 0.8 }}
-                            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                            className={`h-full rounded-full bg-gradient-to-r ${
+                              planBarGradient[p.plan] || planBarGradient.free
+                            }`}
                           />
                         </div>
                       </div>
@@ -830,7 +850,11 @@ export default function AdminPage() {
                           </p>
 
                           <div className="mt-2 flex flex-wrap gap-1.5">
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs">
+                            <span
+                              className={`rounded-full border px-2 py-1 text-xs ${
+                                planBadgeColor[u.plan] || planBadgeColor.free
+                              }`}
+                            >
                               {planEmoji[u.plan] || "🌙"}{" "}
                               {planLabel[u.plan] || u.plan}
                             </span>
@@ -1001,7 +1025,11 @@ export default function AdminPage() {
                             </td>
 
                             <td className="px-4 py-3">
-                              <span className="text-xs font-medium">
+                              <span
+                                className={`rounded-full border px-2 py-1 text-xs font-medium ${
+                                  planBadgeColor[u.plan] || planBadgeColor.free
+                                }`}
+                              >
                                 {planEmoji[u.plan] || "🌙"}{" "}
                                 {planLabel[u.plan] || u.plan}
                               </span>

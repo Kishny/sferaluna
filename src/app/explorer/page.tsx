@@ -105,13 +105,44 @@ const ORIENTATION_OPTIONS = [
 ];
 
 // ─────────────────────────────────────────────
+// Accent visuel par tier (reflète le plan de l'utilisatrice qui explore)
+// ─────────────────────────────────────────────
+
+const planAccent: Record<
+  string,
+  { titleGradient: string; actionGradient: string; actionShadow: string }
+> = {
+  free: {
+    titleGradient: "from-white to-white/70",
+    actionGradient: "from-white/30 to-white/15",
+    actionShadow: "shadow-white/10",
+  },
+  "essential-monthly": {
+    titleGradient: "from-violet-200 to-purple-200",
+    actionGradient: "from-violet-500 to-purple-600",
+    actionShadow: "shadow-violet-500/30",
+  },
+  "premium-monthly": {
+    titleGradient: "from-purple-200 to-pink-200",
+    actionGradient: "from-pink-500 to-purple-600",
+    actionShadow: "shadow-pink-500/30",
+  },
+  "elite-monthly": {
+    titleGradient: "from-amber-200 to-yellow-200",
+    actionGradient: "from-amber-400 to-yellow-500",
+    actionShadow: "shadow-amber-400/30",
+  },
+};
+
+// ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
 
 export default function ExplorerPage() {
   const { status } = useSession();
   const router = useRouter();
-  const { isPremium } = usePremium();
+  const { isPremium, plan } = usePremium();
+  const accent = planAccent[plan ?? "free"] ?? planAccent.free;
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -536,7 +567,9 @@ export default function ExplorerPage() {
           <section className="mb-3 sm:mb-5">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="truncate bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-xl font-black text-transparent sm:text-3xl">
+                <h1
+                  className={`truncate bg-gradient-to-r bg-clip-text text-xl font-black text-transparent transition-colors duration-300 sm:text-3xl ${accent.titleGradient}`}
+                >
                   Explorer
                 </h1>
 
@@ -790,7 +823,7 @@ export default function ExplorerPage() {
                   <button
                     type="button"
                     onClick={handleApplyFilters}
-                    className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                    className={`w-full rounded-xl bg-gradient-to-r py-2.5 text-sm font-semibold text-white transition hover:opacity-90 ${accent.actionGradient}`}
                   >
                     Appliquer les filtres
                   </button>
@@ -860,7 +893,7 @@ export default function ExplorerPage() {
                     type="button"
                     onClick={() => handleLike(currentProfile)}
                     disabled={isLiking || likedIds.has(currentProfile._id)}
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600 shadow-xl shadow-pink-500/30 transition hover:scale-110 disabled:opacity-50 sm:h-20 sm:w-20"
+                    className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br shadow-xl transition hover:scale-110 disabled:opacity-50 sm:h-20 sm:w-20 ${accent.actionGradient} ${accent.actionShadow}`}
                     aria-label="Liker ce profil"
                   >
                     {isLiking ? (
@@ -880,7 +913,7 @@ export default function ExplorerPage() {
                 </p>
               </>
             ) : (
-              <EmptyState onRefresh={() => fetchProfiles(true)} />
+              <EmptyState onRefresh={() => fetchProfiles(true)} accent={accent} />
             )}
           </section>
         </main>
@@ -1205,7 +1238,13 @@ function ProfileStackCard({
 // État vide
 // ─────────────────────────────────────────────
 
-function EmptyState({ onRefresh }: { onRefresh: () => void }) {
+function EmptyState({
+  onRefresh,
+  accent,
+}: {
+  onRefresh: () => void;
+  accent: { titleGradient: string; actionGradient: string; actionShadow: string };
+}) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-5 py-16 text-center sm:py-24">
       <div className="flex h-18 w-18 items-center justify-center rounded-full bg-purple-500/20 sm:h-20 sm:w-20">
@@ -1224,7 +1263,7 @@ function EmptyState({ onRefresh }: { onRefresh: () => void }) {
       <button
         type="button"
         onClick={onRefresh}
-        className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+        className={`flex items-center gap-2 rounded-xl bg-gradient-to-r px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 ${accent.actionGradient}`}
       >
         <RefreshCw className="h-5 w-5" />
         Rafraîchir
