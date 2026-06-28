@@ -279,6 +279,18 @@ const planEmoji: Record<LunaPlan, string> = {
   "elite-monthly": "👑",
 };
 
+/**
+ * Accent visuel par offre — même logique que sur /paiement et /tarifs :
+ * chaque plan a sa propre teinte pour qu'on reconnaisse l'offre active
+ * d'un coup d'œil (violet Essentiel, rose Premium, or Elite).
+ */
+const planAccent: Record<LunaPlan, { ring: string; gradient: string }> = {
+  free: { ring: "ring-white/10", gradient: "from-white/10 to-white/5" },
+  "essential-monthly": { ring: "ring-violet-400/30", gradient: "from-violet-500 to-purple-500" },
+  "premium-monthly": { ring: "ring-pink-400/30", gradient: "from-purple-500 to-pink-500" },
+  "elite-monthly": { ring: "ring-amber-300/40", gradient: "from-amber-400 to-yellow-500" },
+};
+
 const subscriptionLabels: Record<SubscriptionStatus, string> = {
   inactive: "En attente",
   active: "Actif ✅",
@@ -2057,7 +2069,11 @@ function PremiumTab({
           : "border-yellow-400/20 bg-gradient-to-br from-yellow-500/8 to-amber-500/8"
       }`}>
         <div className="mb-3 flex flex-wrap items-center gap-3">
-          <span className="text-3xl">{planEmoji[user.plan]}</span>
+          <span
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl shadow-lg ring-2 ${planAccent[user.plan].gradient} ${planAccent[user.plan].ring}`}
+          >
+            {planEmoji[user.plan]}
+          </span>
           <div className="flex-1">
             <h3 className="text-lg font-bold">{planLabel}</h3>
             <p className="text-sm text-white/60">
@@ -2179,12 +2195,12 @@ function PremiumTab({
       </div>
 
       {user.plan !== "elite-monthly" && active && (
-        <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/10 to-pink-500/10 p-5 text-center">
-          <p className="mb-1 text-lg">✨ Passez à l&apos;offre Elite</p>
+        <div className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-400/10 to-yellow-500/10 p-5 text-center">
+          <p className="mb-1 text-lg">👑 Passez à l&apos;offre Elite</p>
           <p className="mb-4 text-sm text-white/60">Accès complet + 10 boosts, Badge VIP et coaching VibeMentor.</p>
           <button type="button" onClick={() => router.push("/paiement")}
-            className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
-            Voir les offres 👑
+            className="rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-400/20 transition hover:scale-[1.02] hover:shadow-amber-400/40">
+            Voir les offres ✨
           </button>
         </div>
       )}

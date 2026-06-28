@@ -228,6 +228,18 @@ export default function TarifsPage() {
   };
 
   /**
+   * Accent visuel (bordure + ring) par offre — permet de distinguer
+   * immédiatement Essentiel (corail) / Premium (violet) / Elite (or)
+   * au lieu d'un unique violet générique pour toute sélection.
+   */
+  const planAccent: Record<string, { border: string; ring: string }> = {
+    free: { border: 'border-[#8E7AB5]', ring: 'ring-[#8E7AB5]/15' },
+    'essential-monthly': { border: 'border-[#FF6B6B]', ring: 'ring-[#FF6B6B]/15' },
+    'premium-monthly': { border: 'border-[#9D4EDD]', ring: 'ring-[#9D4EDD]/20' },
+    'elite-monthly': { border: 'border-[#FFD166]', ring: 'ring-[#FFD166]/25' },
+  };
+
+  /**
    * Couleur de check selon le plan.
    */
   const getCheckColor = (planId: string) => {
@@ -364,17 +376,23 @@ export default function TarifsPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.05 }}
-                    className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm ${
+                    className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-all ${
                       plan.popular
-                        ? 'border-[#9D4EDD] ring-2 ring-[#9D4EDD]/15'
+                        ? `${planAccent[plan.id].border} ring-2 ${planAccent[plan.id].ring}`
                         : isOpen
-                          ? 'border-[#8E7AB5]'
+                          ? planAccent[plan.id].border
                           : 'border-[#E8E0FF]'
                     }`}
                   >
                     {plan.popular && (
                       <div className="absolute right-3 top-2 z-10 rounded-full bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF] px-2 py-0.5 text-[10px] font-bold text-white shadow">
                         Populaire
+                      </div>
+                    )}
+
+                    {plan.id === 'elite-monthly' && (
+                      <div className="absolute right-3 top-2 z-10 rounded-full bg-gradient-to-r from-[#FFD166] to-[#FF9A3C] px-2 py-0.5 text-[10px] font-bold text-white shadow">
+                        VIP
                       </div>
                     )}
 
@@ -473,11 +491,7 @@ export default function TarifsPage() {
 
                             <Link
                               href={plan.ctaLink}
-                              className={`block rounded-full px-4 py-2.5 text-center text-sm font-bold text-white transition ${
-                                plan.popular
-                                  ? 'bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF]'
-                                  : 'bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]'
-                              }`}
+                              className={`block rounded-full bg-gradient-to-r px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm transition ${plan.color}`}
                             >
                               {plan.cta}
                             </Link>
@@ -509,11 +523,11 @@ export default function TarifsPage() {
                   )}
 
                   <div
-                    className={`relative flex h-full cursor-pointer flex-col rounded-3xl border-2 transition-all ${
+                    className={`relative flex h-full cursor-pointer flex-col rounded-3xl border-2 transition-all duration-300 hover:-translate-y-1 ${
                       plan.popular
-                        ? 'border-[#9D4EDD] bg-white p-6 pt-10 shadow-2xl ring-2 ring-[#9D4EDD]/20'
+                        ? `${planAccent[plan.id].border} bg-white p-6 pt-10 shadow-2xl ring-2 ${planAccent[plan.id].ring}`
                         : selectedPlan === plan.id
-                          ? 'border-[#9D4EDD] bg-white p-6 shadow-2xl'
+                          ? `${planAccent[plan.id].border} bg-white p-6 shadow-2xl ring-2 ${planAccent[plan.id].ring}`
                           : 'border-[#E8E0FF] bg-gradient-to-b from-white to-[#F9F7FC] p-6 hover:border-[#8E7AB5]/50'
                     }`}
                   >
@@ -569,11 +583,7 @@ export default function TarifsPage() {
 
                     <Link
                       href={plan.ctaLink}
-                      className={`mt-auto block rounded-full px-6 py-3 text-center text-sm font-semibold text-white transition-all ${
-                        plan.popular
-                          ? 'bg-gradient-to-r from-[#9D4EDD] to-[#7B2CBF] hover:shadow-xl'
-                          : 'bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] hover:shadow-lg'
-                      }`}
+                      className={`mt-auto block rounded-full bg-gradient-to-r px-6 py-3 text-center text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-xl ${plan.color}`}
                     >
                       {plan.cta}
                     </Link>
