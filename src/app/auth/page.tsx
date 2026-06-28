@@ -49,6 +49,7 @@ type LunaSessionUser = {
   name?: string | null;
   image?: string | null;
   pseudonyme?: string;
+  role?: string;
   hasCompletedProfile?: boolean;
   identityVerified?: boolean;
   plan?: "free" | "essential-monthly" | "premium-monthly" | "elite-monthly";
@@ -220,13 +221,13 @@ function PremiumAuthContent() {
 
     /**
      * La vérification d'identité est obligatoire pour accéder au compte.
-     * Profil complété mais identité non vérifiée → on renvoie vers
-     * /inscription, qui affichera l'étape finale de vérification.
+     * Exception : les comptes admin (compte interne, pas une vraie membre
+     * du site de rencontre) sont traités comme déjà vérifiés.
      */
-    if (
-      currentUser?.hasCompletedProfile === true &&
-      currentUser?.identityVerified === true
-    ) {
+    const isIdentityVerified =
+      currentUser?.identityVerified === true || currentUser?.role === "admin";
+
+    if (currentUser?.hasCompletedProfile === true && isIdentityVerified) {
       router.replace("/mon-compte");
       return;
     }
@@ -249,10 +250,10 @@ function PremiumAuthContent() {
     const freshSession = await sessionRes.json();
     const currentUser = freshSession?.user as LunaSessionUser | undefined;
 
-    if (
-      currentUser?.hasCompletedProfile === true &&
-      currentUser?.identityVerified === true
-    ) {
+    const isIdentityVerified =
+      currentUser?.identityVerified === true || currentUser?.role === "admin";
+
+    if (currentUser?.hasCompletedProfile === true && isIdentityVerified) {
       router.push("/mon-compte");
       return;
     }

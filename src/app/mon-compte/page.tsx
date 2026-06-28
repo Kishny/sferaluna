@@ -554,10 +554,20 @@ function MonCompteContent() {
     if (status !== "authenticated") return;
     if (isLoadingProfile) return;
 
+    // Comptes admin exemptés de la vérification d'identité obligatoire.
+    if (user.role === "admin") return;
+
     if (user.hasCompletedProfile && !user.identityVerified) {
       router.replace("/inscription");
     }
-  }, [status, isLoadingProfile, user.hasCompletedProfile, user.identityVerified, router]);
+  }, [
+    status,
+    isLoadingProfile,
+    user.role,
+    user.hasCompletedProfile,
+    user.identityVerified,
+    router,
+  ]);
 
   /**
    * Récupération du profil connecté.
