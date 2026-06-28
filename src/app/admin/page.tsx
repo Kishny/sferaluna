@@ -18,6 +18,7 @@ import {
   Search,
   Shield,
   Star,
+  Trash2,
   TrendingUp,
 } from "lucide-react";
 
@@ -312,6 +313,37 @@ export default function AdminPage() {
     try {
       await fetch(`/api/admin/users/${userId}/ban`, { method: "POST" });
       fetchReports();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, pseudonyme: string) => {
+    if (
+      !confirm(
+        `Supprimer définitivement ${pseudonyme} ? Cette action est irréversible : son profil, ses likes, matchs, messages, visites, vibes, posts et son abonnement seront supprimés. Les statistiques du site se mettront à jour automatiquement.`
+      )
+    ) {
+      return;
+    }
+
+    setActionLoading(userId + "delete");
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setUsers((prev) => prev.filter((u) => u._id !== userId));
+        setTotalUsers((prev) => Math.max(prev - 1, 0));
+      } else {
+        setError(data.error || "Suppression échouée.");
+      }
+    } catch {
+      setError("Erreur lors de la suppression.");
     } finally {
       setActionLoading(null);
     }
@@ -774,6 +806,20 @@ export default function AdminPage() {
                             <Shield className="h-4 w-4" />
                           )}
                         </button>
+
+                        {u.role !== "admin" && (
+                          <button
+                            onClick={() => handleDeleteUser(u._id, u.pseudonyme)}
+                            disabled={actionLoading === u._id + "delete"}
+                            className="rounded-lg border border-red-400/20 bg-red-400/10 p-2 text-red-300 transition hover:bg-red-400/20"
+                          >
+                            {actionLoading === u._id + "delete" ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -912,6 +958,22 @@ export default function AdminPage() {
                                     <Shield className="h-3.5 w-3.5" />
                                   )}
                                 </button>
+
+                                {u.role !== "admin" && (
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteUser(u._id, u.pseudonyme)
+                                    }
+                                    disabled={actionLoading === u._id + "delete"}
+                                    className="rounded-lg border border-red-400/20 bg-red-400/10 p-1.5 text-red-300 transition hover:bg-red-400/20"
+                                  >
+                                    {actionLoading === u._id + "delete" ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
