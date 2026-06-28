@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const [users, total] = await Promise.all([
       User.find(query)
-        .select("_id email pseudonyme plan subscriptionStatus isPremium hasCompletedProfile role createdAt lastLoginAt localisation age")
+        .select("_id email pseudonyme plan subscriptionStatus isPremium hasCompletedProfile role createdAt lastLoginAt localisation age identityVerified identityVerificationStatus")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
  *
  * Permet de modifier le rôle ou de suspendre un utilisateur.
  *
- * Body : { userId: string, action: "promote" | "demote" | "toggle_premium" }
+ * Body : { userId: string, action: "promote" | "demote" | "toggle_premium" | "toggle_identity_verified" }
  */
 export async function PATCH(req: NextRequest) {
   try {
@@ -118,7 +118,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Paramètres manquants." }, { status: 400 });
     }
 
-    const target = await User.findById(userId).select("_id role isPremium plan email");
+    const target = await User.findById(userId).select("_id role isPremium plan email identityVerified");
 
     if (!target) {
       return NextResponse.json({ success: false, error: "Utilisateur introuvable." }, { status: 404 });
@@ -141,12 +141,26 @@ export async function PATCH(req: NextRequest) {
         subscriptionStatus: target.isPremium ? "inactive" : "active",
         plan: target.isPremium ? "free" : "essential-monthly",
       };
+    } else if (action === "toggle_identity_verified") {
+      // Validation manuelle de l'identité par l'admin (ex: comptes de test).
+      // On nettoie aussi la session Stripe Identity associée, devenue obsolète.
+      update = target.identityVerified
+        ? {
+            identityVerified: false,
+            identityVerificationStatus: "unverified",
+            stripeVerificationSessionId: null,
+          }
+        : {
+            identityVerified: true,
+            identityVerificationStatus: "verified",
+            stripeVerificationSessionId: null,
+          };
     } else {
       return NextResponse.json({ success: false, error: "Action inconnue." }, { status: 400 });
     }
 
     const updated = await User.findByIdAndUpdate(userId, { $set: update }, { new: true })
-      .select("_id email role isPremium plan subscriptionStatus");
+      .select("_id email role isPremium plan subscriptionStatus identityVerified identityVerificationStatus");
 
     return NextResponse.json({ success: true, user: updated }, { status: 200 });
   } catch (error: unknown) {

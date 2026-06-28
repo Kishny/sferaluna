@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShieldCheck,
   Star,
   Trash2,
   TrendingUp,
@@ -64,6 +65,8 @@ interface AdminUser {
   lastLoginAt?: string;
   localisation?: string;
   age?: number;
+  identityVerified: boolean;
+  identityVerificationStatus: string;
 }
 
 type TabId = "stats" | "users" | "reports" | "testimonials" | "tools";
@@ -813,6 +816,13 @@ export default function AdminPage() {
                             {u.hasCompletedProfile && (
                               <BadgeCheck className="h-4 w-4 text-green-400" />
                             )}
+
+                            {u.identityVerified && (
+                              <ShieldCheck
+                                className="h-4 w-4 text-blue-400"
+                                aria-label="Identité vérifiée"
+                              />
+                            )}
                           </div>
 
                           <p className="truncate text-xs text-white/40">
@@ -885,6 +895,32 @@ export default function AdminPage() {
                           )}
                         </button>
 
+                        <button
+                          onClick={() =>
+                            handleUserAction(u._id, "toggle_identity_verified")
+                          }
+                          disabled={
+                            actionLoading === u._id + "toggle_identity_verified"
+                          }
+                          title={
+                            u.identityVerified
+                              ? "Retirer la vérification d'identité"
+                              : "Valider manuellement l'identité"
+                          }
+                          className={`rounded-lg border p-2 transition ${
+                            u.identityVerified
+                              ? "border-blue-400/20 bg-blue-400/15 text-blue-300"
+                              : "border-white/10 bg-white/5 text-white/40"
+                          }`}
+                        >
+                          {actionLoading ===
+                          u._id + "toggle_identity_verified" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ShieldCheck className="h-4 w-4" />
+                          )}
+                        </button>
+
                         {u.role !== "admin" && (
                           <button
                             onClick={() => handleDeleteUser(u._id, u.pseudonyme)}
@@ -953,6 +989,13 @@ export default function AdminPage() {
 
                                 {u.hasCompletedProfile && (
                                   <BadgeCheck className="h-4 w-4 shrink-0 text-green-400" />
+                                )}
+
+                                {u.identityVerified && (
+                                  <ShieldCheck
+                                    className="h-4 w-4 shrink-0 text-blue-400"
+                                    aria-label="Identité vérifiée"
+                                  />
                                 )}
                               </div>
                             </td>
@@ -1034,6 +1077,36 @@ export default function AdminPage() {
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                   ) : (
                                     <Shield className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    handleUserAction(
+                                      u._id,
+                                      "toggle_identity_verified"
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading ===
+                                    u._id + "toggle_identity_verified"
+                                  }
+                                  title={
+                                    u.identityVerified
+                                      ? "Retirer la vérification d'identité"
+                                      : "Valider manuellement l'identité"
+                                  }
+                                  className={`rounded-lg border p-1.5 text-xs transition ${
+                                    u.identityVerified
+                                      ? "border-blue-400/20 bg-blue-400/15 text-blue-300"
+                                      : "border-white/10 bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
+                                  }`}
+                                >
+                                  {actionLoading ===
+                                  u._id + "toggle_identity_verified" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <ShieldCheck className="h-3.5 w-3.5" />
                                   )}
                                 </button>
 
