@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ArrowLeft,
   BadgeCheck,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Crown,
@@ -65,7 +66,52 @@ interface AdminUser {
   age?: number;
 }
 
-type TabId = "stats" | "users" | "reports" | "testimonials";
+type TabId = "stats" | "users" | "reports" | "testimonials" | "tools";
+
+type ResetTarget = "messages" | "matches" | "visits" | "posts" | "journal";
+
+const resetTargets: {
+  id: ResetTarget;
+  label: string;
+  description: string;
+  confirmMessage: string;
+}[] = [
+  {
+    id: "messages",
+    label: "Messages",
+    description: "Supprime tous les messages échangés entre les membres.",
+    confirmMessage:
+      "Supprimer définitivement TOUS les messages du site ? Cette action est irréversible.",
+  },
+  {
+    id: "matches",
+    label: "Matchs & likes",
+    description: "Supprime tous les matchs et tous les likes enregistrés.",
+    confirmMessage:
+      "Supprimer définitivement TOUS les matchs et likes du site ? Cette action est irréversible.",
+  },
+  {
+    id: "visits",
+    label: "Visites de profil",
+    description: "Supprime l'historique des visites de profil.",
+    confirmMessage:
+      "Supprimer définitivement TOUTES les visites de profil ? Cette action est irréversible.",
+  },
+  {
+    id: "posts",
+    label: "Posts (VibeSphere / Communauté / VibeMentor)",
+    description: "Supprime tous les posts publiés sur ces 3 espaces.",
+    confirmMessage:
+      "Supprimer définitivement TOUS les posts VibeSphere, Communauté et VibeMentor ? Cette action est irréversible.",
+  },
+  {
+    id: "journal",
+    label: "Journal émotionnel",
+    description: "Supprime toutes les entrées de journal de toutes les utilisatrices.",
+    confirmMessage:
+      "Supprimer définitivement TOUTES les entrées de journal émotionnel ? Cette action est irréversible.",
+  },
+];
 
 interface AdminReport {
   _id: string;
@@ -130,6 +176,7 @@ export default function AdminPage() {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
@@ -349,6 +396,36 @@ export default function AdminPage() {
     }
   };
 
+  const handleResetData = async (target: ResetTarget, confirmMessage: string) => {
+    if (!confirm(confirmMessage)) return;
+
+    setActionLoading("reset-" + target);
+    setResetMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setResetMessage(
+          `${data.label} : ${data.deletedCount} document(s) supprimé(s).`
+        );
+        fetchStats();
+      } else {
+        setError(data.error || "Reset échoué.");
+      }
+    } catch {
+      setError("Erreur lors du reset.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleResolveReport = async (
     reportId: string,
     action: "reviewed" | "dismissed"
@@ -418,6 +495,7 @@ export default function AdminPage() {
     { id: "users", label: "👥 Users" },
     { id: "reports", label: "🚨 Reports" },
     { id: "testimonials", label: "💬 Avis" },
+    { id: "tools", label: "🛠 Outils" },
   ];
 
   return (
@@ -1256,6 +1334,69 @@ export default function AdminPage() {
                 )}
               </article>
             ))}
+          </motion.section>
+        )}
+
+        {/* Outils */}
+        {activeTab === "tools" && (
+          <motion.section
+            key="tools"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="rounded-2xl border border-red-400/20 bg-red-500/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-red-300">
+                <AlertCircle className="h-4 w-4" />
+                Zone sensible
+              </p>
+              <p className="mt-1 text-xs text-white/50">
+                Ces actions suppriment définitivement des données pour
+                l&apos;ensemble du site (toutes les utilisatrices), sans
+                toucher aux comptes eux-mêmes. Utile pour repartir avec des
+                statistiques propres après des tests. Irréversible.
+              </p>
+            </div>
+
+            {resetMessage && (
+              <div className="flex items-center gap-3 rounded-xl border border-green-400/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{resetMessage}</span>
+                <button
+                  onClick={() => setResetMessage(null)}
+                  className="text-green-300 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {resetTargets.map((rt) => (
+                <div
+                  key={rt.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{rt.label}</p>
+                    <p className="text-xs text-white/40">{rt.description}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleResetData(rt.id, rt.confirmMessage)}
+                    disabled={actionLoading === "reset-" + rt.id}
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-600/20 px-4 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-600/30 disabled:opacity-50"
+                  >
+                    {actionLoading === "reset-" + rt.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                    Réinitialiser
+                  </button>
+                </div>
+              ))}
+            </div>
           </motion.section>
         )}
       </div>
