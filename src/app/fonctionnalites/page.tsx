@@ -84,6 +84,49 @@ function formatStat(n: number): string {
 }
 
 // ─────────────────────────────────────────────
+// Motif décoratif orbite
+// ─────────────────────────────────────────────
+
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({
+  className = "",
+  variant = "default",
+}: {
+  className?: string;
+  variant?: "default" | "light";
+}) {
+  const stroke = variant === "light" ? "#FFFFFF" : "#8E7AB5";
+  const dot = variant === "light" ? "#FFFFFF" : "#5B4B8A";
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill={dot} />
+      <circle cx="190" cy="100" r="3" fill={dot} />
+      <circle cx="100" cy="190" r="3" fill={dot} />
+      <circle cx="10" cy="100" r="3" fill={dot} />
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Données fonctionnalités
 // ─────────────────────────────────────────────
 
@@ -320,6 +363,8 @@ export default function FonctionnalitesPage() {
             />
           </div>
 
+          <OrbitGlow className="left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 sm:h-[32rem] sm:w-[32rem]" />
+
           <div className="relative z-10 mx-auto max-w-5xl text-center">
             <motion.div
               initial={{ opacity: 0, y: 14 }}
@@ -400,8 +445,12 @@ export default function FonctionnalitesPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.035 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${feature.color}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() =>
@@ -758,8 +807,11 @@ export default function FonctionnalitesPage() {
         {/* ─────────────────────────────
             Desktop / tablette : grille complète
         ───────────────────────────── */}
-        <section className="hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-10 sm:block md:px-6">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative hidden overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-10 sm:block md:px-6">
+          <OrbitGlow className="right-[-8%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+          <OrbitGlow className="left-[-10%] bottom-0 h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -861,8 +913,10 @@ export default function FonctionnalitesPage() {
         {/* ─────────────────────────────
             Statistiques compactes
         ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-10">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-10">
+          <OrbitGlow className="left-1/2 top-0 h-72 w-72 -translate-x-1/2 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <div className="grid grid-cols-3 gap-2 sm:gap-6">
               {[
                 {
@@ -923,6 +977,11 @@ export default function FonctionnalitesPage() {
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
             className="absolute -left-1/2 -top-1/2 h-full w-full bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"
+          />
+
+          <OrbitGlow
+            variant="light"
+            className="right-[-10%] top-[-15%] h-72 w-72 sm:h-96 sm:w-96"
           />
 
           <div className="relative z-10 mx-auto max-w-4xl text-center text-white">

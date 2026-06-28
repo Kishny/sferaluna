@@ -49,6 +49,65 @@ function formatStat(n: number): string {
   return n.toString();
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({
+  className = '',
+  variant = 'default',
+}: {
+  className?: string;
+  variant?: 'default' | 'light';
+}) {
+  const stroke = variant === 'light' ? '#FFFFFF' : '#8E7AB5';
+  const dot = variant === 'light' ? '#FFFFFF' : '#5B4B8A';
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill={dot} />
+      <circle cx="190" cy="100" r="3" fill={dot} />
+      <circle cx="100" cy="190" r="3" fill={dot} />
+      <circle cx="10" cy="100" r="3" fill={dot} />
+    </svg>
+  );
+}
+
+/**
+ * Barres d'accent associées aux avantages (même index que `benefits`).
+ */
+const benefitBars = [
+  'from-[#8E7AB5] to-[#D9B8FF]',
+  'from-[#FF6B6B] to-[#FF8E8E]',
+  'from-[#4ECDC4] to-[#44A08D]',
+  'from-[#FFD166] to-[#FF9A3C]',
+];
+
+/**
+ * Thèmes cycliques pour les cards FAQ (pas de couleur propre dans la donnée).
+ */
+const faqAccentThemes = [
+  'from-[#8E7AB5] to-[#D9B8FF]',
+  'from-[#FF6B6B] to-[#FF8E8E]',
+  'from-[#4ECDC4] to-[#44A08D]',
+  'from-[#FFD166] to-[#FF9A3C]',
+];
+
 export default function CommencerPage() {
   /**
    * Étape active animée automatiquement sur desktop.
@@ -280,6 +339,11 @@ export default function CommencerPage() {
               className="absolute bottom-1/4 right-1/4 h-52 w-52 rounded-full bg-gradient-to-r from-white/5 to-transparent blur-3xl sm:h-96 sm:w-96"
             />
 
+            <OrbitGlow
+              variant="light"
+              className="left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 sm:h-[32rem] sm:w-[32rem]"
+            />
+
             {/* Motif discret */}
             <div className="absolute inset-0 opacity-10">
               <div
@@ -418,8 +482,11 @@ export default function CommencerPage() {
         </section>
 
         {/* Étapes du parcours */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
+          <OrbitGlow className="right-[-8%] top-10 h-72 w-72 sm:h-96 sm:w-96" />
+          <OrbitGlow className="left-[-10%] top-[55%] h-64 w-64 sm:h-80 sm:w-80" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -448,8 +515,12 @@ export default function CommencerPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${stepItem.color}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => setOpenStepIndex(isOpen ? null : index)}
@@ -529,7 +600,11 @@ export default function CommencerPage() {
                     viewport={{ once: true }}
                     className="relative"
                   >
-                    <div className="relative rounded-3xl border border-[#F0F0F0] bg-gradient-to-b from-white to-[#F9F7FC] p-6 shadow-lg transition-all duration-300 hover:shadow-2xl">
+                    <div className="relative overflow-hidden rounded-3xl border border-[#F0F0F0] bg-gradient-to-b from-white to-[#F9F7FC] p-6 shadow-lg transition-all duration-300 hover:shadow-2xl">
+                      <div
+                        className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stepItem.color}`}
+                      />
+
                       <div className="absolute -top-4 left-8 flex h-16 w-16 items-center justify-center rounded-full border border-[#F0F0F0] bg-gradient-to-r from-white to-[#F9F7FC]">
                         <div
                           className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r ${stepItem.color} text-xl font-bold text-white`}
@@ -571,8 +646,10 @@ export default function CommencerPage() {
         </section>
 
         {/* Avantages */}
-        <section className="bg-gradient-to-b from-[#F9F7FC] to-white px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-[#F9F7FC] to-white px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
+          <OrbitGlow className="right-[-10%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -601,8 +678,12 @@ export default function CommencerPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${benefitBars[index % benefitBars.length]}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() =>
@@ -661,7 +742,7 @@ export default function CommencerPage() {
               viewport={{ once: true }}
               className="hidden grid-cols-1 gap-6 sm:grid md:grid-cols-2 lg:grid-cols-4"
             >
-              {benefits.map((benefit) => (
+              {benefits.map((benefit, index) => (
                 <motion.div
                   key={benefit.title}
                   variants={itemVariants}
@@ -669,6 +750,9 @@ export default function CommencerPage() {
                   className="group relative"
                 >
                   <div className="relative overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-2xl">
+                    <div
+                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${benefitBars[index % benefitBars.length]}`}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-br from-white to-[#F9F7FC] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                     <div className={`relative z-10 mb-6 ${benefit.color}`}>
@@ -694,8 +778,10 @@ export default function CommencerPage() {
         </section>
 
         {/* FAQ rapide */}
-        <section className="bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
+          <OrbitGlow className="left-1/2 top-0 h-72 w-72 -translate-x-1/2 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -722,8 +808,12 @@ export default function CommencerPage() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.06 }}
-                    className="overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white transition-all hover:border-[#8E7AB5]/30"
+                    className="relative overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white transition-all hover:border-[#8E7AB5]/30"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${faqAccentThemes[index % faqAccentThemes.length]}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => setOpenFaqIndex(isOpen ? null : index)}
@@ -774,6 +864,11 @@ export default function CommencerPage() {
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
             className="absolute -left-1/2 -top-1/2 h-full w-full bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"
+          />
+
+          <OrbitGlow
+            variant="light"
+            className="right-[-10%] top-[-15%] h-72 w-72 sm:h-96 sm:w-96"
           />
 
           <div className="relative z-10 mx-auto max-w-4xl text-center text-white">

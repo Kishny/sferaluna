@@ -19,6 +19,45 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({
+  className = '',
+  variant = 'default',
+}: {
+  className?: string;
+  variant?: 'default' | 'light';
+}) {
+  const stroke = variant === 'light' ? '#FFFFFF' : '#8E7AB5';
+  const dot = variant === 'light' ? '#FFFFFF' : '#5B4B8A';
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill={dot} />
+      <circle cx="190" cy="100" r="3" fill={dot} />
+      <circle cx="100" cy="190" r="3" fill={dot} />
+      <circle cx="10" cy="100" r="3" fill={dot} />
+    </svg>
+  );
+}
+
 export default function GuidePage() {
   /**
    * FAQ ouverte.
@@ -169,6 +208,17 @@ export default function GuidePage() {
   ];
 
   /**
+   * Palette de couleurs cycliques pour les cards FAQ et conseils.
+   */
+  const accentThemes = [
+    'from-[#8E7AB5] to-[#D9B8FF]',
+    'from-[#FF6B6B] to-[#FF8E8E]',
+    'from-[#4ECDC4] to-[#44A08D]',
+    'from-[#FFD166] to-[#FF9A3C]',
+    'from-[#9D4EDD] to-[#7B2CBF]',
+  ];
+
+  /**
    * Conseils de la communauté.
    */
   const communityTips = [
@@ -215,6 +265,11 @@ export default function GuidePage() {
             animate={{ scale: [1.1, 1, 1.1], opacity: [0.2, 0.35, 0.2] }}
             transition={{ duration: 10, repeat: Infinity }}
             className="absolute -right-16 bottom-0 h-52 w-52 rounded-full bg-pink-200/20 blur-3xl sm:h-80 sm:w-80"
+          />
+
+          <OrbitGlow
+            variant="light"
+            className="left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 sm:h-[32rem] sm:w-[32rem]"
           />
 
           <div className="relative z-10 mx-auto max-w-6xl text-center text-white">
@@ -297,8 +352,11 @@ export default function GuidePage() {
         </section>
 
         {/* Étapes détaillées */}
-        <section className="px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="right-[-8%] top-10 h-72 w-72 sm:h-96 sm:w-96" />
+          <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -326,8 +384,12 @@ export default function GuidePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${step.color}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => setOpenStepIndex(isOpen ? null : index)}
@@ -410,7 +472,10 @@ export default function GuidePage() {
                   transition={{ delay: index * 0.08 }}
                   className="relative"
                 >
-                  <div className="flex flex-col gap-8 rounded-3xl border border-[#F0F0F0] bg-white p-6 shadow-lg transition-shadow hover:shadow-xl lg:flex-row">
+                  <div className="relative overflow-hidden flex flex-col gap-8 rounded-3xl border border-[#F0F0F0] bg-white p-6 shadow-lg transition-shadow hover:shadow-xl lg:flex-row">
+                    <div
+                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${step.color}`}
+                    />
                     {/* Numéro et icône */}
                     <div className="lg:w-1/4">
                       <div className="flex items-center gap-4">
@@ -493,8 +558,10 @@ export default function GuidePage() {
         </section>
 
         {/* FAQ Interactive */}
-        <section className="bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="left-1/2 top-0 h-72 w-72 -translate-x-1/2 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -509,6 +576,7 @@ export default function GuidePage() {
             <div className="space-y-2 sm:space-y-4">
               {faqs.map((faq, index) => {
                 const isOpen = openSections.includes(index);
+                const theme = accentThemes[index % accentThemes.length];
 
                 return (
                   <motion.div
@@ -517,14 +585,20 @@ export default function GuidePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.05 }}
-                    className="overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white"
+                    className="relative overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => toggleSection(index)}
                       className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:border-[#8E7AB5]/30 sm:px-6 sm:py-5"
                     >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-sm font-bold text-white sm:h-8 sm:w-8">
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r ${theme} text-sm font-bold text-white sm:h-8 sm:w-8`}
+                      >
                         ?
                       </div>
 
@@ -564,8 +638,10 @@ export default function GuidePage() {
         </section>
 
         {/* Conseils de la communauté */}
-        <section className="px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="right-[-10%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -582,6 +658,7 @@ export default function GuidePage() {
             <div className="space-y-2 sm:hidden">
               {communityTips.map((tip, index) => {
                 const isOpen = openTipIndex === index;
+                const theme = accentThemes[index % accentThemes.length];
 
                 return (
                   <motion.div
@@ -590,14 +667,20 @@ export default function GuidePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme}`}
+                    />
+
                     <button
                       type="button"
                       onClick={() => setOpenTipIndex(isOpen ? null : index)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-xl">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme} text-xl`}
+                      >
                         {tip.emoji}
                       </span>
 
@@ -646,15 +729,22 @@ export default function GuidePage() {
 
             {/* Desktop : cards */}
             <div className="hidden grid-cols-1 gap-6 sm:grid md:grid-cols-3">
-              {communityTips.map((tip, index) => (
+              {communityTips.map((tip, index) => {
+                const theme = accentThemes[index % accentThemes.length];
+
+                return (
                 <motion.div
                   key={tip.tip}
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.12 }}
-                  className="rounded-3xl border border-[#E8E0FF] bg-gradient-to-b from-white to-[#F9F7FC] p-6"
+                  className="relative overflow-hidden rounded-3xl border border-[#E8E0FF] bg-gradient-to-b from-white to-[#F9F7FC] p-6"
                 >
+                  <div
+                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme}`}
+                  />
+
                   <div className="mb-4 text-4xl">{tip.emoji}</div>
 
                   <h3 className="mb-3 text-xl font-semibold text-[#1C1C1C]">
@@ -667,7 +757,8 @@ export default function GuidePage() {
                     — {tip.author}
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
@@ -675,6 +766,11 @@ export default function GuidePage() {
         {/* Call to Action compact mobile */}
         <section className="relative overflow-hidden px-4 py-7 sm:px-6 sm:py-14">
           <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
+
+          <OrbitGlow
+            variant="light"
+            className="right-[-10%] top-[-20%] h-72 w-72 sm:h-96 sm:w-96"
+          />
 
           <div className="relative z-10 mx-auto max-w-4xl text-center text-white">
             <motion.h2

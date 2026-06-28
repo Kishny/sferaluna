@@ -50,6 +50,97 @@ interface Profile {
 }
 
 // ─────────────────────────────────────────────
+// Motif décoratif orbite
+// ─────────────────────────────────────────────
+
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera". Toujours en variante claire ici car le
+ * fond de la page est sombre.
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
+ * Palette tournante des 6 affinités du Circle.
+ * Chaque profil de la semaine reçoit une identité couleur distincte,
+ * en écho à l'hexagone à 6 faces du logo HexagonSix.
+ */
+const circleThemes = [
+  {
+    avatarGradient: "from-[#FF9A3C] to-[#FFD166]",
+    accentText: "text-[#FFB066]",
+    accentBg: "bg-[#FF9A3C]/15",
+    accentBorder: "border-[#FF9A3C]/30",
+    barGradient: "from-[#FF9A3C] to-[#FFD166]",
+    ring: "hover:border-[#FF9A3C]/50",
+  },
+  {
+    avatarGradient: "from-[#9D4EDD] to-[#C77DFF]",
+    accentText: "text-[#C77DFF]",
+    accentBg: "bg-[#9D4EDD]/15",
+    accentBorder: "border-[#9D4EDD]/30",
+    barGradient: "from-[#9D4EDD] to-[#C77DFF]",
+    ring: "hover:border-[#9D4EDD]/50",
+  },
+  {
+    avatarGradient: "from-[#FF6B6B] to-[#FF9A9A]",
+    accentText: "text-[#FF9A9A]",
+    accentBg: "bg-[#FF6B6B]/15",
+    accentBorder: "border-[#FF6B6B]/30",
+    barGradient: "from-[#FF6B6B] to-[#FF9A9A]",
+    ring: "hover:border-[#FF6B6B]/50",
+  },
+  {
+    avatarGradient: "from-[#4ECDC4] to-[#8FE9E0]",
+    accentText: "text-[#8FE9E0]",
+    accentBg: "bg-[#4ECDC4]/15",
+    accentBorder: "border-[#4ECDC4]/30",
+    barGradient: "from-[#4ECDC4] to-[#8FE9E0]",
+    ring: "hover:border-[#4ECDC4]/50",
+  },
+  {
+    avatarGradient: "from-[#D9B8FF] to-[#F0E0FF]",
+    accentText: "text-[#D9B8FF]",
+    accentBg: "bg-[#D9B8FF]/15",
+    accentBorder: "border-[#D9B8FF]/30",
+    barGradient: "from-[#D9B8FF] to-[#F0E0FF]",
+    ring: "hover:border-[#D9B8FF]/50",
+  },
+  {
+    avatarGradient: "from-purple-500 to-pink-500",
+    accentText: "text-pink-300",
+    accentBg: "bg-pink-500/15",
+    accentBorder: "border-pink-400/30",
+    barGradient: "from-purple-500 to-pink-500",
+    ring: "hover:border-pink-400/50",
+  },
+];
+
+// ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
 
@@ -269,10 +360,13 @@ export default function CirclePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
+        <OrbitGlow className="right-[-8%] top-16 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[55%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
         <Header />
 
-        <main className="mx-auto max-w-6xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
+        <main className="relative z-10 mx-auto max-w-6xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
           {/* ─────────────────────────────
               Toast match
           ───────────────────────────── */}
@@ -377,6 +471,7 @@ export default function CirclePage() {
                   );
                   const isLiked = likedIds.has(profile._id);
                   const isLiking = likingIds.has(profile._id);
+                  const theme = circleThemes[index % circleThemes.length];
 
                   return (
                     <motion.article
@@ -384,7 +479,7 @@ export default function CirclePage() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.045 }}
-                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/8 shadow-xl backdrop-blur"
+                      className={`overflow-hidden rounded-2xl border border-white/10 bg-white/8 shadow-xl backdrop-blur transition-colors ${theme.ring}`}
                     >
                       {/* Header accordéon */}
                       <button
@@ -395,7 +490,9 @@ export default function CirclePage() {
                         className="flex w-full items-center gap-3 px-3 py-3 text-left"
                       >
                         {/* Avatar compact */}
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-bold text-white">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${theme.avatarGradient} text-sm font-bold text-white`}
+                        >
                           {profile.image ? (
                             <img
                               src={profile.image}
@@ -420,7 +517,9 @@ export default function CirclePage() {
                             </h2>
 
                             {compatibilityPercent && (
-                              <span className="shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-200">
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${theme.accentBg} ${theme.accentText}`}
+                              >
                                 {compatibilityPercent}%
                               </span>
                             )}
@@ -435,7 +534,7 @@ export default function CirclePage() {
                         </div>
 
                         <ChevronDown
-                          className={`h-4 w-4 shrink-0 text-purple-200 transition-transform ${
+                          className={`h-4 w-4 shrink-0 transition-transform ${theme.accentText} ${
                             isOpen ? "rotate-180" : ""
                           }`}
                         />
@@ -460,7 +559,7 @@ export default function CirclePage() {
                                       Compatibilité
                                     </span>
 
-                                    <span className="text-xs font-semibold text-purple-200">
+                                    <span className={`text-xs font-semibold ${theme.accentText}`}>
                                       {compatibilityPercent}%
                                     </span>
                                   </div>
@@ -476,7 +575,7 @@ export default function CirclePage() {
                                         duration: 0.65,
                                         ease: "easeOut",
                                       }}
-                                      className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                      className={`h-full rounded-full bg-gradient-to-r ${theme.barGradient}`}
                                     />
                                   </div>
                                 </div>
@@ -505,7 +604,7 @@ export default function CirclePage() {
                                   {profile.interets.slice(0, 4).map((interet) => (
                                     <span
                                       key={interet}
-                                      className="rounded-full border border-purple-400/25 bg-purple-500/15 px-2 py-1 text-[10px] text-purple-200"
+                                      className={`rounded-full border px-2 py-1 text-[10px] ${theme.accentBorder} ${theme.accentBg} ${theme.accentText}`}
                                     >
                                       {interet}
                                     </span>
@@ -534,7 +633,7 @@ export default function CirclePage() {
                                   className={`flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
                                     isLiked
                                       ? "border border-pink-400/30 bg-pink-500/20 text-pink-200"
-                                      : "bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50"
+                                      : `bg-gradient-to-r ${theme.barGradient} text-white disabled:opacity-50`
                                   }`}
                                 >
                                   {isLiking ? (
@@ -568,6 +667,7 @@ export default function CirclePage() {
                   );
                   const isLiked = likedIds.has(profile._id);
                   const isLiking = likingIds.has(profile._id);
+                  const theme = circleThemes[index % circleThemes.length];
 
                   return (
                     <motion.article
@@ -576,11 +676,13 @@ export default function CirclePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.08 }}
                       whileHover={{ y: -6 }}
-                      className="group overflow-hidden rounded-3xl border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-xl transition-all hover:border-purple-300/50"
+                      className={`group overflow-hidden rounded-3xl border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-xl transition-all ${theme.ring}`}
                     >
                       {/* Avatar + infos */}
                       <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-lg font-bold text-white">
+                        <div
+                          className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${theme.avatarGradient} text-lg font-bold text-white`}
+                        >
                           {profile.image ? (
                             <img
                               src={profile.image}
@@ -620,7 +722,7 @@ export default function CirclePage() {
                               Compatibilité
                             </span>
 
-                            <span className="text-xs font-semibold text-purple-300">
+                            <span className={`text-xs font-semibold ${theme.accentText}`}>
                               {compatibilityPercent}%
                             </span>
                           </div>
@@ -634,7 +736,7 @@ export default function CirclePage() {
                                 duration: 0.8,
                                 ease: "easeOut",
                               }}
-                              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                              className={`h-full rounded-full bg-gradient-to-r ${theme.barGradient}`}
                             />
                           </div>
 
@@ -655,7 +757,7 @@ export default function CirclePage() {
                           {profile.interets.slice(0, 4).map((interet) => (
                             <span
                               key={interet}
-                              className="rounded-full border border-purple-500/30 bg-purple-500/20 px-2.5 py-1 text-xs text-purple-300"
+                              className={`rounded-full border px-2.5 py-1 text-xs ${theme.accentBorder} ${theme.accentBg} ${theme.accentText}`}
                             >
                               {interet}
                             </span>
@@ -682,7 +784,7 @@ export default function CirclePage() {
                           className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                             isLiked
                               ? "cursor-default border border-pink-500/30 bg-pink-500/20 text-pink-300"
-                              : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 disabled:opacity-50"
+                              : `bg-gradient-to-r ${theme.barGradient} text-white opacity-90 hover:opacity-100 disabled:opacity-50`
                           }`}
                         >
                           {isLiking ? (

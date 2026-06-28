@@ -124,6 +124,46 @@ function formatIntention(intention: string) {
   return map[intention] ?? intention;
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
+ * Palette tournante pour l'accent des cards de match.
+ */
+const matchBars = [
+  "from-[#9D4EDD] to-[#C77DFF]",
+  "from-[#4ECDC4] to-[#8FE9E0]",
+  "from-[#FF6B9D] to-[#FF8E53]",
+  "from-[#667EEA] to-[#764BA2]",
+];
+
 // ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
@@ -263,10 +303,13 @@ export default function MatchesPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
+      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
+        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
         <Header />
 
-        <main className="mx-auto max-w-3xl px-3 pb-8 pt-20 sm:px-4 sm:pb-10 sm:pt-24">
+        <main className="relative z-10 mx-auto max-w-3xl px-3 pb-8 pt-20 sm:px-4 sm:pb-10 sm:pt-24">
           {/* Header page compact mobile */}
           <motion.div
             initial={{ opacity: 0, y: -14 }}
@@ -417,6 +460,7 @@ export default function MatchesPage() {
                   const isOpen = openMatchId === match.matchId;
                   const lastMessageDate = formatDate(match.lastMessageAt);
                   const matchDate = formatDate(match.createdAt);
+                  const bar = matchBars[index % matchBars.length];
 
                   return (
                     <motion.article
@@ -424,8 +468,10 @@ export default function MatchesPage() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: Math.min(index * 0.035, 0.25) }}
-                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition"
+                      className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition"
                     >
+                      <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${bar}`} />
+
                       {/* Ligne principale compacte */}
                       <div className="flex items-center gap-3 px-3 py-3">
                         <Link
@@ -632,6 +678,7 @@ export default function MatchesPage() {
 
                   const lastMessageDate = formatDate(match.lastMessageAt);
                   const matchDate = formatDate(match.createdAt);
+                  const bar = matchBars[index % matchBars.length];
 
                   return (
                     <motion.article
@@ -639,8 +686,10 @@ export default function MatchesPage() {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: Math.min(index * 0.04, 0.3) }}
-                      className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur transition hover:bg-white/10"
+                      className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur transition hover:bg-white/10"
                     >
+                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${bar}`} />
+
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         {/* Avatar + infos principales */}
                         <div className="flex min-w-0 flex-1 items-center gap-4">

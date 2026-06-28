@@ -51,6 +51,46 @@ interface ValueItem {
 }
 
 /**
+ * Motif "orbites" discret en arrière-plan — fait écho au nom "Sfera"
+ * et casse le fond plat des sections. `variant="light"` s'utilise sur
+ * fond sombre (hero, citation, CTA), `variant="default"` sur fond clair.
+ */
+function OrbitGlow({
+  className = '',
+  variant = 'default',
+}: {
+  className?: string;
+  variant?: 'default' | 'light';
+}) {
+  const primary = variant === 'light' ? '#FFFFFF' : '#8E7AB5';
+  const secondary = variant === 'light' ? '#FFFFFF' : '#5B4B8A';
+  const opacityClass = variant === 'light' ? 'opacity-[0.12]' : 'opacity-[0.16]';
+
+  return (
+    <svg
+      viewBox="0 0 400 400"
+      className={`pointer-events-none absolute ${opacityClass} ${className}`}
+      fill="none"
+    >
+      <circle cx="200" cy="200" r="190" stroke={primary} strokeWidth="2" />
+      <circle
+        cx="200"
+        cy="200"
+        r="140"
+        stroke={primary}
+        strokeWidth="2"
+        strokeDasharray="8 12"
+      />
+      <circle cx="200" cy="200" r="90" stroke={secondary} strokeWidth="2" />
+      <circle cx="200" cy="200" r="5" fill={secondary} />
+      <circle cx="390" cy="200" r="6" fill={primary} />
+      <circle cx="60" cy="90" r="5" fill={primary} />
+      <circle cx="310" cy="320" r="4.5" fill={secondary} />
+    </svg>
+  );
+}
+
+/**
  * Formate les statistiques pour éviter les gros chiffres bruts.
  *
  * Exemples :
@@ -193,6 +233,50 @@ export default function HistoirePage() {
     },
   ];
 
+  /**
+   * Thème couleur par carte de valeur (desktop) — contour/fond lumineux
+   * distinct pour chacune, aligné sur les teintes déjà utilisées par
+   * `value.bg` / `value.color` (purple, rouge corail, teal, jaune).
+   */
+  const valueThemes = [
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(142,122,181,0.4),0_14px_32px_-10px_rgba(142,122,181,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(142,122,181,0.4),0_22px_48px_-12px_rgba(142,122,181,0.45)]',
+      overlay: 'from-purple-100 via-white to-white',
+      iconBg: 'bg-purple-50',
+      bar: 'from-violet-500 to-purple-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(255,107,107,0.4),0_14px_32px_-10px_rgba(255,107,107,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(255,107,107,0.4),0_22px_48px_-12px_rgba(255,107,107,0.45)]',
+      overlay: 'from-red-100 via-white to-white',
+      iconBg: 'bg-red-50',
+      bar: 'from-red-400 to-rose-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(78,205,196,0.4),0_14px_32px_-10px_rgba(78,205,196,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(78,205,196,0.4),0_22px_48px_-12px_rgba(78,205,196,0.45)]',
+      overlay: 'from-teal-100 via-white to-white',
+      iconBg: 'bg-teal-50',
+      bar: 'from-teal-400 to-cyan-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(255,209,102,0.4),0_14px_32px_-10px_rgba(255,209,102,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(255,209,102,0.4),0_22px_48px_-12px_rgba(255,209,102,0.45)]',
+      overlay: 'from-yellow-100 via-white to-white',
+      iconBg: 'bg-yellow-50',
+      bar: 'from-amber-400 to-yellow-500',
+    },
+  ];
+
   const proofItems = [
     {
       emoji: '🛡️',
@@ -265,6 +349,11 @@ export default function HistoirePage() {
             className="absolute bottom-0 right-1/4 h-52 w-52 rounded-full bg-pink-500/15 blur-3xl sm:h-96 sm:w-96"
           />
 
+          <OrbitGlow
+            variant="light"
+            className="right-[-6%] top-1/2 h-72 w-72 -translate-y-1/2 sm:h-96 sm:w-96"
+          />
+
           <div className="relative z-10 mx-auto max-w-4xl text-center text-white">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
@@ -297,8 +386,10 @@ export default function HistoirePage() {
         {/* ─────────────────────────────
             INTRO COMPACTE
         ───────────────────────────── */}
-        <section className="px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="left-1/2 top-1/2 h-[26rem] w-[26rem] -translate-x-1/2 -translate-y-1/2 sm:h-[34rem] sm:w-[34rem]" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -362,8 +453,11 @@ export default function HistoirePage() {
             Mobile = accordéon compact
             Desktop = timeline complète
         ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-5xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="left-[-8%] top-1/4 h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+          <OrbitGlow className="right-[-8%] bottom-0 h-72 w-72 sm:h-[26rem] sm:w-[26rem]" />
+
+          <div className="relative z-10 mx-auto max-w-5xl">
             <div className="mb-4 text-center sm:mb-10">
               <h2 className="mb-1 text-xl font-black text-[#1C1C1C] sm:mb-4 sm:text-4xl">
                 Le <span className="text-[#8E7AB5]">parcours</span>
@@ -502,8 +596,10 @@ export default function HistoirePage() {
             Mobile = accordéon compact
             Desktop = cards
         ───────────────────────────── */}
-        <section className="bg-[#faf9ff] px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-[#faf9ff] px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 sm:h-[40rem] sm:w-[40rem]" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <div className="mb-4 text-center sm:mb-10">
               <h2 className="mb-1 text-xl font-black text-[#1C1C1C] sm:mb-4 sm:text-4xl">
                 Ce qui nous <span className="text-[#8E7AB5]">guide</span>
@@ -572,32 +668,46 @@ export default function HistoirePage() {
               })}
             </div>
 
-            {/* Desktop / tablette : cards complètes */}
+            {/* Desktop / tablette : cards complètes, contour lumineux par couleur */}
             <div className="hidden gap-6 sm:grid md:grid-cols-2 lg:grid-cols-4">
-              {values.map((value, index) => (
-                <motion.div
-                  key={value.title}
-                  initial={{ opacity: 0, y: 22 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  className="rounded-2xl border border-[#f0ecff] bg-white p-6 text-center shadow-sm transition-shadow hover:shadow-md"
-                >
-                  <div
-                    className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${value.bg} ${value.color}`}
+              {values.map((value, index) => {
+                const theme = valueThemes[index] ?? valueThemes[0];
+
+                return (
+                  <motion.div
+                    key={value.title}
+                    initial={{ opacity: 0, y: 22 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.08 }}
+                    className={`group relative overflow-hidden rounded-2xl border border-[#f0ecff] bg-white p-6 text-center transition-shadow duration-300 ${theme.shadowBase} ${theme.shadowHover}`}
                   >
-                    {value.icon}
-                  </div>
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-40 transition-opacity duration-300 group-hover:opacity-80`}
+                    />
 
-                  <h3 className="mb-2 font-bold text-[#1C1C1C]">
-                    {value.title}
-                  </h3>
+                    <div className="relative">
+                      <div
+                        className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${theme.iconBg} ${value.color}`}
+                      >
+                        {value.icon}
+                      </div>
 
-                  <p className="text-sm leading-relaxed text-[#666]">
-                    {value.description}
-                  </p>
-                </motion.div>
-              ))}
+                      <h3 className="mb-2 font-bold text-[#1C1C1C]">
+                        {value.title}
+                      </h3>
+
+                      <p className="text-sm leading-relaxed text-[#666]">
+                        {value.description}
+                      </p>
+                    </div>
+
+                    <div
+                      className={`absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${theme.bar} opacity-70 transition-opacity duration-300 group-hover:opacity-100`}
+                    />
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -605,8 +715,13 @@ export default function HistoirePage() {
         {/* ─────────────────────────────
             CITATION COMPACTE
         ───────────────────────────── */}
-        <section className="bg-gradient-to-br from-[#1a0b2e] to-[#2d1b69] px-4 py-7 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-3xl text-center">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#1a0b2e] to-[#2d1b69] px-4 py-7 sm:px-6 sm:py-14">
+          <OrbitGlow
+            variant="light"
+            className="left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 sm:h-[34rem] sm:w-[34rem]"
+          />
+
+          <div className="relative z-10 mx-auto max-w-3xl text-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               whileInView={{ opacity: 1, scale: 1 }}
@@ -631,8 +746,10 @@ export default function HistoirePage() {
         {/* ─────────────────────────────
             IMPACT / STATS COMPACTES
         ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-14">
-          <div className="mx-auto max-w-5xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-14">
+          <OrbitGlow className="right-[-10%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-5xl">
             <div className="mb-4 text-center sm:mb-8">
               <h2 className="mb-1 text-xl font-black text-[#1C1C1C] sm:mb-4 sm:text-4xl">
                 Notre <span className="text-[#8E7AB5]">impact</span>
@@ -680,6 +797,11 @@ export default function HistoirePage() {
             animate={{ scale: [1, 1.16, 1] }}
             transition={{ duration: 8, repeat: Infinity }}
             className="absolute inset-0 bg-gradient-to-tr from-pink-500/10 to-transparent"
+          />
+
+          <OrbitGlow
+            variant="light"
+            className="left-1/2 top-1/2 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 sm:h-[36rem] sm:w-[36rem]"
           />
 
           <div className="relative z-10 mx-auto max-w-3xl text-center text-white">

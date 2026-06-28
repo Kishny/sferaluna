@@ -75,6 +75,46 @@ const ghostBenefits = [
   },
 ];
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
+ * Barres d'accent cycliques pour les cards d'explication (pas de couleur propre).
+ */
+const ghostBars = [
+  "from-[#9D4EDD] to-[#C77DFF]",
+  "from-[#4ECDC4] to-[#8FE9E0]",
+  "from-[#FF6B9D] to-[#FF8E53]",
+  "from-[#667EEA] to-[#764BA2]",
+];
+
 export default function ModeFantomePage() {
   const { status } = useSession();
   const router = useRouter();
@@ -234,10 +274,13 @@ export default function ModeFantomePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
+      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
         <Header />
 
-        <main className="mx-auto max-w-4xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
+        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[65%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+        <main className="relative z-10 mx-auto max-w-4xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
           {/* ─────────────────────────────
               Hero compact mobile
           ───────────────────────────── */}
@@ -458,8 +501,12 @@ export default function ModeFantomePage() {
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.04 }}
-                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/8 backdrop-blur"
+                      className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/8 backdrop-blur"
                     >
+                      <div
+                        className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${ghostBars[index % ghostBars.length]}`}
+                      />
+
                       <button
                         type="button"
                         onClick={() => setOpenInfoIndex(isOpen ? null : index)}
@@ -523,11 +570,15 @@ export default function ModeFantomePage() {
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {ghostBenefits.map((item) => (
+                  {ghostBenefits.map((item, index) => (
                     <div
                       key={item.title}
-                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                      className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4"
                     >
+                      <div
+                        className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${ghostBars[index % ghostBars.length]}`}
+                      />
+
                       <div className="mb-3 text-2xl">{item.icon}</div>
 
                       <h4 className="mb-1 font-semibold text-white">

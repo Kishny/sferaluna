@@ -12,6 +12,7 @@ import { ChevronDown } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import Image from 'next/image';
 import HexagonSix from '@/components/icons/HexagonSix';
 
 /**
@@ -148,6 +149,36 @@ function CrescentMoon({ className = '' }: { className?: string }) {
 }
 
 /**
+ * Motif "orbites" discret en arrière-plan — fait écho au nom "Sfera"
+ * et casse le fond plat des sections texte (ex. Notre ADN), sans
+ * jamais voler l'attention au contenu (opacité très faible).
+ */
+function OrbitGlow({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 400 400"
+      className={`pointer-events-none absolute opacity-[0.16] ${className}`}
+      fill="none"
+    >
+      <circle cx="200" cy="200" r="190" stroke="#8E7AB5" strokeWidth="2.5" />
+      <circle
+        cx="200"
+        cy="200"
+        r="140"
+        stroke="#8E7AB5"
+        strokeWidth="2.5"
+        strokeDasharray="8 12"
+      />
+      <circle cx="200" cy="200" r="90" stroke="#5B4B8A" strokeWidth="2.5" />
+      <circle cx="200" cy="200" r="5" fill="#5B4B8A" />
+      <circle cx="390" cy="200" r="7" fill="#8E7AB5" />
+      <circle cx="60" cy="90" r="6" fill="#8E7AB5" />
+      <circle cx="310" cy="320" r="5" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
+/**
  * Card avec léger effet de bascule 3D au survol (desktop uniquement).
  * Donne une sensation de profondeur/relief plus marquée qu'un simple scale.
  */
@@ -175,6 +206,68 @@ function TiltCard({
       className={className}
     >
       {children}
+    </motion.div>
+  );
+}
+
+/**
+ * Portrait hero (image fournie : deux femmes).
+ * Place le fichier dans /public/images/hero-women.jpg (ou .png/.webp,
+ * adapter `src` ci-dessous en conséquence).
+ *
+ * - Mobile : image compacte au-dessus du texte (hauteur plafonnée pour
+ *   ne pas pousser les CTA trop bas).
+ * - Desktop (lg+) : colonne de gauche, pleine hauteur, badges flottants.
+ */
+function HeroPortrait() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.8 }}
+      className="relative mx-auto w-full max-w-sm sm:max-w-md lg:mx-0 lg:max-w-none"
+    >
+      {/* Halo décoratif derrière le portrait */}
+      <div className="absolute -inset-4 -z-10 rounded-[2.5rem] bg-gradient-to-br from-[#8E7AB5]/25 via-[#D9B8FF]/20 to-transparent blur-2xl sm:-inset-6" />
+
+      <div className="relative aspect-[4/3] overflow-hidden rounded-[1.75rem] border border-white/60 shadow-[0_24px_60px_-16px_rgba(91,75,138,0.45),0_8px_20px_-8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)] sm:aspect-[4/5] sm:rounded-[2rem] lg:aspect-[3/4]">
+        <Image
+          src="/images/image.png"
+          alt="Deux femmes souriantes, complices, illustrant la communauté SferaLuna"
+          fill
+          priority
+          sizes="(min-width: 1024px) 480px, (min-width: 640px) 420px, 90vw"
+          className="object-cover"
+        />
+
+        {/* Léger voile pour fondre l'image dans la palette du site */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a0b2e]/15 via-transparent to-[#8E7AB5]/10" />
+      </div>
+
+      {/* Badge flottant — masqué sur mobile pour ne pas surcharger */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.6 }}
+        className="absolute -right-4 -top-4 hidden items-center gap-2 rounded-2xl border border-white/60 bg-white/80 px-3 py-2 shadow-[0_10px_24px_-8px_rgba(91,75,138,0.4)] backdrop-blur-md sm:flex lg:-right-6"
+      >
+        <span className="text-base">✓</span>
+        <span className="text-xs font-semibold text-[#5B4B8A]">
+          Profils vérifiés
+        </span>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+        className="absolute -bottom-4 -left-4 hidden items-center gap-2 rounded-2xl border border-white/60 bg-white/80 px-3 py-2 shadow-[0_10px_24px_-8px_rgba(91,75,138,0.4)] backdrop-blur-md sm:flex lg:-left-6"
+      >
+        <span className="text-base">💜</span>
+        <span className="text-xs font-semibold text-[#5B4B8A]">
+          Rencontres sincères
+        </span>
+      </motion.div>
     </motion.div>
   );
 }
@@ -267,46 +360,107 @@ export default function Home() {
    */
   const features = [
     {
-      icon: <HexagonSix size={48} />,
+      icon: <HexagonSix size={26} />,
       title: 'Circle of Six',
       description: 'Des liens choisis, pas des milliers de swipes.',
-      gradient: 'from-[#8E7AB5] to-[#D9B8FF]',
+      gradient: 'from-violet-500 to-purple-500',
       link: '/circle',
     },
     {
       icon: '👻',
       title: 'Mode Fantôme',
       description: 'Discrétion assurée, photos floutées, pseudonymes.',
-      gradient: 'from-[#7A6AA4] to-[#9B87C5]',
+      gradient: 'from-indigo-500 to-blue-500',
       link: '/mode-fantome',
     },
     {
       icon: '🌌',
       title: 'VibeSphere immersif',
       description: 'Exprime ta vibe dans ton espace personnalisé.',
-      gradient: 'from-[#5B4B8A] to-[#8E7AB5]',
+      gradient: 'from-blue-500 to-sky-500',
       link: '/vibesphere',
     },
     {
       icon: '💡',
       title: 'VibePlanner',
       description: 'Des idées de rendez-vous qui vous rassemblent.',
-      gradient: 'from-[#8E7AB5] to-[#B5A3D9]',
+      gradient: 'from-amber-400 to-yellow-500',
       link: '/vibeplanner',
     },
     {
       icon: '🎉',
       title: 'Événements LunaGather',
       description: 'Participe à des moments inoubliables.',
-      gradient: 'from-[#D9B8FF] to-[#8E7AB5]',
+      gradient: 'from-pink-500 to-fuchsia-500',
       link: '/evenements',
     },
     {
       icon: '🧠',
       title: 'Coaching VibeMentor',
       description: 'Sois guidée avec bienveillance et expertise.',
-      gradient: 'from-[#7A6AA4] to-[#5B4B8A]',
+      gradient: 'from-emerald-500 to-teal-500',
       link: '/vibementor',
+    },
+  ];
+
+  /**
+   * Identité visuelle par fonctionnalité — chaque card reçoit sa propre
+   * couleur (contour lumineux, fond teinté, badge icône, barre d'accent).
+   */
+  const featureThemes = [
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(142,122,181,0.4),0_14px_32px_-10px_rgba(142,122,181,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(142,122,181,0.4),0_22px_48px_-12px_rgba(142,122,181,0.45)]',
+      overlay: 'from-violet-100 via-white to-white',
+      iconBg: 'bg-violet-400/15',
+      bar: 'from-violet-500 to-purple-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(99,102,241,0.4),0_14px_32px_-10px_rgba(99,102,241,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(99,102,241,0.4),0_22px_48px_-12px_rgba(99,102,241,0.45)]',
+      overlay: 'from-indigo-100 via-white to-white',
+      iconBg: 'bg-indigo-400/15',
+      bar: 'from-indigo-500 to-blue-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(59,130,246,0.4),0_14px_32px_-10px_rgba(59,130,246,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(59,130,246,0.4),0_22px_48px_-12px_rgba(59,130,246,0.45)]',
+      overlay: 'from-blue-100 via-white to-white',
+      iconBg: 'bg-blue-400/15',
+      bar: 'from-blue-500 to-sky-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(245,158,11,0.4),0_14px_32px_-10px_rgba(245,158,11,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(245,158,11,0.4),0_22px_48px_-12px_rgba(245,158,11,0.45)]',
+      overlay: 'from-amber-100 via-white to-white',
+      iconBg: 'bg-amber-400/15',
+      bar: 'from-amber-400 to-yellow-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(236,72,153,0.4),0_14px_32px_-10px_rgba(236,72,153,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(236,72,153,0.4),0_22px_48px_-12px_rgba(236,72,153,0.45)]',
+      overlay: 'from-pink-100 via-white to-white',
+      iconBg: 'bg-pink-400/15',
+      bar: 'from-pink-500 to-fuchsia-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(16,185,129,0.4),0_14px_32px_-10px_rgba(16,185,129,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(16,185,129,0.4),0_22px_48px_-12px_rgba(16,185,129,0.45)]',
+      overlay: 'from-emerald-100 via-white to-white',
+      iconBg: 'bg-emerald-400/15',
+      bar: 'from-emerald-500 to-teal-500',
     },
   ];
 
@@ -335,6 +489,49 @@ export default function Home() {
       title: '💜 Bienveillance',
       description: 'Une communauté qui prend soin.',
       details: 'Zéro tolérance pour le harcèlement ou les jugements.',
+    },
+  ];
+
+  /**
+   * Identité visuelle par valeur — chaque card ADN reçoit sa propre
+   * couleur (contour lumineux, fond teinté, badge icône, barre d'accent).
+   */
+  const valueThemes = [
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(245,158,11,0.4),0_14px_32px_-10px_rgba(245,158,11,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(245,158,11,0.4),0_22px_48px_-12px_rgba(245,158,11,0.45)]',
+      overlay: 'from-amber-100 via-white to-white',
+      iconBg: 'bg-amber-400/15',
+      bar: 'from-amber-400 to-yellow-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(59,130,246,0.4),0_14px_32px_-10px_rgba(59,130,246,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(59,130,246,0.4),0_22px_48px_-12px_rgba(59,130,246,0.45)]',
+      overlay: 'from-blue-100 via-white to-white',
+      iconBg: 'bg-blue-400/15',
+      bar: 'from-blue-400 to-cyan-500',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(168,85,247,0.4),0_14px_32px_-10px_rgba(168,85,247,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(168,85,247,0.4),0_22px_48px_-12px_rgba(168,85,247,0.45)]',
+      overlay: 'from-purple-100 via-pink-50 to-white',
+      iconBg: 'bg-purple-400/15',
+      bar: 'from-pink-400 via-purple-400 to-blue-400',
+    },
+    {
+      shadowBase:
+        'shadow-[0_0_0_1.5px_rgba(236,72,153,0.4),0_14px_32px_-10px_rgba(236,72,153,0.28)]',
+      shadowHover:
+        'hover:shadow-[0_0_0_2px_rgba(236,72,153,0.4),0_22px_48px_-12px_rgba(236,72,153,0.45)]',
+      overlay: 'from-pink-100 via-white to-white',
+      iconBg: 'bg-pink-400/15',
+      bar: 'from-pink-500 to-fuchsia-500',
     },
   ];
 
@@ -404,9 +601,12 @@ export default function Home() {
           </motion.div>
 
           <motion.div
-            className="relative z-10 mx-auto max-w-5xl text-center"
+            className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10 xl:gap-16"
             style={{ scale: heroScale }}
           >
+            <HeroPortrait />
+
+            <div className="text-center lg:text-left">
             {/* Badge compact */}
             <motion.div
               initial={{ opacity: 0, y: 14 }}
@@ -451,7 +651,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.8 }}
-              className="mx-auto mt-4 max-w-2xl text-sm font-light leading-relaxed text-[#4B4B4B] sm:mt-8 sm:text-xl md:text-2xl"
+              className="mx-auto mt-4 max-w-2xl text-sm font-light leading-relaxed text-[#4B4B4B] sm:mt-8 sm:text-xl md:text-2xl lg:mx-0"
             >
               SferaLuna est une{' '}
               <span className="font-semibold text-[#8E7AB5]">
@@ -465,7 +665,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7, duration: 0.8 }}
-              className="mx-auto mt-2 max-w-2xl text-xs text-[#666] sm:mt-4 sm:text-lg"
+              className="mx-auto mt-2 max-w-2xl text-xs text-[#666] sm:mt-4 sm:text-lg lg:mx-0"
             >
               Sans jugements. Sans pression. Juste toi, et ta vibe.
             </motion.p>
@@ -475,7 +675,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9, duration: 0.6 }}
-              className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:mt-12 sm:flex-row sm:gap-4"
+              className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:mt-12 sm:flex-row sm:gap-4 lg:justify-start"
             >
               <Link href="/auth?mode=register" className="group w-full sm:w-auto">
                 <button className="relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_36px_-8px_rgba(91,75,138,0.55),0_4px_10px_-4px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_20px_46px_-8px_rgba(91,75,138,0.65),0_6px_14px_-4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] hover:-translate-y-0.5 sm:w-auto sm:px-8 sm:py-4 sm:text-lg">
@@ -515,7 +715,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.1, duration: 0.8 }}
-              className="mx-auto mt-5 grid max-w-2xl grid-cols-4 gap-2 sm:mt-12 sm:grid-cols-4 sm:gap-6"
+              className="mx-auto mt-5 grid max-w-2xl grid-cols-4 gap-2 sm:mt-12 sm:grid-cols-4 sm:gap-6 lg:mx-0 lg:max-w-xl"
             >
               {[
                 {
@@ -546,6 +746,7 @@ export default function Home() {
                 </div>
               ))}
             </motion.div>
+            </div>
           </motion.div>
         </section>
 
@@ -557,6 +758,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F9F7FC]/60 to-transparent" />
           <AmbientOrbs />
           <CrescentMoon className="left-[4%] top-[12%] h-24 w-24 rotate-[20deg] sm:h-36 sm:w-36" />
+          <OrbitGlow className="right-[-8%] top-1/2 h-[22rem] w-[22rem] -translate-y-1/2 sm:h-[30rem] sm:w-[30rem]" />
 
           <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
@@ -595,7 +797,11 @@ export default function Home() {
                       onClick={() => setOpenValueIndex(isOpen ? null : index)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-xl">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xl ${
+                          (valueThemes[index] ?? valueThemes[0]).iconBg
+                        }`}
+                      >
                         {icon}
                       </span>
 
@@ -644,59 +850,72 @@ export default function Home() {
 
             {/* Tablette / desktop : cards complètes */}
             <div className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-              {values.map((value, index) => (
-                <motion.div
-                  key={value.title}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
-                  className="group relative h-full"
-                >
-                  <TiltCard className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-5 shadow-[0_10px_28px_-10px_rgba(142,122,181,0.25)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_20px_44px_-12px_rgba(142,122,181,0.4)] sm:p-6">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white to-[#F9F7FC] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              {values.map((value, index) => {
+                const theme = valueThemes[index] ?? valueThemes[0];
 
-                    <div className="relative z-10 mb-4 text-4xl">
-                      {value.title.split(' ')[0]}
-                    </div>
+                return (
+                  <motion.div
+                    key={value.title}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.08 }}
+                    whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                    className="group relative h-full"
+                  >
+                    <TiltCard
+                      className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/70 p-5 backdrop-blur-xl transition-all duration-300 sm:p-6 ${theme.shadowBase} ${theme.shadowHover}`}
+                    >
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-40 transition-opacity duration-500 group-hover:opacity-80`}
+                      />
 
-                    <h3 className="relative z-10 mb-3 text-xl font-semibold text-[#5B4B8A] sm:text-2xl">
-                      {value.title.split(' ').slice(1).join(' ')}
-                    </h3>
+                      <div
+                        className={`relative z-10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-3xl ${theme.iconBg}`}
+                      >
+                        {value.title.split(' ')[0]}
+                      </div>
 
-                    <p className="relative z-10 mb-3 text-base font-medium text-[#1C1C1C] sm:text-lg">
-                      {value.description}
-                    </p>
+                      <h3 className="relative z-10 mb-3 text-xl font-semibold text-[#5B4B8A] sm:text-2xl">
+                        {value.title.split(' ').slice(1).join(' ')}
+                      </h3>
 
-                    <p className="relative z-10 text-sm leading-relaxed text-[#666] sm:text-base">
-                      {value.details}
-                    </p>
+                      <p className="relative z-10 mb-3 text-base font-medium text-[#1C1C1C] sm:text-lg">
+                        {value.description}
+                      </p>
 
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#8E7AB5] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                  </TiltCard>
-                </motion.div>
-              ))}
+                      <p className="relative z-10 text-sm leading-relaxed text-[#666] sm:text-base">
+                        {value.details}
+                      </p>
+
+                      <div
+                        className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${theme.bar} opacity-70 transition-opacity duration-300 group-hover:opacity-100`}
+                      />
+                    </TiltCard>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </section>
 
         {/* Fonctionnalités principales */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-10 lg:py-12">
           <AmbientOrbs variant="reverse" />
           <DriftingSparkles count={6} />
+          <OrbitGlow className="left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 sm:h-[42rem] sm:w-[42rem]" />
           <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }}
-              className="mb-4 text-center sm:mb-10"
+              className="mb-4 text-center sm:mb-6"
             >
-              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-4xl md:text-5xl">
+              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-3xl md:text-4xl">
                 Une expérience <span className="text-[#8E7AB5]">unique</span>
               </h2>
 
-              <p className="mx-auto mt-1 max-w-3xl text-xs leading-relaxed text-[#666] sm:mt-4 sm:text-xl">
+              <p className="mx-auto mt-1 max-w-3xl text-xs leading-relaxed text-[#666] sm:mt-2 sm:text-base">
                 Des fonctionnalités pensées pour créer de vraies connexions.
               </p>
             </motion.div>
@@ -776,8 +995,11 @@ export default function Home() {
             </div>
 
             {/* Tablette / desktop : cards complètes */}
-            <div className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-              {features.map((feature, index) => (
+            <div className="hidden grid-cols-1 gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+              {features.map((feature, index) => {
+                const theme = featureThemes[index] ?? featureThemes[0];
+
+                return (
                 <motion.div
                   key={feature.title}
                   initial={{ opacity: 0, y: 24 }}
@@ -787,13 +1009,15 @@ export default function Home() {
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 >
                   <Link href={feature.link} className="block h-full">
-                    <TiltCard className="group relative h-full overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-5 shadow-[0_10px_28px_-10px_rgba(142,122,181,0.25)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_22px_48px_-12px_rgba(142,122,181,0.4)] sm:p-6">
+                    <TiltCard
+                      className={`group relative h-full overflow-hidden rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-xl transition-all duration-300 sm:p-5 ${theme.shadowBase} ${theme.shadowHover}`}
+                    >
                       <div
-                        className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-5`}
+                        className={`absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-40 transition-opacity duration-500 group-hover:opacity-80`}
                       />
 
                       <motion.div
-                        className="relative z-10 mb-5 text-5xl"
+                        className={`relative z-10 mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-2xl ${theme.iconBg}`}
                         animate={{
                           scale: [1, 1.08, 1],
                           rotate: [0, 4, -4, 0],
@@ -807,13 +1031,17 @@ export default function Home() {
                         {feature.icon}
                       </motion.div>
 
-                      <h3 className="relative z-10 mb-3 text-xl font-semibold text-[#5B4B8A] sm:text-2xl">
+                      <h3 className="relative z-10 mb-1.5 text-lg font-semibold text-[#5B4B8A] sm:text-xl">
                         {feature.title}
                       </h3>
 
-                      <p className="relative z-10 pr-6 text-sm leading-relaxed text-[#666] sm:text-base">
+                      <p className="relative z-10 pr-6 text-sm leading-relaxed text-[#666]">
                         {feature.description}
                       </p>
+
+                      <div
+                        className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${theme.bar} opacity-70 transition-opacity duration-300 group-hover:opacity-100`}
+                      />
 
                       <motion.div
                         className="absolute bottom-5 right-5 text-[#8E7AB5] opacity-0 transition-opacity group-hover:opacity-100"
@@ -825,7 +1053,8 @@ export default function Home() {
                     </TiltCard>
                   </Link>
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Comparatif : accordéon mobile + bloc complet desktop */}
@@ -833,7 +1062,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 34 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="mt-5 sm:mt-16"
+              className="mt-5 sm:mt-10"
             >
               {/* Mobile : accordéon compact */}
               <div className="sm:hidden">

@@ -17,6 +17,45 @@ import {
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({
+  className = '',
+  variant = 'default',
+}: {
+  className?: string;
+  variant?: 'default' | 'light';
+}) {
+  const stroke = variant === 'light' ? '#FFFFFF' : '#8E7AB5';
+  const dot = variant === 'light' ? '#FFFFFF' : '#5B4B8A';
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill={dot} />
+      <circle cx="190" cy="100" r="3" fill={dot} />
+      <circle cx="100" cy="190" r="3" fill={dot} />
+      <circle cx="10" cy="100" r="3" fill={dot} />
+    </svg>
+  );
+}
+
 export default function FAQPage() {
   /**
    * Recherche utilisateur.
@@ -219,6 +258,8 @@ export default function FAQPage() {
         <section className="relative overflow-hidden px-4 pb-6 pt-20 sm:px-5 sm:pb-12 sm:pt-28">
           <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
 
+          <OrbitGlow variant="light" className="left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 sm:h-[36rem] sm:w-[36rem]" />
+
           {/* Décor léger */}
           <motion.div
             animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.45, 0.25] }}
@@ -330,8 +371,11 @@ export default function FAQPage() {
         </section>
 
         {/* Questions populaires + toutes les questions */}
-        <section className="px-4 py-5 sm:px-5 sm:py-10">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden px-4 py-5 sm:px-5 sm:py-10">
+          <OrbitGlow className="right-[-10%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+          <OrbitGlow className="left-[-10%] bottom-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             {/* Questions populaires masquées si recherche active */}
             {!searchTerm.trim() && activeCategory === 'all' && (
               <>
@@ -434,15 +478,18 @@ export default function FAQPage() {
         </section>
 
         {/* Contact rapide compact */}
-        <section className="bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-6 sm:px-5 sm:py-10">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-6 sm:px-5 sm:py-10">
+          <OrbitGlow className="left-1/2 top-0 h-80 w-80 -translate-x-1/2 sm:h-[28rem] sm:w-[28rem]" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="overflow-hidden rounded-3xl bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] p-4 text-white shadow-xl sm:p-6"
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] p-4 text-white shadow-xl sm:p-6"
             >
-              <div className="mb-4 text-center sm:mb-8">
+              <OrbitGlow variant="light" className="right-[-10%] top-[-20%] h-72 w-72 sm:h-96 sm:w-96" />
+              <div className="relative z-10 mb-4 text-center sm:mb-8">
                 <h2 className="mb-2 text-2xl font-bold sm:text-3xl">
                   Tu n’as pas trouvé ta réponse ?
                 </h2>
@@ -554,8 +601,10 @@ function FAQAccordionItem({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: Math.min(index * 0.04, 0.2) }}
-      className="overflow-hidden rounded-2xl border border-[#E8E0FF] bg-white shadow-sm"
+      className="relative overflow-hidden rounded-2xl border border-[#E8E0FF] bg-white shadow-sm"
     >
+      <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${meta.color}`} />
+
       <button
         type="button"
         onClick={() => onToggle(id)}

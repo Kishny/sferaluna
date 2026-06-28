@@ -212,6 +212,46 @@ function getStepFromErrors(errors: Partial<Record<keyof FormData, unknown>>) {
 
 type IdentityVerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
+ * Palette tournante pour les cartes "finalHighlights" de l'écran final.
+ */
+const highlightBars = [
+  "from-[#9D4EDD] to-[#C77DFF]",
+  "from-[#4ECDC4] to-[#8FE9E0]",
+  "from-[#FF6B9D] to-[#FF8E53]",
+  "from-[#667EEA] to-[#764BA2]",
+];
+
 function InscriptionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -646,6 +686,8 @@ function InscriptionPageContent() {
         <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl sm:h-96 sm:w-96" />
         <div className="absolute left-1/3 top-1/3 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
+        <OrbitGlow className="right-[-10%] top-16 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
       </div>
 
       {/* Étoiles globales depuis globals.css */}
@@ -775,24 +817,32 @@ function InscriptionPageContent() {
 
                     {/* Cartes de résumé */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {finalHighlights.map((item) => (
-                        <div
-                          key={item.title}
-                          className="rounded-xl border border-white/10 bg-white/5 p-5"
-                        >
-                          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                            <div className="text-purple-300">{item.icon}</div>
+                      {finalHighlights.map((item, index) => {
+                        const bar = highlightBars[index % highlightBars.length];
+
+                        return (
+                          <div
+                            key={item.title}
+                            className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-5"
+                          >
+                            <div
+                              className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${bar}`}
+                            />
+
+                            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                              <div className="text-purple-300">{item.icon}</div>
+                            </div>
+
+                            <h3 className="font-bold text-white">
+                              {item.title}
+                            </h3>
+
+                            <p className="mt-1 text-sm text-gray-400">
+                              {item.description}
+                            </p>
                           </div>
-
-                          <h3 className="font-bold text-white">
-                            {item.title}
-                          </h3>
-
-                          <p className="mt-1 text-sm text-gray-400">
-                            {item.description}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Vérification d'identité — obligatoire */}

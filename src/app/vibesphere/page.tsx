@@ -183,6 +183,36 @@ function getMoodData(mood: VibeMood) {
 }
 
 /**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera". Variante blanche pour fond sombre.
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
  * Fusionne les posts sans doublons.
  * Indispensable pour éviter les répétitions pendant le chargement paginé.
  */
@@ -490,10 +520,13 @@ export default function VibespherePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
+      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
         <Header />
 
-        <main className="mx-auto max-w-2xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
+        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+        <main className="relative z-10 mx-auto max-w-2xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
           {/* Header page compact */}
           <motion.section
             initial={{ opacity: 0, y: -18 }}
@@ -661,11 +694,21 @@ export default function VibespherePage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ delay: Math.min(index * 0.025, 0.2) }}
-                    className="rounded-3xl border border-white/12 bg-white/10 p-3 backdrop-blur-sm transition-colors hover:border-white/25 sm:p-5"
+                    className="relative overflow-hidden rounded-3xl border border-white/12 bg-white/10 p-3 backdrop-blur-sm transition-colors hover:border-white/25 sm:p-5"
                   >
+                    {moodData && (
+                      <div
+                        className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${moodData.color}`}
+                      />
+                    )}
+
                     <div className="flex items-start gap-3">
                       {/* Avatar */}
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-xs font-bold sm:h-10 sm:w-10 sm:text-sm">
+                      <div
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ${
+                          moodData?.color ?? "from-purple-500 to-pink-500"
+                        } text-xs font-bold sm:h-10 sm:w-10 sm:text-sm`}
+                      >
                         {author?.image ? (
                           <img
                             src={author.image}

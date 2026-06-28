@@ -86,6 +86,87 @@ interface CommunityPost {
   createdAt: string;
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#8E7AB5"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#5B4B8A" />
+      <circle cx="190" cy="100" r="3" fill="#5B4B8A" />
+      <circle cx="100" cy="190" r="3" fill="#5B4B8A" />
+      <circle cx="10" cy="100" r="3" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
+/**
+ * Identité couleur par catégorie de post — chaque catégorie
+ * a son propre accent pour rendre le feed plus lisible visuellement.
+ */
+const categoryThemes: Record<
+  CommunityCategory,
+  {
+    avatarBg: string;
+    badgeBg: string;
+    badgeText: string;
+    bar: string;
+  }
+> = {
+  rencontres: {
+    avatarBg: "from-[#FF6B6B] to-[#FF9A9A]",
+    badgeBg: "bg-[#FF6B6B]/10",
+    badgeText: "text-[#E0504F]",
+    bar: "from-[#FF6B6B] to-[#FF9A9A]",
+  },
+  conseils: {
+    avatarBg: "from-[#FFD166] to-[#FF9A3C]",
+    badgeBg: "bg-[#FF9A3C]/10",
+    badgeText: "text-[#C9762A]",
+    bar: "from-[#FFD166] to-[#FF9A3C]",
+  },
+  sorties: {
+    avatarBg: "from-[#FF9A3C] to-[#FF6B6B]",
+    badgeBg: "bg-[#FF9A3C]/10",
+    badgeText: "text-[#D9682E]",
+    bar: "from-[#FF9A3C] to-[#FF6B6B]",
+  },
+  "bien-etre": {
+    avatarBg: "from-[#4ECDC4] to-[#8FE9E0]",
+    badgeBg: "bg-[#4ECDC4]/10",
+    badgeText: "text-[#2F9D94]",
+    bar: "from-[#4ECDC4] to-[#8FE9E0]",
+  },
+  humour: {
+    avatarBg: "from-[#9D4EDD] to-[#C77DFF]",
+    badgeBg: "bg-[#9D4EDD]/10",
+    badgeText: "text-[#7E3BBE]",
+    bar: "from-[#9D4EDD] to-[#C77DFF]",
+  },
+  general: {
+    avatarBg: "from-purple-400 to-pink-400",
+    badgeBg: "bg-purple-50",
+    badgeText: "text-[#5B4B8A]",
+    bar: "from-purple-400 to-pink-400",
+  },
+};
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -332,10 +413,13 @@ export default function CommunautePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+      <OrbitGlow className="right-[-8%] top-20 h-72 w-72 sm:h-96 sm:w-96" />
+      <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
       <Header />
 
-      <main className="mx-auto max-w-5xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
+      <main className="relative z-10 mx-auto max-w-5xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
         {/* Header compact */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -417,6 +501,7 @@ export default function CommunautePage() {
                   const catInfo = getCatInfo(post.category);
                   const isExpanded = expandedId === post._id;
                   const isOwn = post.userId?._id === currentUserId;
+                  const theme = categoryThemes[post.category] ?? categoryThemes.general;
 
                   return (
                     <motion.article
@@ -424,11 +509,15 @@ export default function CommunautePage() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.035 }}
-                      className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white shadow-sm"
+                      className="relative overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white shadow-sm"
                     >
+                      <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`} />
+
                       <div className="p-3 sm:p-5">
                         <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e8e0f5] bg-gradient-to-br from-purple-100 to-pink-100 text-xl">
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#e8e0f5] bg-gradient-to-br ${theme.avatarBg} text-xl`}
+                          >
                             {post.emoji}
                           </div>
 
@@ -463,7 +552,9 @@ export default function CommunautePage() {
                                   </span>
 
                                   {catInfo && (
-                                    <span className="rounded-full border border-[#e8e0f5] bg-purple-50 px-2 py-0.5 text-[11px] text-[#5B4B8A]">
+                                    <span
+                                      className={`rounded-full border border-[#e8e0f5] px-2 py-0.5 text-[11px] ${theme.badgeBg} ${theme.badgeText}`}
+                                    >
                                       {catInfo.emoji} {catInfo.label}
                                     </span>
                                   )}

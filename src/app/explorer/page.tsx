@@ -257,6 +257,13 @@ export default function ExplorerPage() {
         if (!res.ok || !data?.success) {
           console.error("Erreur chargement profils :", data?.error);
           setPageError(data?.error || "Impossible de charger les profils.");
+          /**
+           * Important : on coupe hasMore ici.
+           * Sinon l'effet de préchargement (qui dépend de hasMore)
+           * continue d'incrémenter `page` indéfiniment à chaque échec,
+           * ce qui spamme l'API en boucle (ex: page=271, 272, 273...).
+           */
+          setHasMore(false);
           return;
         }
 
@@ -408,7 +415,12 @@ export default function ExplorerPage() {
    * quand on approche de la fin, on demande la page suivante.
    */
   useEffect(() => {
-    if (currentIndex >= profiles.length - 5 && hasMore && !isLoading) {
+    if (
+      profiles.length > 0 &&
+      currentIndex >= profiles.length - 5 &&
+      hasMore &&
+      !isLoading
+    ) {
       setPage((prev) => prev + 1);
     }
   }, [currentIndex, profiles.length, hasMore, isLoading]);

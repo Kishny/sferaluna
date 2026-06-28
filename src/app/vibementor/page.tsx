@@ -132,6 +132,78 @@ function categoryEmoji(cat: MentorCategory) {
   return CATEGORIES.find((c) => c.value === cat)?.emoji ?? "✨";
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#8E7AB5"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#5B4B8A" />
+      <circle cx="190" cy="100" r="3" fill="#5B4B8A" />
+      <circle cx="100" cy="190" r="3" fill="#5B4B8A" />
+      <circle cx="10" cy="100" r="3" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
+/**
+ * Thème couleur par catégorie de question.
+ */
+const categoryThemes: Record<MentorCategory, { avatarBg: string; badgeBg: string; badgeText: string; bar: string }> = {
+  "premier-contact": {
+    avatarBg: "from-[#FF6B6B] to-[#FF9A9A]",
+    badgeBg: "bg-[#FF6B6B]/10",
+    badgeText: "text-[#FF6B6B]",
+    bar: "from-[#FF6B6B] to-[#FF9A9A]",
+  },
+  profil: {
+    avatarBg: "from-[#4ECDC4] to-[#8FE9E0]",
+    badgeBg: "bg-[#4ECDC4]/10",
+    badgeText: "text-[#2E8C84]",
+    bar: "from-[#4ECDC4] to-[#8FE9E0]",
+  },
+  rencontre: {
+    avatarBg: "from-purple-400 to-pink-400",
+    badgeBg: "bg-purple-50",
+    badgeText: "text-[#8E7AB5]",
+    bar: "from-purple-400 to-pink-400",
+  },
+  relation: {
+    avatarBg: "from-[#9D4EDD] to-[#C77DFF]",
+    badgeBg: "bg-[#9D4EDD]/10",
+    badgeText: "text-[#7B2CBF]",
+    bar: "from-[#9D4EDD] to-[#C77DFF]",
+  },
+  securite: {
+    avatarBg: "from-[#667EEA] to-[#764BA2]",
+    badgeBg: "bg-[#667EEA]/10",
+    badgeText: "text-[#4F5FB8]",
+    bar: "from-[#667EEA] to-[#764BA2]",
+  },
+  autre: {
+    avatarBg: "from-[#FFD166] to-[#FF9A3C]",
+    badgeBg: "bg-[#FFD166]/15",
+    badgeText: "text-[#C97A12]",
+    bar: "from-[#FFD166] to-[#FF9A3C]",
+  },
+};
+
 // ─────────────────────────────────────────────
 // Futures fonctionnalités VibeMentor
 // ─────────────────────────────────────────────
@@ -422,10 +494,13 @@ export default function VibeMentorPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] text-[#1C1C1C]">
+      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] text-[#1C1C1C]">
         <Header />
 
-        <main className="mx-auto max-w-3xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-28">
+        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+        <main className="relative z-10 mx-auto max-w-3xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-28">
           {/* ─────────────────────────────
               Hero compact
           ───────────────────────────── */}
@@ -723,6 +798,7 @@ export default function VibeMentorPage() {
               {posts.map((post, i) => {
                 const isExpanded = expandedId === post._id;
                 const answersLength = post.answers?.length ?? post.answersCount;
+                const theme = categoryThemes[post.category] ?? categoryThemes.autre;
 
                 return (
                   <motion.article
@@ -730,8 +806,12 @@ export default function VibeMentorPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.035 }}
-                    className="overflow-hidden rounded-3xl border border-[#e8e0f5] bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-3xl border border-[#e8e0f5] bg-white shadow-sm"
                   >
+                    <div
+                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`}
+                    />
+
                     {/* Header question compact */}
                     <button
                       type="button"
@@ -739,7 +819,9 @@ export default function VibeMentorPage() {
                       className="w-full px-3 py-3 text-left sm:px-5 sm:py-5"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-xs font-bold text-white sm:h-10 sm:w-10">
+                        <div
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ${theme.avatarBg} text-xs font-bold text-white sm:h-10 sm:w-10`}
+                        >
                           {post.userId?.image ? (
                             <img
                               src={post.userId.image}
@@ -757,7 +839,9 @@ export default function VibeMentorPage() {
                               {post.userId?.pseudonyme ?? "Membre Luna"}
                             </span>
 
-                            <span className="shrink-0 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-[#8E7AB5]">
+                            <span
+                              className={`shrink-0 rounded-full ${theme.badgeBg} px-2 py-0.5 text-[10px] font-semibold ${theme.badgeText}`}
+                            >
                               {categoryEmoji(post.category)}{" "}
                               {categoryLabel(post.category)}
                             </span>

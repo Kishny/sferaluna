@@ -133,8 +133,54 @@ const teamPreview: TeamMember[] = [
 ];
 
 // ─────────────────────────────────────────────
-// Page principale
+// Motif orbite décoratif
 // ─────────────────────────────────────────────
+
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#8E7AB5"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#5B4B8A" />
+      <circle cx="190" cy="100" r="3" fill="#5B4B8A" />
+      <circle cx="100" cy="190" r="3" fill="#5B4B8A" />
+      <circle cx="10" cy="100" r="3" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
+/**
+ * Thèmes couleur cycliques pour les cards valeurs et équipe.
+ */
+const valueThemes = [
+  { iconBg: "from-[#FF6B6B] to-[#FF8E8E]", bar: "from-[#FF6B6B] to-[#FF8E8E]" },
+  { iconBg: "from-[#4ECDC4] to-[#8FE9E0]", bar: "from-[#4ECDC4] to-[#8FE9E0]" },
+  { iconBg: "from-purple-100 to-pink-100", bar: "from-purple-400 to-pink-400" },
+];
+
+const teamThemes = [
+  { iconText: "text-[#9D4EDD]", bar: "from-[#9D4EDD] to-[#C77DFF]", badge: "bg-[#9D4EDD]/10 text-[#7B2CBF]" },
+  { iconText: "text-[#667EEA]", bar: "from-[#667EEA] to-[#764BA2]", badge: "bg-[#667EEA]/10 text-[#4F5FB8]" },
+  { iconText: "text-[#4ECDC4]", bar: "from-[#4ECDC4] to-[#8FE9E0]", badge: "bg-[#4ECDC4]/10 text-[#2E8C84]" },
+  { iconText: "text-[#FF6B9D]", bar: "from-[#FF6B9D] to-[#FF8E53]", badge: "bg-[#FF6B9D]/10 text-[#D14E80]" },
+];
 
 export default function EquipePage() {
   /**
@@ -153,7 +199,10 @@ export default function EquipePage() {
     <div className="min-h-screen bg-[#faf9ff] text-[#1C1C1C]">
       <Header />
 
-      <main className="overflow-hidden pt-16 sm:pt-20">
+      <main className="relative overflow-hidden pt-16 sm:pt-20">
+        <OrbitGlow className="right-[-10%] top-32 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-12%] top-[55%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
         {/* ─────────────────────────────
             Hero compact
         ───────────────────────────── */}
@@ -250,6 +299,7 @@ export default function EquipePage() {
             <div className="space-y-2 sm:hidden">
               {values.map((value, index) => {
                 const isOpen = openValueIndex === index;
+                const theme = valueThemes[index % valueThemes.length];
 
                 return (
                   <motion.div
@@ -258,14 +308,16 @@ export default function EquipePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-purple-100 bg-white shadow-sm"
                   >
+                    <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`} />
+
                     <button
                       type="button"
                       onClick={() => setOpenValueIndex(isOpen ? null : index)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme.iconBg} text-purple-600`}>
                         {value.icon}
                       </span>
 
@@ -315,7 +367,10 @@ export default function EquipePage() {
               viewport={{ once: true }}
               className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-3"
             >
-              {values.map((value, index) => (
+              {values.map((value, index) => {
+                const theme = valueThemes[index % valueThemes.length];
+
+                return (
                 <motion.div
                   key={value.title}
                   initial={{ opacity: 0, y: 18 }}
@@ -323,9 +378,11 @@ export default function EquipePage() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08 }}
                   whileHover={{ y: -6 }}
-                  className="rounded-2xl border border-purple-50 bg-white p-5 text-center shadow-sm transition-shadow hover:shadow-md"
+                  className="relative overflow-hidden rounded-2xl border border-purple-50 bg-white p-5 text-center shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600">
+                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme.bar}`} />
+
+                  <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${theme.iconBg} text-purple-600`}>
                     {value.icon}
                   </div>
 
@@ -337,7 +394,8 @@ export default function EquipePage() {
                     {value.desc}
                   </p>
                 </motion.div>
-              ))}
+                );
+              })}
             </motion.div>
           </div>
         </section>
@@ -372,6 +430,7 @@ export default function EquipePage() {
             <div className="space-y-2 sm:hidden">
               {teamPreview.map((member, index) => {
                 const isOpen = openTeamIndex === index;
+                const theme = teamThemes[index % teamThemes.length];
 
                 return (
                   <motion.div
@@ -380,8 +439,10 @@ export default function EquipePage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#f0ecff] bg-[#faf9ff] shadow-sm"
+                    className="relative overflow-hidden rounded-2xl border border-[#f0ecff] bg-[#faf9ff] shadow-sm"
                   >
+                    <div className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`} />
+
                     <button
                       type="button"
                       onClick={() => setOpenTeamIndex(isOpen ? null : index)}
@@ -401,7 +462,7 @@ export default function EquipePage() {
                         </p>
                       </div>
 
-                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${theme.badge}`}>
                         bientôt
                       </span>
 
@@ -440,7 +501,10 @@ export default function EquipePage() {
 
             {/* Desktop / tablette : grille équipe */}
             <div className="hidden grid-cols-1 gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-              {teamPreview.map((member, index) => (
+              {teamPreview.map((member, index) => {
+                const theme = teamThemes[index % teamThemes.length];
+
+                return (
                 <motion.article
                   key={member.role}
                   initial={{ opacity: 0, y: 18 }}
@@ -448,13 +512,15 @@ export default function EquipePage() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08 }}
                   whileHover={{ y: -6 }}
-                  className="rounded-3xl border border-[#f0ecff] bg-[#faf9ff] p-5 text-center shadow-sm transition hover:shadow-md"
+                  className="relative overflow-hidden rounded-3xl border border-[#f0ecff] bg-[#faf9ff] p-5 text-center shadow-sm transition hover:shadow-md"
                 >
+                  <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme.bar}`} />
+
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">
                     {member.emoji}
                   </div>
 
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#8E7AB5]">
+                  <p className={`mb-1 text-xs font-semibold uppercase tracking-wide ${theme.iconText}`}>
                     {member.role}
                   </p>
 
@@ -466,11 +532,12 @@ export default function EquipePage() {
                     {member.description}
                   </p>
 
-                  <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${theme.badge}`}>
                     {member.status}
                   </span>
                 </motion.article>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

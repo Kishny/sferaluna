@@ -44,6 +44,36 @@ interface ContactForm {
   message: string;
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#8E7AB5"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#5B4B8A" />
+      <circle cx="190" cy="100" r="3" fill="#5B4B8A" />
+      <circle cx="100" cy="190" r="3" fill="#5B4B8A" />
+      <circle cx="10" cy="100" r="3" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
 export default function ContactPage() {
   /**
    * Données du formulaire.
@@ -132,8 +162,11 @@ export default function ContactPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 text-[#1C1C1C] sm:px-4 sm:pb-16 sm:pt-24">
-      <div className="mx-auto max-w-2xl">
+    <main className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 text-[#1C1C1C] sm:px-4 sm:pb-16 sm:pt-24">
+      <OrbitGlow className="right-[-12%] top-16 h-72 w-72 sm:h-96 sm:w-96" />
+      <OrbitGlow className="left-[-12%] top-[65%] h-64 w-64 sm:h-80 sm:w-80" />
+
+      <div className="relative z-10 mx-auto max-w-2xl">
         {/* Header / Hero compact */}
         <motion.header
           initial={{ opacity: 0, y: 16 }}

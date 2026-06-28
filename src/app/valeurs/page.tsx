@@ -87,6 +87,46 @@ interface ValueItem {
 // ─────────────────────────────────────────────
 
 /**
+ * Motif "orbites" décoratif en arrière-plan — fait écho au nom "Sfera"
+ * et casse le fond plat des sections. `variant="light"` s'utilise sur
+ * fond coloré/sombre (CTA final), `variant="default"` sur fond clair.
+ */
+function OrbitGlow({
+  className = "",
+  variant = "default",
+}: {
+  className?: string;
+  variant?: "default" | "light";
+}) {
+  const primary = variant === "light" ? "#FFFFFF" : "#8E7AB5";
+  const secondary = variant === "light" ? "#FFFFFF" : "#5B4B8A";
+  const opacityClass = variant === "light" ? "opacity-[0.14]" : "opacity-[0.16]";
+
+  return (
+    <svg
+      viewBox="0 0 400 400"
+      className={`pointer-events-none absolute ${opacityClass} ${className}`}
+      fill="none"
+    >
+      <circle cx="200" cy="200" r="190" stroke={primary} strokeWidth="2" />
+      <circle
+        cx="200"
+        cy="200"
+        r="140"
+        stroke={primary}
+        strokeWidth="2"
+        strokeDasharray="8 12"
+      />
+      <circle cx="200" cy="200" r="90" stroke={secondary} strokeWidth="2" />
+      <circle cx="200" cy="200" r="5" fill={secondary} />
+      <circle cx="390" cy="200" r="6" fill={primary} />
+      <circle cx="60" cy="90" r="5" fill={primary} />
+      <circle cx="310" cy="320" r="4.5" fill={secondary} />
+    </svg>
+  );
+}
+
+/**
  * Formate les statistiques pour éviter les gros chiffres bruts.
  * Exemple :
  * 1200 -> 1.2K+
@@ -174,6 +214,67 @@ const values: ValueItem[] = [
     gradient: "from-[#9D4EDD] to-[#7B2CBF]",
     color: "text-[#9D4EDD]",
     features: ["Cercles de parole", "Méditations", "Rituels"],
+  },
+];
+
+/**
+ * Thème couleur par carte de valeur (desktop) — contour/fond lumineux
+ * distinct pour chacune, basé sur la teinte déjà associée à `value.color`.
+ */
+const valueThemes = [
+  {
+    // Authenticité — #FF9A3C
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(255,154,60,0.4),0_14px_32px_-10px_rgba(255,154,60,0.28)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(255,154,60,0.4),0_22px_48px_-12px_rgba(255,154,60,0.45)]",
+    overlay: "from-[#FF9A3C]/10 via-white to-white",
+    iconBg: "bg-[#FF9A3C]/10",
+  },
+  {
+    // Sécurité — #8E7AB5
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(142,122,181,0.4),0_14px_32px_-10px_rgba(142,122,181,0.28)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(142,122,181,0.4),0_22px_48px_-12px_rgba(142,122,181,0.45)]",
+    overlay: "from-[#8E7AB5]/10 via-white to-white",
+    iconBg: "bg-[#8E7AB5]/10",
+  },
+  {
+    // Inclusivité — #FF6B6B
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(255,107,107,0.4),0_14px_32px_-10px_rgba(255,107,107,0.28)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(255,107,107,0.4),0_22px_48px_-12px_rgba(255,107,107,0.45)]",
+    overlay: "from-[#FF6B6B]/10 via-white to-white",
+    iconBg: "bg-[#FF6B6B]/10",
+  },
+  {
+    // Bienveillance — #D9B8FF
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(217,184,255,0.5),0_14px_32px_-10px_rgba(217,184,255,0.35)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(217,184,255,0.5),0_22px_48px_-12px_rgba(217,184,255,0.5)]",
+    overlay: "from-[#D9B8FF]/15 via-white to-white",
+    iconBg: "bg-[#D9B8FF]/15",
+  },
+  {
+    // Évolution — #4ECDC4
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(78,205,196,0.4),0_14px_32px_-10px_rgba(78,205,196,0.28)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(78,205,196,0.4),0_22px_48px_-12px_rgba(78,205,196,0.45)]",
+    overlay: "from-[#4ECDC4]/10 via-white to-white",
+    iconBg: "bg-[#4ECDC4]/10",
+  },
+  {
+    // Connexion — #9D4EDD
+    shadowBase:
+      "shadow-[0_0_0_1.5px_rgba(157,78,221,0.4),0_14px_32px_-10px_rgba(157,78,221,0.28)]",
+    shadowHover:
+      "hover:shadow-[0_0_0_2px_rgba(157,78,221,0.4),0_22px_48px_-12px_rgba(157,78,221,0.45)]",
+    overlay: "from-[#9D4EDD]/10 via-white to-white",
+    iconBg: "bg-[#9D4EDD]/10",
   },
 ];
 
@@ -378,6 +479,8 @@ export default function ValeursPage() {
             />
           </motion.div>
 
+          <OrbitGlow className="right-[-6%] top-1/4 h-72 w-72 sm:h-96 sm:w-96" />
+
           <div className="relative z-10 mx-auto max-w-5xl text-center">
             <motion.div
               initial={{ scale: 0.94, opacity: 0 }}
@@ -434,8 +537,10 @@ export default function ValeursPage() {
         {/* ─────────────────────────────
             Principes compacts
         ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-12">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-12">
+          <OrbitGlow className="left-[-8%] top-1/2 h-80 w-80 -translate-y-1/2 sm:h-[28rem] sm:w-[28rem]" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -476,8 +581,10 @@ export default function ValeursPage() {
         {/* ─────────────────────────────
             Valeurs détaillées
         ───────────────────────────── */}
-        <section className="bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-12 lg:py-16">
-          <div className="mx-auto max-w-7xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-12 lg:py-16">
+          <OrbitGlow className="left-1/2 top-1/2 h-[32rem] w-[32rem] -translate-x-1/2 -translate-y-1/2 sm:h-[40rem] sm:w-[40rem]" />
+
+          <div className="relative z-10 mx-auto max-w-7xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -581,7 +688,10 @@ export default function ValeursPage() {
               viewport={{ once: true }}
               className="hidden grid-cols-1 gap-5 sm:grid md:grid-cols-2 lg:grid-cols-3"
             >
-              {values.map((value, index) => (
+              {values.map((value, index) => {
+                const theme = valueThemes[index] ?? valueThemes[0];
+
+                return (
                 <motion.div
                   key={value.title}
                   custom={index}
@@ -594,61 +704,70 @@ export default function ValeursPage() {
                   onMouseLeave={() => setHoveredValue(null)}
                   className="group relative"
                 >
-                  <div className="relative h-full overflow-hidden rounded-3xl border border-[#F0F0F0] bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-2xl">
+                  <div
+                    className={`relative h-full overflow-hidden rounded-3xl border border-[#F0F0F0] bg-white p-6 transition-all duration-300 ${theme.shadowBase} ${theme.shadowHover}`}
+                  >
                     <div
-                      className={`absolute inset-0 bg-gradient-to-br ${value.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-5`}
+                      className={`absolute inset-0 bg-gradient-to-br ${theme.overlay} opacity-40 transition-opacity duration-500 group-hover:opacity-80`}
                     />
 
-                    <motion.div
-                      className={`mb-5 ${value.color}`}
-                      animate={{
-                        scale:
-                          hoveredValue === index ? [1, 1.16, 1] : 1,
-                        rotate:
-                          hoveredValue === index ? [0, 8, -8, 0] : 0,
-                      }}
-                      transition={{ duration: 0.45 }}
-                    >
-                      {value.icon}
-                    </motion.div>
+                    <div className="relative">
+                      <motion.div
+                        className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl ${theme.iconBg} ${value.color}`}
+                        animate={{
+                          scale:
+                            hoveredValue === index ? [1, 1.16, 1] : 1,
+                          rotate:
+                            hoveredValue === index ? [0, 8, -8, 0] : 0,
+                        }}
+                        transition={{ duration: 0.45 }}
+                      >
+                        {value.icon}
+                      </motion.div>
 
-                    <h3 className="mb-3 text-2xl font-semibold text-[#1C1C1C]">
-                      {value.title}
-                    </h3>
+                      <h3 className="mb-3 text-2xl font-semibold text-[#1C1C1C]">
+                        {value.title}
+                      </h3>
 
-                    <p className="mb-3 text-base font-medium text-[#4B4B4B]">
-                      {value.description}
-                    </p>
+                      <p className="mb-3 text-base font-medium text-[#4B4B4B]">
+                        {value.description}
+                      </p>
 
-                    <p className="mb-5 text-sm leading-relaxed text-[#666]">
-                      {value.details}
-                    </p>
+                      <p className="mb-5 text-sm leading-relaxed text-[#666]">
+                        {value.details}
+                      </p>
 
-                    <div className="space-y-2">
-                      {value.features.map((feature, featureIndex) => (
-                        <div
-                          key={feature}
-                          className="flex items-center gap-2"
-                        >
-                          <motion.div
-                            animate={{
-                              x:
-                                hoveredValue === index ? [0, 5, 0] : 0,
-                              opacity: hoveredValue === index ? 1 : 0.7,
-                            }}
-                            transition={{ delay: featureIndex * 0.08 }}
-                            className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]"
-                          />
+                      <div className="space-y-2">
+                        {value.features.map((feature, featureIndex) => (
+                          <div
+                            key={feature}
+                            className="flex items-center gap-2"
+                          >
+                            <motion.div
+                              animate={{
+                                x:
+                                  hoveredValue === index ? [0, 5, 0] : 0,
+                                opacity: hoveredValue === index ? 1 : 0.7,
+                              }}
+                              transition={{ delay: featureIndex * 0.08 }}
+                              className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]"
+                            />
 
-                          <span className="text-sm text-[#666]">
-                            {feature}
-                          </span>
-                        </div>
-                      ))}
+                            <span className="text-sm text-[#666]">
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    <div
+                      className={`absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${value.gradient} opacity-70 transition-opacity duration-300 group-hover:opacity-100`}
+                    />
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </motion.div>
           </div>
         </section>
@@ -656,8 +775,10 @@ export default function ValeursPage() {
         {/* ─────────────────────────────
             Chiffres clés compacts
         ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:px-6 sm:py-12">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-12">
+          <OrbitGlow className="right-[-10%] bottom-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -725,8 +846,10 @@ export default function ValeursPage() {
         {/* ─────────────────────────────
             Témoignages compacts
         ───────────────────────────── */}
-        <section className="bg-gradient-to-br from-[#F9F7FC] to-[#F0ECFF] px-4 py-5 sm:px-6 sm:py-12">
-          <div className="mx-auto max-w-4xl">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#F9F7FC] to-[#F0ECFF] px-4 py-5 sm:px-6 sm:py-12">
+          <OrbitGlow className="left-[-8%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -981,6 +1104,11 @@ export default function ValeursPage() {
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
             className="absolute -left-1/2 -top-1/2 h-full w-full bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"
+          />
+
+          <OrbitGlow
+            variant="light"
+            className="left-1/2 top-1/2 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 sm:h-[36rem] sm:w-[36rem]"
           />
 
           <div className="relative z-10 mx-auto max-w-4xl text-center text-white">

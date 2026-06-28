@@ -64,6 +64,45 @@ const plannerIdeas = [
   },
 ];
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera". Variante blanche pour fond sombre.
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
+      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
+      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
+      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+/**
+ * Thème couleur cyclique pour les 3 catégories d'idées.
+ */
+const ideaThemes = [
+  { iconBg: "from-[#FF9A3C] to-[#FFD166]", chip: "bg-[#FF9A3C]/15", bar: "from-[#FF9A3C] to-[#FFD166]" },
+  { iconBg: "from-[#4ECDC4] to-[#8FE9E0]", chip: "bg-[#4ECDC4]/15", bar: "from-[#4ECDC4] to-[#8FE9E0]" },
+  { iconBg: "from-[#FF6B9D] to-[#FF8E53]", chip: "bg-[#FF6B9D]/15", bar: "from-[#FF6B9D] to-[#FF8E53]" },
+];
+
 const futureFeatures = [
   {
     emoji: "💫",
@@ -140,10 +179,13 @@ export default function VibePlannerPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
+      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
         <Header />
 
-        <main className="mx-auto max-w-5xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
+        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
+        <main className="relative z-10 mx-auto max-w-5xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
           {/* ─────────────────────────────
               Hero compact mobile
           ───────────────────────────── */}
@@ -239,6 +281,7 @@ export default function VibePlannerPage() {
           <section className="space-y-2 sm:hidden">
             {plannerIdeas.map((item, index) => {
               const isOpen = openIdeaIndex === index;
+              const theme = ideaThemes[index % ideaThemes.length];
 
               return (
                 <motion.article
@@ -246,14 +289,20 @@ export default function VibePlannerPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/8 backdrop-blur"
+                  className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/8 backdrop-blur"
                 >
+                  <div
+                    className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`}
+                  />
+
                   <button
                     type="button"
                     onClick={() => setOpenIdeaIndex(isOpen ? null : index)}
                     className="flex w-full items-center gap-3 px-3 py-3 text-left"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-400/10 text-lg">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${theme.chip} text-lg`}
+                    >
                       {item.emoji}
                     </span>
 
@@ -302,6 +351,7 @@ export default function VibePlannerPage() {
           <section className="hidden grid-cols-3 gap-4 sm:grid">
             {plannerIdeas.map((item, index) => {
               const Icon = item.icon;
+              const theme = ideaThemes[index % ideaThemes.length];
 
               return (
                 <motion.article
@@ -311,9 +361,15 @@ export default function VibePlannerPage() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08 }}
                   whileHover={{ y: -6, scale: 1.02 }}
-                  className="rounded-3xl border border-white/10 bg-white/8 p-6 shadow-xl backdrop-blur-xl transition"
+                  className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/8 p-6 shadow-xl backdrop-blur-xl transition"
                 >
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+                  <div
+                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme.bar}`}
+                  />
+
+                  <div
+                    className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.iconBg} text-white`}
+                  >
                     <Icon className="h-7 w-7" />
                   </div>
 
@@ -338,9 +394,11 @@ export default function VibePlannerPage() {
             initial={{ opacity: 0, y: 18 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-5 rounded-3xl border border-purple-300/15 bg-purple-500/10 p-4 backdrop-blur-xl sm:mt-8 sm:p-6"
+            className="relative overflow-hidden mt-5 rounded-3xl border border-purple-300/15 bg-purple-500/10 p-4 backdrop-blur-xl sm:mt-8 sm:p-6"
           >
-            <div className="mb-4 flex items-center gap-3">
+            <OrbitGlow className="right-[-15%] top-[-25%] h-56 w-56 sm:h-72 sm:w-72" />
+
+            <div className="relative z-10 mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-400/15 text-xl">
                 ✨
               </div>

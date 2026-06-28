@@ -96,6 +96,49 @@ function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+/**
+ * Motif orbite décoratif (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera".
+ */
+function OrbitGlow({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke="#8E7AB5"
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke="#8E7AB5" strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill="#5B4B8A" />
+      <circle cx="190" cy="100" r="3" fill="#5B4B8A" />
+      <circle cx="100" cy="190" r="3" fill="#5B4B8A" />
+      <circle cx="10" cy="100" r="3" fill="#5B4B8A" />
+    </svg>
+  );
+}
+
+/**
+ * Palette tournante par événement — chaque carte reçoit une identité
+ * couleur distincte (la catégorie étant une chaîne libre côté API).
+ */
+const eventThemes = [
+  { cover: "from-[#FF9A3C]/20 to-[#FFD166]/20", badgeBg: "bg-[#FF9A3C]/10", badgeText: "text-[#C9762A]" },
+  { cover: "from-[#9D4EDD]/20 to-[#C77DFF]/20", badgeBg: "bg-[#9D4EDD]/10", badgeText: "text-[#7E3BBE]" },
+  { cover: "from-[#FF6B6B]/20 to-[#FF9A9A]/20", badgeBg: "bg-[#FF6B6B]/10", badgeText: "text-[#E0504F]" },
+  { cover: "from-[#4ECDC4]/20 to-[#8FE9E0]/20", badgeBg: "bg-[#4ECDC4]/10", badgeText: "text-[#2F9D94]" },
+  { cover: "from-[#D9B8FF]/30 to-[#F0E0FF]/30", badgeBg: "bg-[#D9B8FF]/15", badgeText: "text-[#7E3BBE]" },
+  { cover: "from-purple-100 to-pink-100", badgeBg: "bg-purple-50", badgeText: "text-[#5B4B8A]" },
+];
+
 export default function EvenementsPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -226,10 +269,13 @@ export default function EvenementsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff]">
+        <OrbitGlow className="right-[-8%] top-20 h-72 w-72 sm:h-96 sm:w-96" />
+        <OrbitGlow className="left-[-10%] top-[65%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
+
         <Header />
 
-        <main className="mx-auto max-w-4xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
+        <main className="relative z-10 mx-auto max-w-4xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
           {/* Header compact */}
           <motion.section
             initial={{ opacity: 0, y: -18 }}
@@ -327,6 +373,7 @@ export default function EvenementsPage() {
               <div className="space-y-2.5 sm:hidden">
                 {upcomingEvents.map((event, index) => {
                   const isOpen = openEventId === event._id;
+                  const theme = eventThemes[index % eventThemes.length];
 
                   return (
                     <motion.article
@@ -344,7 +391,9 @@ export default function EvenementsPage() {
                         }
                         className="flex w-full items-center gap-3 px-3 py-3 text-left"
                       >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 text-2xl">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.cover} text-2xl`}
+                        >
                           {event.coverEmoji || event.emoji}
                         </div>
 
@@ -415,7 +464,9 @@ export default function EvenementsPage() {
                           >
                             <div className="border-t border-[#f0ecff] px-3 pb-3 pt-3">
                               <div className="mb-3 flex flex-wrap gap-1.5">
-                                <span className="rounded-full border border-[#e8e0f5] bg-purple-50 px-2.5 py-1 text-[11px] text-[#5B4B8A]">
+                                <span
+                                  className={`rounded-full border border-[#e8e0f5] px-2.5 py-1 text-[11px] ${theme.badgeBg} ${theme.badgeText}`}
+                                >
                                   {event.emoji} {event.category}
                                 </span>
 
@@ -475,7 +526,10 @@ export default function EvenementsPage() {
 
               {/* Desktop / tablette : cards complètes */}
               <div className="hidden grid-cols-2 gap-5 sm:grid">
-                {upcomingEvents.map((event, index) => (
+                {upcomingEvents.map((event, index) => {
+                  const theme = eventThemes[index % eventThemes.length];
+
+                  return (
                   <motion.article
                     key={event._id}
                     initial={{ opacity: 0, y: 20 }}
@@ -484,14 +538,18 @@ export default function EvenementsPage() {
                     className="overflow-hidden rounded-2xl border border-[#e8e0f5] bg-white shadow-sm transition-shadow hover:shadow-md"
                   >
                     {/* Cover */}
-                    <div className="flex h-24 items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100 text-5xl">
+                    <div
+                      className={`flex h-24 items-center justify-center bg-gradient-to-br ${theme.cover} text-5xl`}
+                    >
                       {event.coverEmoji || event.emoji}
                     </div>
 
                     <div className="p-5">
                       {/* Badges */}
                       <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[#e8e0f5] bg-purple-50 px-2.5 py-1 text-xs text-[#5B4B8A]">
+                        <span
+                          className={`rounded-full border border-[#e8e0f5] px-2.5 py-1 text-xs ${theme.badgeBg} ${theme.badgeText}`}
+                        >
                           {event.emoji} {event.category}
                         </span>
 
@@ -570,7 +628,8 @@ export default function EvenementsPage() {
                       </button>
                     </div>
                   </motion.article>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
