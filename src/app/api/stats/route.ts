@@ -14,10 +14,17 @@ export async function GET() {
   try {
     await connectDB();
 
+    // Comptes admin exclus des statistiques publiques (pas de vraies membres).
+    const adminIds = await User.find({ role: "admin" }).distinct("_id");
+
     const [membres, matchs, messages, evenements] = await Promise.all([
-      User.countDocuments({ hasCompletedProfile: true }),
-      Match.countDocuments({ isActive: true }),
-      Message.countDocuments(),
+      User.countDocuments({ hasCompletedProfile: true, role: { $ne: "admin" } }),
+      Match.countDocuments({
+        isActive: true,
+        user1Id: { $nin: adminIds },
+        user2Id: { $nin: adminIds },
+      }),
+      Message.countDocuments({ senderId: { $nin: adminIds } }),
       LunaEvent.countDocuments({ isPublished: true }),
     ]);
 
