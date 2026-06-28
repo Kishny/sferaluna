@@ -88,9 +88,14 @@ export async function POST(req: NextRequest) {
     const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
     // Créer l'utilisateur
+    // Si aucun pseudonyme n'a été renseigné, on retombe sur la même valeur
+    // par défaut que le modèle Mongoose — jamais de chaîne vide, qui ferait
+    // échouer la validation "required" lors d'un futur save() (ex: paiement).
+    const finalPseudonyme = trimmedPseudo.length > 0 ? trimmedPseudo : "Utilisateur Luna";
+
     await User.create({
       email: normalizedEmail,
-      pseudonyme: trimmedPseudo,
+      pseudonyme: finalPseudonyme,
       name: name.trim(),
       password: hashedPassword,
       provider: "credentials",

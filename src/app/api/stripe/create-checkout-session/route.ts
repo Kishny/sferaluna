@@ -257,8 +257,11 @@ export async function POST(req: NextRequest) {
     user.subscriptionStatus = "inactive";
     user.stripeCheckoutSessionId = "";
 
-    await user.validate();
-    await user.save();
+    // validateModifiedOnly : on ne valide que les champs modifiés ici.
+    // Évite qu'un champ déjà invalide ailleurs sur le document (ex : un
+    // pseudonyme vide laissé par un ancien flux d'inscription) bloque le
+    // paiement d'un utilisateur qui n'a pas touché à ce champ.
+    await user.save({ validateModifiedOnly: true });
 
     // ─────────────────────────────────────────────
     // 8. Créer la session Stripe Checkout
@@ -349,7 +352,7 @@ export async function POST(req: NextRequest) {
      * Pratique pour debug, support client et vérifications futures.
      */
     user.stripeCheckoutSessionId = checkoutSession.id;
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
 
     console.log("✅ Session Stripe Checkout créée :", {
       email: user.email,
