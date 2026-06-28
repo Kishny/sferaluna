@@ -284,11 +284,44 @@ const planEmoji: Record<LunaPlan, string> = {
  * chaque plan a sa propre teinte pour qu'on reconnaisse l'offre active
  * d'un coup d'œil (violet Essentiel, rose Premium, or Elite).
  */
-const planAccent: Record<LunaPlan, { ring: string; gradient: string }> = {
-  free: { ring: "ring-white/10", gradient: "from-white/10 to-white/5" },
-  "essential-monthly": { ring: "ring-violet-400/30", gradient: "from-violet-500 to-purple-500" },
-  "premium-monthly": { ring: "ring-pink-400/30", gradient: "from-purple-500 to-pink-500" },
-  "elite-monthly": { ring: "ring-amber-300/40", gradient: "from-amber-400 to-yellow-500" },
+const planAccent: Record<
+  LunaPlan,
+  {
+    ring: string;
+    gradient: string;
+    banner: string;
+    tabBorder: string;
+    tabBg: string;
+  }
+> = {
+  free: {
+    ring: "ring-white/10",
+    gradient: "from-white/10 to-white/5",
+    banner: "from-white/15 via-white/10 to-white/15",
+    tabBorder: "border-white/20",
+    tabBg: "from-white/15 to-white/10",
+  },
+  "essential-monthly": {
+    ring: "ring-violet-400/30",
+    gradient: "from-violet-500 to-purple-500",
+    banner: "from-violet-600/50 via-purple-500/40 to-violet-800/50",
+    tabBorder: "border-violet-400/40",
+    tabBg: "from-violet-500/30 to-purple-500/30",
+  },
+  "premium-monthly": {
+    ring: "ring-pink-400/30",
+    gradient: "from-purple-500 to-pink-500",
+    banner: "from-purple-600/50 via-pink-500/40 to-purple-800/50",
+    tabBorder: "border-purple-400/40",
+    tabBg: "from-purple-500/30 to-pink-500/30",
+  },
+  "elite-monthly": {
+    ring: "ring-amber-300/40",
+    gradient: "from-amber-400 to-yellow-500",
+    banner: "from-amber-500/50 via-yellow-400/40 to-amber-700/50",
+    tabBorder: "border-amber-300/40",
+    tabBg: "from-amber-400/30 to-yellow-500/30",
+  },
 };
 
 const subscriptionLabels: Record<SubscriptionStatus, string> = {
@@ -963,7 +996,9 @@ function MonCompteContent() {
           transition={{ delay: 0.05 }}
           className="mb-4 overflow-hidden rounded-3xl border border-white/10 bg-white/8 backdrop-blur-xl sm:mb-6"
         >
-          <div className="relative h-20 bg-gradient-to-r from-purple-600/50 via-pink-500/40 to-purple-800/50 sm:h-24">
+          <div
+            className={`relative h-20 bg-gradient-to-r transition-colors duration-500 sm:h-24 ${planAccent[user.plan].banner}`}
+          >
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]" />
           </div>
 
@@ -1071,7 +1106,7 @@ function MonCompteContent() {
               }}
               className={`relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex-1 sm:px-4 sm:text-sm ${
                 activeTab === tab.id
-                  ? "border border-purple-400/40 bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-white shadow-lg"
+                  ? `border ${planAccent[user.plan].tabBorder} bg-gradient-to-r ${planAccent[user.plan].tabBg} text-white shadow-lg`
                   : "border border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -1081,7 +1116,7 @@ function MonCompteContent() {
               {activeTab === tab.id && (
                 <motion.div
                   layoutId="tab-indicator"
-                  className="pointer-events-none absolute inset-0 rounded-xl border border-purple-400/40"
+                  className={`pointer-events-none absolute inset-0 rounded-xl border ${planAccent[user.plan].tabBorder}`}
                 />
               )}
             </button>
