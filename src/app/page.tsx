@@ -6,7 +6,7 @@ import {
   useScroll,
   useTransform,
 } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import Header from '@/components/Header';
@@ -36,6 +36,147 @@ function formatStat(n: number): string {
   if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'K+';
   if (n === 0) return '—';
   return n.toString();
+}
+
+/**
+ * Grain discret en fond de page entière.
+ * Donne un rendu "édité" plutôt qu'un aplat de couleur plat.
+ * Très faible opacité, ne gêne jamais la lisibilité.
+ */
+function GrainOverlay() {
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-[1] opacity-[0.035] mix-blend-overlay"
+      style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+      }}
+    />
+  );
+}
+
+/**
+ * Particules scintillantes qui dérivent lentement vers le haut.
+ * Motif lunaire discret, réutilisé entre les sections pour garder
+ * une continuité d'ambiance sur toute la page.
+ */
+function DriftingSparkles({ count = 8 }: { count?: number }) {
+  const sparkles = Array.from({ length: count }, (_, i) => i);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {sparkles.map((i) => {
+        const left = `${(i * 37 + 8) % 100}%`;
+        const size = 3 + (i % 3);
+        const duration = 9 + (i % 5) * 2;
+        const delay = i * 0.7;
+
+        return (
+          <motion.span
+            key={i}
+            className="absolute rounded-full bg-[#D9B8FF]"
+            style={{
+              left,
+              bottom: '-4%',
+              width: size,
+              height: size,
+              boxShadow: '0 0 6px 1px rgba(217,184,255,0.7)',
+            }}
+            animate={{
+              y: ['0%', '-120%'],
+              opacity: [0, 0.8, 0],
+            }}
+            transition={{
+              duration,
+              repeat: Infinity,
+              delay,
+              ease: 'linear',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Orbes flous animées, réutilisées entre les sections pour que
+ * l'ambiance "clair de lune" du hero se prolonge sur toute la page
+ * au lieu de retomber brutalement sur du blanc plat.
+ */
+function AmbientOrbs({ variant = 'default' }: { variant?: 'default' | 'reverse' }) {
+  const reverse = variant === 'reverse';
+
+  return (
+    <>
+      <motion.div
+        animate={{
+          x: reverse ? [0, -60, 0] : [0, 60, 0],
+          y: [0, 30, 0],
+        }}
+        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute left-[-5%] top-[10%] h-56 w-56 rounded-full bg-gradient-to-r from-[#8E7AB5]/8 to-[#D9B8FF]/8 blur-3xl sm:h-72 sm:w-72"
+      />
+      <motion.div
+        animate={{
+          x: reverse ? [0, 50, 0] : [0, -50, 0],
+          y: [0, -25, 0],
+        }}
+        transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute right-[-5%] bottom-[5%] h-64 w-64 rounded-full bg-gradient-to-r from-[#D9B8FF]/8 to-[#8E7AB5]/8 blur-3xl sm:h-80 sm:w-80"
+      />
+    </>
+  );
+}
+
+/**
+ * Croissant de lune décoratif très discret — clin d'œil à la marque
+ * "Luna", posé en filigrane derrière certaines sections.
+ */
+function CrescentMoon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className={`pointer-events-none absolute opacity-[0.06] ${className}`}
+      fill="none"
+    >
+      <path
+        d="M62 8C40 14 26 34 26 56c0 26 20 42 44 42-30 4-58-18-58-50C12 22 34 2 62 8Z"
+        fill="#5B4B8A"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Card avec léger effet de bascule 3D au survol (desktop uniquement).
+ * Donne une sensation de profondeur/relief plus marquée qu'un simple scale.
+ */
+function TiltCard({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  const [rotate, setRotate] = useState({ x: 0, y: 0 });
+
+  return (
+    <motion.div
+      onMouseMove={(e) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        setRotate({ x: py * -8, y: px * 8 });
+      }}
+      onMouseLeave={() => setRotate({ x: 0, y: 0 })}
+      animate={{ rotateX: rotate.x, rotateY: rotate.y }}
+      transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+      style={{ transformPerspective: 800 }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 export default function Home() {
@@ -200,6 +341,7 @@ export default function Home() {
   return (
     <>
       <Header />
+      <GrainOverlay />
 
       {/* Barre de progression du scroll */}
       <motion.div
@@ -256,6 +398,9 @@ export default function Home() {
                 }}
               />
             </div>
+
+            <CrescentMoon className="right-[6%] top-[8%] h-32 w-32 rotate-[-15deg] sm:h-48 sm:w-48" />
+            <DriftingSparkles count={10} />
           </motion.div>
 
           <motion.div
@@ -283,7 +428,9 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               className="text-3xl font-bold leading-[1.05] sm:text-5xl md:text-7xl"
             >
-              <span className="bg-gradient-to-r from-[#5B4B8A] via-[#8E7AB5] to-[#D9B8FF] bg-clip-text text-transparent">
+              <span
+                className="bg-gradient-to-r from-[#5B4B8A] via-[#8E7AB5] to-[#D9B8FF] bg-clip-text text-transparent [filter:drop-shadow(0_6px_28px_rgba(142,122,181,0.4))]"
+              >
                 Rencontrer au féminin,
               </span>
 
@@ -331,7 +478,7 @@ export default function Home() {
               className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:mt-12 sm:flex-row sm:gap-4"
             >
               <Link href="/auth?mode=register" className="group w-full sm:w-auto">
-                <button className="relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 hover:shadow-2xl sm:w-auto sm:px-8 sm:py-4 sm:text-lg">
+                <button className="relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_36px_-8px_rgba(91,75,138,0.55),0_4px_10px_-4px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 hover:shadow-[0_20px_46px_-8px_rgba(91,75,138,0.65),0_6px_14px_-4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] hover:-translate-y-0.5 sm:w-auto sm:px-8 sm:py-4 sm:text-lg">
                   <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
                     Rejoindre SferaLuna
 
@@ -353,7 +500,7 @@ export default function Home() {
               </Link>
 
               <Link href="/explorer" className="w-full sm:w-auto">
-                <button className="group flex w-full items-center justify-center gap-2 rounded-full border-2 border-[#8E7AB5] px-5 py-3 text-sm font-semibold text-[#8E7AB5] transition-all duration-300 hover:bg-[#8E7AB5] hover:text-white sm:w-auto sm:px-8 sm:py-4 sm:text-lg">
+                <button className="group flex w-full items-center justify-center gap-2 rounded-full border-2 border-[#8E7AB5] px-5 py-3 text-sm font-semibold text-[#8E7AB5] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#8E7AB5] hover:text-white hover:shadow-[0_14px_32px_-10px_rgba(142,122,181,0.45)] sm:w-auto sm:px-8 sm:py-4 sm:text-lg">
                   Explorer librement
 
                   <span className="transition-transform group-hover:translate-x-1">
@@ -405,9 +552,11 @@ export default function Home() {
         {/* Valeurs / ADN */}
         <section
           id="valeurs"
-          className="relative px-4 py-5 sm:px-6 sm:py-16 lg:py-20"
+          className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-16 lg:py-20"
         >
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#F9F7FC]/60 to-transparent" />
+          <AmbientOrbs />
+          <CrescentMoon className="left-[4%] top-[12%] h-24 w-24 rotate-[20deg] sm:h-36 sm:w-36" />
 
           <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
@@ -439,7 +588,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-[0_8px_24px_-8px_rgba(142,122,181,0.18)] backdrop-blur-xl"
                   >
                     <button
                       type="button"
@@ -505,7 +654,7 @@ export default function Home() {
                   whileHover={{ y: -8, transition: { duration: 0.2 } }}
                   className="group relative h-full"
                 >
-                  <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white p-5 shadow-lg transition-all duration-300 hover:shadow-2xl sm:p-6">
+                  <TiltCard className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-5 shadow-[0_10px_28px_-10px_rgba(142,122,181,0.25)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_20px_44px_-12px_rgba(142,122,181,0.4)] sm:p-6">
                     <div className="absolute inset-0 bg-gradient-to-br from-white to-[#F9F7FC] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
                     <div className="relative z-10 mb-4 text-4xl">
@@ -525,7 +674,7 @@ export default function Home() {
                     </p>
 
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#8E7AB5] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                  </div>
+                  </TiltCard>
                 </motion.div>
               ))}
             </div>
@@ -533,8 +682,10 @@ export default function Home() {
         </section>
 
         {/* Fonctionnalités principales */}
-        <section className="bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
-          <div className="mx-auto max-w-6xl">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-16 lg:py-20">
+          <AmbientOrbs variant="reverse" />
+          <DriftingSparkles count={6} />
+          <div className="relative z-10 mx-auto max-w-6xl">
             <motion.div
               initial={{ opacity: 0, y: 22 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -562,7 +713,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.04 }}
-                    className="overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
+                    className="overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-[0_8px_24px_-8px_rgba(142,122,181,0.18)] backdrop-blur-xl"
                   >
                     <button
                       type="button"
@@ -633,10 +784,10 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.08 }}
-                  whileHover={{ scale: 1.025, transition: { duration: 0.2 } }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 >
                   <Link href={feature.link} className="block h-full">
-                    <div className="group relative h-full overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white p-5 shadow-lg transition-all duration-300 hover:shadow-2xl sm:p-6">
+                    <TiltCard className="group relative h-full overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-5 shadow-[0_10px_28px_-10px_rgba(142,122,181,0.25)] backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_22px_48px_-12px_rgba(142,122,181,0.4)] sm:p-6">
                       <div
                         className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500 group-hover:opacity-5`}
                       />
@@ -671,7 +822,7 @@ export default function Home() {
                       >
                         →
                       </motion.div>
-                    </div>
+                    </TiltCard>
                   </Link>
                 </motion.div>
               ))}
@@ -845,9 +996,9 @@ export default function Home() {
                     initial={{ opacity: 0, x: 24 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
-                    className="relative overflow-hidden rounded-3xl border-2 border-[#8E7AB5]/30 bg-gradient-to-br from-[#f0ecff] to-[#e8e0ff] p-4 sm:p-6"
+                    className="relative overflow-hidden rounded-3xl border-2 border-[#8E7AB5]/30 bg-gradient-to-br from-[#f0ecff] to-[#e8e0ff] p-4 shadow-[0_18px_44px_-14px_rgba(142,122,181,0.4)] sm:p-6"
                   >
-                    <div className="absolute right-4 top-4 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] px-3 py-1 text-xs font-medium text-white">
+                    <div className="absolute right-4 top-4 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] px-3 py-1 text-xs font-medium text-white shadow-[0_4px_12px_-2px_rgba(142,122,181,0.5)]">
                       SferaLuna ✨
                     </div>
 
@@ -955,7 +1106,7 @@ export default function Home() {
               className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-4"
             >
               <Link href="/auth?mode=register" className="group w-full sm:w-auto">
-                <button className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#8E7AB5] shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-3xl sm:w-auto sm:px-12 sm:py-4 sm:text-lg">
+                <button className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#8E7AB5] shadow-[0_16px_40px_-10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-105 hover:shadow-[0_22px_50px_-10px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.7)] sm:w-auto sm:px-12 sm:py-4 sm:text-lg">
                   <span>Commencer maintenant</span>
 
                   <span className="transition-transform group-hover:translate-x-1">
@@ -985,12 +1136,15 @@ export default function Home() {
         </section>
 
         {/* Section application mobile compacte */}
-        <section className="bg-gradient-to-br from-[#faf9ff] to-[#f0ecff] px-4 py-6 md:py-12">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#faf9ff] to-[#f0ecff] px-4 py-6 md:py-12">
+          <AmbientOrbs />
+          <CrescentMoon className="right-[8%] bottom-[10%] h-28 w-28 rotate-[10deg] sm:h-40 sm:w-40" />
+
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-3xl text-center"
+            className="relative z-10 mx-auto max-w-3xl text-center"
           >
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-1 sm:mb-6 sm:px-4 sm:py-1.5">
               <span className="text-xs font-medium text-[#8E7AB5] sm:text-sm">
@@ -1012,7 +1166,7 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col items-center justify-center gap-2.5 sm:flex-row sm:gap-4">
-              <div className="flex w-full cursor-default select-none items-center justify-center gap-3 rounded-2xl bg-[#1a0b2e] px-5 py-3 text-white shadow-lg sm:w-auto sm:px-6 sm:py-3.5">
+              <div className="flex w-full cursor-default select-none items-center justify-center gap-3 rounded-2xl bg-[#1a0b2e] px-5 py-3 text-white shadow-[0_14px_32px_-10px_rgba(26,11,46,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] transition-transform duration-300 hover:-translate-y-0.5 sm:w-auto sm:px-6 sm:py-3.5">
                 <span className="text-xl sm:text-2xl">🍎</span>
 
                 <div className="text-left">
@@ -1026,7 +1180,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex w-full cursor-default select-none items-center justify-center gap-3 rounded-2xl bg-[#1a0b2e] px-5 py-3 text-white shadow-lg sm:w-auto sm:px-6 sm:py-3.5">
+              <div className="flex w-full cursor-default select-none items-center justify-center gap-3 rounded-2xl bg-[#1a0b2e] px-5 py-3 text-white shadow-[0_14px_32px_-10px_rgba(26,11,46,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] transition-transform duration-300 hover:-translate-y-0.5 sm:w-auto sm:px-6 sm:py-3.5">
                 <span className="text-xl sm:text-2xl">🤖</span>
 
                 <div className="text-left">
