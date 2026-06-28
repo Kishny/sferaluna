@@ -60,6 +60,56 @@ interface PlanConfig {
   highlighted?: boolean;
 }
 
+/**
+ * Identité visuelle par offre — chaque tier a sa propre teinte
+ * pour qu'on distingue Essentiel / Premium / Elite au premier coup d'œil,
+ * et que la sélection « respire » la couleur du plan choisi.
+ */
+const planTheme: Record<
+  LunaPlan,
+  {
+    iconGradient: string;
+    selectedBorder: string;
+    selectedBg: string;
+    selectedShadow: string;
+    badgeGradient: string;
+    recapBorder: string;
+    recapIcon: string;
+    ctaShadow: string;
+  }
+> = {
+  "essential-monthly": {
+    iconGradient: "from-violet-500 to-purple-500",
+    selectedBorder: "border-violet-400",
+    selectedBg: "bg-violet-500/15",
+    selectedShadow: "shadow-2xl shadow-violet-500/15",
+    badgeGradient: "from-violet-500 to-purple-500",
+    recapBorder: "border-violet-400/30",
+    recapIcon: "text-violet-300",
+    ctaShadow: "shadow-violet-500/30 hover:shadow-violet-500/50",
+  },
+  "premium-monthly": {
+    iconGradient: "from-purple-500 to-pink-500",
+    selectedBorder: "border-pink-400",
+    selectedBg: "bg-pink-500/20",
+    selectedShadow: "shadow-2xl shadow-pink-500/20",
+    badgeGradient: "from-pink-500 to-rose-500",
+    recapBorder: "border-pink-400/30",
+    recapIcon: "text-pink-300",
+    ctaShadow: "shadow-pink-500/30 hover:shadow-pink-500/50",
+  },
+  "elite-monthly": {
+    iconGradient: "from-amber-400 to-yellow-500",
+    selectedBorder: "border-amber-300",
+    selectedBg: "bg-amber-400/15",
+    selectedShadow: "shadow-2xl shadow-amber-400/20",
+    badgeGradient: "from-amber-400 to-yellow-500",
+    recapBorder: "border-amber-300/30",
+    recapIcon: "text-amber-300",
+    ctaShadow: "shadow-amber-400/30 hover:shadow-amber-400/50",
+  },
+};
+
 // ─────────────────────────────────────────────
 // Configuration des offres
 // ─────────────────────────────────────────────
@@ -209,9 +259,10 @@ export default function PaiementPage() {
     <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
       {/* Décor lumineux */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl sm:h-80 sm:w-80" />
-        <div className="absolute bottom-0 right-1/4 h-80 w-80 rounded-full bg-pink-500/20 blur-3xl sm:h-96 sm:w-96" />
-        <div className="absolute right-1/3 top-1/3 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl sm:h-72 sm:w-72" />
+        <div className="absolute left-1/4 top-0 h-72 w-72 animate-pulse rounded-full bg-purple-500/30 blur-3xl [animation-duration:6s] sm:h-80 sm:w-80" />
+        <div className="absolute bottom-0 right-1/4 h-80 w-80 animate-pulse rounded-full bg-pink-500/30 blur-3xl [animation-duration:8s] sm:h-96 sm:w-96" />
+        <div className="absolute right-1/3 top-1/3 h-64 w-64 rounded-full bg-blue-500/15 blur-3xl sm:h-72 sm:w-72" />
+        <div className="absolute -left-10 bottom-1/4 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl sm:h-64 sm:w-64" />
       </div>
 
       {/* Étoiles globales depuis globals.css */}
@@ -270,6 +321,7 @@ export default function PaiementPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
               {plans.map((plan) => {
                 const isSelected = selectedPlan === plan.id;
+                const theme = planTheme[plan.id];
 
                 return (
                   <button
@@ -279,21 +331,25 @@ export default function PaiementPage() {
                       setSelectedPlan(plan.id);
                       setError("");
                     }}
-                    className={`relative rounded-3xl border p-5 text-left transition-all sm:p-6 ${
+                    className={`group relative rounded-3xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 sm:p-6 ${
                       isSelected
-                        ? "border-pink-400 bg-pink-500/20 shadow-2xl shadow-pink-500/10"
-                        : "border-white/10 bg-white/10 hover:border-purple-300/50 hover:bg-white/15"
+                        ? `${theme.selectedBorder} ${theme.selectedBg} ${theme.selectedShadow}`
+                        : "border-white/10 bg-white/10 hover:border-white/25 hover:bg-white/15"
                     }`}
                   >
                     {/* Badge : Plus populaire / VIP */}
                     {plan.badge && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 px-3 py-1 text-xs font-bold text-white shadow-lg sm:-top-4 sm:px-4 sm:text-sm">
+                      <div
+                        className={`absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r ${theme.badgeGradient} px-3 py-1 text-xs font-bold text-white shadow-lg sm:-top-4 sm:px-4 sm:text-sm`}
+                      >
                         {plan.badge}
                       </div>
                     )}
 
                     <div className="mb-4 flex items-center justify-between sm:mb-5">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 sm:h-12 sm:w-12">
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-r ${theme.iconGradient} shadow-lg transition-transform duration-300 group-hover:scale-105 sm:h-12 sm:w-12`}
+                      >
                         {plan.id === "essential-monthly" && (
                           <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
@@ -308,9 +364,9 @@ export default function PaiementPage() {
                       </div>
 
                       <div
-                        className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
                           isSelected
-                            ? "border-pink-400 bg-pink-500"
+                            ? `${theme.selectedBorder} bg-gradient-to-r ${theme.iconGradient}`
                             : "border-white/30"
                         }`}
                       >
@@ -373,9 +429,13 @@ export default function PaiementPage() {
           </div>
 
           {/* Récapitulatif */}
-          <aside className="h-fit rounded-3xl border border-purple-400/20 bg-gradient-to-br from-purple-900/40 to-pink-900/30 p-5 shadow-2xl backdrop-blur-xl sm:p-6 md:p-8 lg:sticky lg:top-6">
+          <aside
+            className={`h-fit rounded-3xl border bg-gradient-to-br from-purple-900/40 to-pink-900/30 p-5 shadow-2xl backdrop-blur-xl transition-colors duration-300 sm:p-6 md:p-8 lg:sticky lg:top-6 ${planTheme[selectedOffer.id].recapBorder}`}
+          >
             <div className="mb-5 flex items-center gap-3 sm:mb-6">
-              <Sparkles className="h-5 w-5 text-pink-300 sm:h-6 sm:w-6" />
+              <Sparkles
+                className={`h-5 w-5 transition-colors duration-300 sm:h-6 sm:w-6 ${planTheme[selectedOffer.id].recapIcon}`}
+              />
 
               <h2 className="text-xl font-bold sm:text-2xl">Votre offre</h2>
             </div>
@@ -431,7 +491,7 @@ export default function PaiementPage() {
               type="button"
               onClick={handleStripePayment}
               disabled={isLoading}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-8 sm:py-4 sm:text-lg"
+              className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r ${planTheme[selectedOffer.id].iconGradient} py-3.5 text-base font-bold text-white shadow-lg transition-all hover:scale-[1.02] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 sm:mt-8 sm:py-4 sm:text-lg ${planTheme[selectedOffer.id].ctaShadow}`}
             >
               {isLoading ? (
                 <>
