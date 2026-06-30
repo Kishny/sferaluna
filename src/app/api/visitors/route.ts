@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
         $in: visitorIds,
       },
     })
-      .select("_id pseudonyme age localisation image interets identityVerified")
+      .select("_id pseudonyme age localisation departement image interets identityVerified")
       .lean();
 
     const usersById = new Map(

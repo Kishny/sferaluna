@@ -53,7 +53,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
-import { DEPARTEMENTS } from "@/lib/locations";
+import { DEPARTEMENTS, getDepartementLabel } from "@/lib/locations";
 
 // ─────────────────────────────────────────────
 // Types
@@ -64,6 +64,7 @@ interface Profile {
   pseudonyme: string;
   age?: number;
   localisation?: string;
+  departement?: string;
   interets: string[];
   intentions: string[];
   image?: string;
@@ -541,10 +542,16 @@ export default function ExplorerPage() {
                     className="mb-6 text-sm text-white/60 sm:mb-8"
                   >
                     Vous vous êtes mutuellement likées.
-                    {matchModal.profile.localisation && (
+                    {(matchModal.profile.localisation ||
+                      matchModal.profile.departement) && (
                       <span className="mt-1 flex items-center justify-center gap-1 text-xs text-white/40">
                         <MapPin className="h-3 w-3" />
-                        {matchModal.profile.localisation}
+                        {[
+                          matchModal.profile.localisation,
+                          getDepartementLabel(matchModal.profile.departement),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     )}
                   </motion.p>
@@ -1215,10 +1222,12 @@ function ProfileStackCard({
             )}
           </div>
 
-          {profile.localisation && (
+          {(profile.localisation || profile.departement) && (
             <p className="mt-1 flex items-center gap-1 text-xs text-gray-200 sm:text-sm">
               <MapPin className="h-3.5 w-3.5" />
-              {profile.localisation}
+              {[profile.localisation, getDepartementLabel(profile.departement)]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           )}
 

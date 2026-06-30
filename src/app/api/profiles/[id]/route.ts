@@ -81,7 +81,7 @@ export async function GET(
 
     const profile = await User.findById(profileId)
       .select(
-        "pseudonyme age localisation interets intentions orientation bio image photos identityVerified visibilite hasCompletedProfile banned createdAt role"
+        "pseudonyme age localisation departement interets intentions orientation bio image photos identityVerified visibilite hasCompletedProfile banned createdAt role"
       )
       .lean();
 

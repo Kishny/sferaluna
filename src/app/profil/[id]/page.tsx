@@ -34,6 +34,7 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ReportModal from "@/components/ReportModal";
+import { getDepartementLabel } from "@/lib/locations";
 
 // ─────────────────────────────────────────────
 // Types
@@ -44,6 +45,7 @@ interface Profile {
   pseudonyme?: string;
   age?: number;
   localisation?: string;
+  departement?: string;
   bio?: string;
   image?: string;
   photos?: string[];
@@ -309,10 +311,15 @@ function ProfilContent() {
                       <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-white/50 sm:justify-start">
                         {profile.age && <span>{profile.age} ans</span>}
 
-                        {profile.localisation && (
+                        {(profile.localisation || profile.departement) && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3.5 w-3.5" />
-                            {profile.localisation}
+                            {[
+                              profile.localisation,
+                              getDepartementLabel(profile.departement),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </span>
                         )}
 

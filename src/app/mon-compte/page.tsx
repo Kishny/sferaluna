@@ -176,6 +176,7 @@ type Visitor = {
     pseudonyme: string;
     age?: number;
     localisation?: string;
+    departement?: string;
     image?: string;
   } | null;
   lastVisit: string;
@@ -187,6 +188,7 @@ interface MatchUser {
   pseudonyme: string;
   age?: number;
   localisation?: string;
+  departement?: string;
   image?: string;
   interets?: string[];
 }
@@ -2875,10 +2877,16 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                           )}
                         </p>
 
-                        {matchedUser.localisation && (
+                        {(matchedUser.localisation ||
+                          matchedUser.departement) && (
                           <p className="mt-0.5 flex items-center gap-1 text-xs text-white/40">
                             <MapPin className="h-3 w-3" />
-                            {matchedUser.localisation}
+                            {[
+                              matchedUser.localisation,
+                              getDepartementLabel(matchedUser.departement),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </p>
                         )}
 
@@ -3043,10 +3051,15 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                         )}
                       </p>
 
-                      {visitor.localisation && (
+                      {(visitor.localisation || visitor.departement) && (
                         <p className="mt-0.5 flex items-center gap-1 text-xs text-white/40">
                           <MapPin className="h-3 w-3" />
-                          {visitor.localisation}
+                          {[
+                            visitor.localisation,
+                            getDepartementLabel(visitor.departement),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </p>
                       )}
                     </div>
