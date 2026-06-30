@@ -746,9 +746,22 @@ UserSchema.virtual("isProfileVisible").get(function (this: IUser) {
  * Dans les routes Stripe webhook, on met donc explicitement isPremium.
  */
 UserSchema.pre<IUser>("save", function () {
-  this.isPremium =
-    this.subscriptionStatus === "active" ||
-    this.subscriptionStatus === "trialing";
+  /**
+   * On ne recalcule isPremium QUE si subscriptionStatus est réellement
+   * concerné par cette sauvegarde (création ou modification explicite).
+   *
+   * Très important : sans cette garde, un .save() sur un document chargé
+   * partiellement (ex. login par identifiants qui ne sélectionne pas
+   * subscriptionStatus) lirait subscriptionStatus comme undefined et
+   * remettrait isPremium à false en base — alors que l'abonnement est
+   * toujours actif. C'était la cause du badge "Gratuit" au retour de
+   * connexion tant qu'on n'avait pas re-synchronisé avec Stripe.
+   */
+  if (this.isNew || this.isModified("subscriptionStatus")) {
+    this.isPremium =
+      this.subscriptionStatus === "active" ||
+      this.subscriptionStatus === "trialing";
+  }
 
   /**
    * Si le profil est marqué comme complété mais qu'aucune date n'existe,

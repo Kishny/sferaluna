@@ -250,8 +250,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          user.lastLoginAt = new Date();
-          await user.save();
+          // Mise à jour atomique : on ne déclenche pas le hook pre-save sur un
+          // document chargé partiellement (qui remettrait isPremium à false).
+          await User.updateOne(
+            { _id: user._id },
+            { $set: { lastLoginAt: new Date() } }
+          );
         } catch (error) {
           console.warn("Impossible de mettre à jour lastLoginAt :", error);
         }
@@ -324,13 +328,20 @@ export const authOptions: NextAuthOptions = {
             lastLoginAt: new Date(),
           });
         } else {
-          existingUser.name = user.name || existingUser.name;
-          existingUser.image = user.image || existingUser.image;
-          existingUser.provider = oauthProvider;
-          existingUser.emailVerified = true;
-          existingUser.lastLoginAt = new Date();
-
-          await existingUser.save();
+          // Mise à jour atomique : ne touche pas aux champs d'abonnement et ne
+          // déclenche pas le hook pre-save (préserve isPremium / plan).
+          await User.updateOne(
+            { _id: existingUser._id },
+            {
+              $set: {
+                name: user.name || existingUser.name,
+                image: user.image || existingUser.image,
+                provider: oauthProvider,
+                emailVerified: true,
+                lastLoginAt: new Date(),
+              },
+            }
+          );
         }
       }
 
