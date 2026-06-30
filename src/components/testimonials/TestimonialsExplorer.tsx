@@ -31,27 +31,25 @@ export default function TestimonialsExplorer({
   const [visible, setVisible] = useState(pageSize);
 
   const sorted = useMemo(() => {
-    const list = [...testimonials];
+    const byRecent = (a: PublicTestimonial, b: PublicTestimonial) =>
+      new Date(b.createdAt || 0).getTime() -
+      new Date(a.createdAt || 0).getTime();
 
-    if (sort === "rating") {
-      list.sort((a, b) => {
-        const diff = (b.rating || 0) - (a.rating || 0);
-        if (diff !== 0) return diff;
-        // À note égale, on garde les plus récents devant.
-        return (
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-        );
-      });
-    } else {
-      list.sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-      );
-    }
+    const byRating = (a: PublicTestimonial, b: PublicTestimonial) => {
+      const diff = (b.rating || 0) - (a.rating || 0);
+      return diff !== 0 ? diff : byRecent(a, b);
+    };
 
-    return list;
+    const compare = sort === "rating" ? byRating : byRecent;
+
+    // Les témoignages "À la une" restent toujours en tête, puis on applique
+    // le tri choisi à l'intérieur de chaque groupe.
+    return [...testimonials].sort((a, b) => {
+      const fa = a.featured ? 1 : 0;
+      const fb = b.featured ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return compare(a, b);
+    });
   }, [testimonials, sort]);
 
   const shown = sorted.slice(0, visible);

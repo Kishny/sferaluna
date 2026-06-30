@@ -13,7 +13,15 @@ async function requireAdmin() {
   return user;
 }
 
-/** PATCH /api/admin/testimonials/[id] — approuver ou rejeter */
+/**
+ * PATCH /api/admin/testimonials/[id]
+ *
+ * Permet de :
+ * - changer le statut (approuver / rejeter / remettre en attente) ;
+ * - épingler / désépingler le témoignage (featured).
+ *
+ * Body accepté : { status? } et/ou { featured? }
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,19 +30,32 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: "Non autorisé." }, { status: 403 });
 
   const { id } = await params;
-  const { status } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const { status, featured } = body ?? {};
 
-  if (!["approved", "rejected", "pending"].includes(status)) {
-    return NextResponse.json({ error: "Statut invalide." }, { status: 400 });
+  const update: Record<string, unknown> = {};
+
+  if (status !== undefined) {
+    if (!["approved", "rejected", "pending"].includes(status)) {
+      return NextResponse.json({ error: "Statut invalide." }, { status: 400 });
+    }
+    update.status = status;
+  }
+
+  if (featured !== undefined) {
+    update.featured = Boolean(featured);
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json(
+      { error: "Aucune modification fournie." },
+      { status: 400 }
+    );
   }
 
   await connectDB();
 
-  const updated = await Testimonial.findByIdAndUpdate(
-    id,
-    { status },
-    { new: true }
-  );
+  const updated = await Testimonial.findByIdAndUpdate(id, update, { new: true });
 
   if (!updated) {
     return NextResponse.json({ error: "Témoignage introuvable." }, { status: 404 });

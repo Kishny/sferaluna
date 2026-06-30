@@ -211,6 +211,7 @@ export default function AdminPage() {
       content: string;
       rating?: number;
       showAvatar?: boolean;
+      featured?: boolean;
       status: string;
       createdAt: string;
     }[]
@@ -493,6 +494,30 @@ export default function AdminPage() {
             prev.map((t) => (t._id === id ? { ...t, status: action } : t))
           );
         }
+      }
+    } catch {
+      // Silence volontaire.
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTestimonialFeatured = async (id: string, featured: boolean) => {
+    setActionLoading(id + "featured");
+
+    try {
+      const res = await fetch(`/api/admin/testimonials/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featured }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTestimonials((prev) =>
+          prev.map((t) => (t._id === id ? { ...t, featured } : t))
+        );
       }
     } catch {
       // Silence volontaire.
@@ -1314,6 +1339,26 @@ export default function AdminPage() {
                       className="rounded-lg border border-orange-400/30 bg-orange-500/20 px-3 py-1.5 text-xs font-medium text-orange-300 transition hover:bg-orange-500/30 disabled:opacity-50"
                     >
                       {actionLoading === t._id + "rejected" ? "…" : "✕ Rejeter"}
+                    </button>
+                  )}
+
+                  {t.status === "approved" && (
+                    <button
+                      onClick={() =>
+                        handleTestimonialFeatured(t._id, !t.featured)
+                      }
+                      disabled={actionLoading === t._id + "featured"}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+                        t.featured
+                          ? "border-amber-400/40 bg-amber-400/20 text-amber-200 hover:bg-amber-400/30"
+                          : "border-white/15 bg-white/5 text-white/60 hover:bg-white/10"
+                      }`}
+                    >
+                      {actionLoading === t._id + "featured"
+                        ? "…"
+                        : t.featured
+                          ? "⭐ Épinglé"
+                          : "☆ Épingler"}
                     </button>
                   )}
 

@@ -13,6 +13,7 @@ export interface ITestimonial extends Document {
   rating: number; // note 1-5 étoiles
   avatar?: string; // snapshot de la photo de profil au moment de la soumission
   showAvatar: boolean; // consentement explicite pour afficher la photo
+  featured: boolean; // mis en avant / épinglé par un admin
   status: TestimonialStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -62,6 +63,11 @@ const TestimonialSchema = new Schema<ITestimonial>(
     showAvatar: {
       type: Boolean,
       default: false,
+    },
+    featured: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     status: {
       type: String,

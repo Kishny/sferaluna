@@ -12,6 +12,7 @@ export interface PublicTestimonial {
   content: string;
   rating: number;
   avatar?: string | null;
+  featured?: boolean;
   createdAt?: string;
 }
 
@@ -30,17 +31,28 @@ export default function TestimonialCard({
   testimonial: PublicTestimonial;
   className?: string;
 }) {
-  const { authorName, age, city, content, rating, avatar } = testimonial;
+  const { authorName, age, city, content, rating, avatar, featured } =
+    testimonial;
   const initial = authorName?.[0]?.toUpperCase() ?? "L";
 
   return (
     <figure
-      className={`relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#E8E0FF] bg-white p-5 shadow-[0_10px_30px_-12px_rgba(142,122,181,0.3)] sm:p-6 ${className}`}
+      className={`relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white p-5 sm:p-6 ${
+        featured
+          ? "border-amber-300/60 shadow-[0_12px_34px_-12px_rgba(245,158,11,0.35)] ring-1 ring-amber-300/40"
+          : "border-[#E8E0FF] shadow-[0_10px_30px_-12px_rgba(142,122,181,0.3)]"
+      } ${className}`}
     >
       {/* Guillemet décoratif */}
       <span className="pointer-events-none absolute right-4 top-2 select-none text-5xl text-[#8E7AB5]/10 sm:text-6xl">
         &quot;
       </span>
+
+      {featured && (
+        <span className="relative z-10 mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-sm">
+          ⭐ À la une
+        </span>
+      )}
 
       <StarRating value={rating} readOnly size={16} className="relative z-10 mb-3" />
 

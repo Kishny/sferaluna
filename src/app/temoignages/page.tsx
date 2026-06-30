@@ -34,9 +34,11 @@ async function getApprovedTestimonials(): Promise<PublicTestimonial[]> {
     await connectDB();
 
     const docs = await Testimonial.find({ status: "approved" })
-      .sort({ createdAt: -1 })
+      .sort({ featured: -1, createdAt: -1 })
       .limit(300)
-      .select("authorName age city content rating avatar showAvatar createdAt")
+      .select(
+        "authorName age city content rating avatar showAvatar featured createdAt"
+      )
       .lean();
 
     return docs.map((t: any) => ({
@@ -47,6 +49,7 @@ async function getApprovedTestimonials(): Promise<PublicTestimonial[]> {
       content: t.content,
       rating: t.rating ?? 5,
       avatar: t.showAvatar ? t.avatar || null : null,
+      featured: Boolean(t.featured),
       createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : undefined,
     }));
   } catch (error) {

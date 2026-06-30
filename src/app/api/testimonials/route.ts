@@ -22,9 +22,11 @@ export async function GET() {
     await connectDB();
 
     const docs = await Testimonial.find({ status: "approved" })
-      .sort({ createdAt: -1 })
+      .sort({ featured: -1, createdAt: -1 })
       .limit(30)
-      .select("authorName age city content rating avatar showAvatar createdAt")
+      .select(
+        "authorName age city content rating avatar showAvatar featured createdAt"
+      )
       .lean();
 
     // On n'expose l'avatar que si le consentement est explicite.
@@ -36,6 +38,7 @@ export async function GET() {
       content: t.content,
       rating: t.rating ?? 5,
       avatar: t.showAvatar ? t.avatar || null : null,
+      featured: Boolean(t.featured),
       createdAt: t.createdAt,
     }));
 
