@@ -66,6 +66,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
+import TestimonialForm from "@/components/testimonials/TestimonialForm";
 
 // ─────────────────────────────────────────────
 // Types
@@ -2546,6 +2547,10 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
     "matches"
   );
 
+  // Incitation témoignage : visible après un 1er match si pas encore témoigné.
+  const [hasTestimonial, setHasTestimonial] = useState<boolean | null>(null);
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
+
   const premiumActive = isPremiumActive(user);
 
   useEffect(() => {
@@ -2559,6 +2564,19 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
       .catch(() => {})
       .finally(() => setLoadingMatches(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/testimonials/me", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success) setHasTestimonial(Boolean(data.hasTestimonial));
+      })
+      .catch(() => {});
+  }, []);
+
+  // On invite à témoigner une fois la membre "active" (au moins 1 match).
+  const showTestimonialBanner =
+    !loadingMatches && matches.length > 0 && hasTestimonial === false;
 
   useEffect(() => {
     if (!premiumActive) {
@@ -2597,6 +2615,81 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
           Explorer
         </Link>
       </div>
+
+      {/* Incitation à laisser un témoignage (membre active, pas encore témoigné) */}
+      <AnimatePresence>
+        {showTestimonialBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-300/30 bg-gradient-to-r from-amber-400/10 via-pink-500/10 to-purple-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">💜</span>
+                <div>
+                  <p className="text-sm font-bold text-white">
+                    Tu vis l&apos;aventure SferaLuna ?
+                  </p>
+                  <p className="text-xs text-white/60">
+                    Partage ton expérience pour rassurer les nouvelles membres.
+                    Visible après validation.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTestimonialModal(true)}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+              >
+                <Star className="h-4 w-4" />
+                Témoigner
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal formulaire témoignage */}
+      <AnimatePresence>
+        {showTestimonialModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={() => setShowTestimonialModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setShowTestimonialModal(false)}
+                className="absolute right-3 top-3 z-10 rounded-full bg-white/90 p-1.5 text-[#5B4B8A] shadow transition hover:bg-white"
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <TestimonialForm
+                profileImage={user.image || null}
+                onSuccess={() => {
+                  setHasTestimonial(true);
+                  setTimeout(() => setShowTestimonialModal(false), 1800);
+                }}
+                onCancel={() => setShowTestimonialModal(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-2 gap-3">
         <button

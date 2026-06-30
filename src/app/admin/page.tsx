@@ -207,7 +207,10 @@ export default function AdminPage() {
       _id: string;
       authorName: string;
       age?: number;
+      city?: string;
       content: string;
+      rating?: number;
+      showAvatar?: boolean;
       status: string;
       createdAt: string;
     }[]
@@ -1239,6 +1242,27 @@ export default function AdminPage() {
                       {t.authorName}
                       {t.age ? `, ${t.age} ans` : ""}
                     </span>
+
+                    {t.city && (
+                      <span className="ml-2 text-xs text-purple-300">
+                        📍 {t.city}
+                      </span>
+                    )}
+
+                    {typeof t.rating === "number" && (
+                      <span className="ml-2 text-xs text-amber-300">
+                        {"★".repeat(t.rating)}
+                        <span className="text-white/20">
+                          {"★".repeat(5 - t.rating)}
+                        </span>
+                      </span>
+                    )}
+
+                    {t.showAvatar && (
+                      <span className="ml-2 text-xs text-white/40">
+                        📷 photo
+                      </span>
+                    )}
 
                     <span className="ml-3 text-xs text-white/40">
                       {formatDate(t.createdAt)}

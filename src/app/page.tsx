@@ -14,6 +14,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import Image from 'next/image';
 import HexagonSix from '@/components/icons/HexagonSix';
+import TestimonialsCarousel from '@/components/testimonials/TestimonialsCarousel';
 
 /**
  * Type des statistiques affichées sur la homepage.
@@ -1285,6 +1286,32 @@ export default function Home() {
                 </p>
               </div>
             </motion.div>
+          </div>
+        </section>
+
+        {/* Témoignages — preuve sociale juste avant la conversion */}
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#F9F7FC] to-[#F0ECFF] px-4 py-7 sm:px-6 sm:py-14">
+          <OrbitGlow className="right-[-8%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
+
+          <div className="relative z-10 mx-auto max-w-6xl">
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              className="mb-5 text-center sm:mb-10"
+            >
+              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-4xl md:text-5xl">
+                Elles parlent de{' '}
+                <span className="text-[#8E7AB5]">SferaLuna</span>
+              </h2>
+
+              <p className="mx-auto mt-1 max-w-2xl text-xs leading-relaxed text-[#666] sm:mt-3 sm:text-xl">
+                Des vrais mots, de vraies femmes. La confiance se construit
+                ensemble.
+              </p>
+            </motion.div>
+
+            <TestimonialsCarousel />
           </div>
         </section>
 

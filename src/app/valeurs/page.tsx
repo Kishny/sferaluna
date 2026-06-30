@@ -34,6 +34,8 @@ import Link from "next/link";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import StarRating from "@/components/testimonials/StarRating";
+import TestimonialSubmitSection from "@/components/testimonials/TestimonialSubmitSection";
 
 import {
   CheckCircle,
@@ -67,7 +69,10 @@ interface Testimonial {
   _id: string;
   authorName: string;
   age?: number;
+  city?: string;
   content: string;
+  rating?: number;
+  avatar?: string | null;
   createdAt: string;
 }
 
@@ -363,16 +368,8 @@ export default function ValeursPage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialIdx, setTestimonialIdx] = useState(0);
 
-  /**
-   * Formulaire témoignage.
-   */
-  const [showForm, setShowForm] = useState(false);
-  const [formContent, setFormContent] = useState("");
-  const [formAge, setFormAge] = useState("");
-  const [formStatus, setFormStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [formError, setFormError] = useState("");
+  // Le formulaire de témoignage est désormais géré par le composant partagé
+  // <TestimonialSubmitSection /> (session-aware, note + ville + photo opt-in).
 
   /**
    * Effets scroll du hero.
@@ -401,45 +398,6 @@ export default function ValeursPage() {
       })
       .catch(() => {});
   }, []);
-
-  /**
-   * Envoi d'un témoignage.
-   * L'API est conservée telle quelle.
-   */
-  const handleTestimonialSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    setFormStatus("loading");
-    setFormError("");
-
-    try {
-      const response = await fetch("/api/testimonials", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: formContent,
-          age: formAge ? parseInt(formAge, 10) : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setFormStatus("success");
-        setFormContent("");
-        setFormAge("");
-        setShowForm(false);
-      } else {
-        setFormError(data.error || "Une erreur est survenue.");
-        setFormStatus("error");
-      }
-    } catch {
-      setFormError("Une erreur est survenue. Réessaie.");
-      setFormStatus("error");
-    }
-  };
 
   const currentTestimonial = testimonials[testimonialIdx];
 
@@ -881,13 +839,29 @@ export default function ValeursPage() {
                       &quot;
                     </div>
 
+                    <StarRating
+                      value={currentTestimonial.rating ?? 5}
+                      readOnly
+                      size={18}
+                      className="relative z-10 mb-3"
+                    />
+
                     <p className="relative z-10 mb-5 text-sm font-light leading-relaxed text-[#1C1C1C] sm:mb-8 sm:text-xl">
                       « {currentTestimonial.content} »
                     </p>
 
                     <div className="relative z-10 flex items-center gap-3 sm:gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-base font-bold text-white sm:h-12 sm:w-12 sm:text-lg">
-                        {currentTestimonial.authorName[0].toUpperCase()}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-base font-bold text-white sm:h-12 sm:w-12 sm:text-lg">
+                        {currentTestimonial.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={currentTestimonial.avatar}
+                            alt={currentTestimonial.authorName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          currentTestimonial.authorName[0].toUpperCase()
+                        )}
                       </div>
 
                       <div>
@@ -899,6 +873,9 @@ export default function ValeursPage() {
                         </div>
 
                         <div className="text-xs text-[#666] sm:text-sm">
+                          {currentTestimonial.city
+                            ? `${currentTestimonial.city} · `
+                            : ""}
                           Membre SferaLuna
                         </div>
                       </div>
@@ -973,124 +950,8 @@ export default function ValeursPage() {
               </motion.div>
             )}
 
-            {/* Formulaire de soumission */}
-            {sessionUser?.id && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="mt-5 sm:mt-8"
-              >
-                {!showForm && formStatus !== "success" && (
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowForm(true)}
-                      className="inline-flex items-center gap-2 rounded-full border border-[#E8E0FF] bg-white px-5 py-2.5 text-sm font-medium text-[#5B4B8A] transition-all hover:border-[#8E7AB5] hover:shadow-md sm:px-6 sm:py-3"
-                    >
-                      <MessageSquarePlus size={16} />
-                      Partager mon expérience
-                    </button>
-                  </div>
-                )}
-
-                {formStatus === "success" && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700 sm:gap-3 sm:p-4"
-                  >
-                    <CheckCircle size={18} />
-                    Merci ! Ton témoignage sera visible après validation. 💜
-                  </motion.div>
-                )}
-
-                {showForm && formStatus !== "success" && (
-                  <motion.form
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onSubmit={handleTestimonialSubmit}
-                    className="rounded-3xl border border-[#E8E0FF] bg-white p-4 shadow-lg sm:p-6"
-                  >
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#5B4B8A] sm:mb-4 sm:text-base">
-                      <MessageSquarePlus size={18} />
-                      Partage ton expérience
-                    </h3>
-
-                    <textarea
-                      value={formContent}
-                      onChange={(event) => setFormContent(event.target.value)}
-                      placeholder="Raconte-nous ton expérience… 20 à 500 caractères."
-                      rows={3}
-                      maxLength={500}
-                      className="mb-1 w-full resize-none rounded-xl border border-[#E8E0FF] px-3 py-2.5 text-sm text-[#1C1C1C] placeholder-[#999] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
-                    />
-
-                    <p className="mb-3 text-right text-xs text-[#999] sm:mb-4">
-                      {formContent.length}/500
-                    </p>
-
-                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                      <input
-                        type="number"
-                        value={formAge}
-                        onChange={(event) => setFormAge(event.target.value)}
-                        placeholder="Âge optionnel"
-                        min={18}
-                        max={99}
-                        className="w-full rounded-xl border border-[#E8E0FF] px-3 py-2 text-sm text-[#1C1C1C] placeholder-[#999] outline-none focus:border-[#8E7AB5] sm:w-44 sm:px-4"
-                      />
-
-                      <div className="flex items-center gap-1 text-xs text-[#999]">
-                        <Clock size={12} />
-                        Visible après validation
-                      </div>
-                    </div>
-
-                    {formStatus === "error" && (
-                      <p className="mb-3 text-sm text-red-500">{formError}</p>
-                    )}
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-                      <button
-                        type="submit"
-                        disabled={
-                          formStatus === "loading" ||
-                          formContent.trim().length < 20
-                        }
-                        className="rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg disabled:opacity-50 sm:px-6"
-                      >
-                        {formStatus === "loading" ? "Envoi…" : "Envoyer"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForm(false);
-                          setFormError("");
-                          setFormStatus("idle");
-                        }}
-                        className="rounded-full border border-[#E8E0FF] px-5 py-2.5 text-sm text-[#666] transition-all hover:border-[#8E7AB5] sm:px-6"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </motion.form>
-                )}
-              </motion.div>
-            )}
-
-            {!sessionUser?.id && (
-              <p className="mt-4 text-center text-xs text-[#999] sm:mt-6 sm:text-sm">
-                <Link
-                  href="/auth?mode=login"
-                  className="text-[#8E7AB5] underline underline-offset-2 hover:text-[#5B4B8A]"
-                >
-                  Connecte-toi
-                </Link>{" "}
-                pour partager ton expérience.
-              </p>
-            )}
+            {/* Formulaire de soumission partagé (note + ville + photo opt-in) */}
+            <TestimonialSubmitSection />
           </div>
         </section>
 

@@ -73,6 +73,11 @@ const publicPages = [
     priority: 0.8,
   },
   {
+    path: "/temoignages",
+    changeFrequency: "weekly",
+    priority: 0.8,
+  },
+  {
     path: "/histoire",
     changeFrequency: "monthly",
     priority: 0.75,

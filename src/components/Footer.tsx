@@ -51,6 +51,7 @@ export default function Footer() {
         { label: 'Accueil', href: '/' },
         { label: 'Notre histoire', href: '/histoire' },
         { label: 'Valeurs', href: '/valeurs' },
+        { label: 'Témoignages', href: '/temoignages' },
         { label: 'Équipe', href: '/equipe' },
       ],
     },
