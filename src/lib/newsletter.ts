@@ -132,10 +132,17 @@ export async function sendNewsletterBroadcast(
       html,
     });
 
+    if (created.error) {
+      return {
+        ok: false,
+        error: `Resend (création) : ${created.error.message}`,
+      };
+    }
+
     const broadcastId = created.data?.id;
 
     if (!broadcastId) {
-      return { ok: false, error: "Création du broadcast échouée." };
+      return { ok: false, error: "Création du broadcast : réponse vide de Resend." };
     }
 
     const sent = await resend.broadcasts.send(broadcastId);
