@@ -14,6 +14,7 @@ import {
   Facebook,
   MessageCircle,
 } from 'lucide-react';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 /**
  * Type pour les groupes de liens du footer.
@@ -274,6 +275,23 @@ export default function Footer() {
               <MessageCircle size={14} />
               Contact
             </Link>
+          </div>
+        </div>
+
+        {/* Newsletter */}
+        <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 sm:mt-6 sm:p-5">
+          <div className="sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div className="mb-3 sm:mb-0">
+              <p className="flex items-center gap-2 text-sm font-bold text-white">
+                <Mail size={15} className="text-[#D9B8FF]" />
+                La newsletter SferaLuna
+              </p>
+              <p className="mt-1 text-xs text-white/60">
+                Conseils, événements et nouveautés en avant-première.
+              </p>
+            </div>
+
+            <NewsletterSignup variant="dark" className="sm:w-[22rem]" />
           </div>
         </div>
 

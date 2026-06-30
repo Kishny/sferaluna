@@ -15,6 +15,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import HexagonSix from '@/components/icons/HexagonSix';
 import TestimonialsCarousel from '@/components/testimonials/TestimonialsCarousel';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 /**
  * Type des statistiques affichées sur la homepage.
@@ -1454,6 +1455,10 @@ export default function Home() {
             <p className="mt-4 text-xs text-[#999] sm:mt-6 sm:text-sm">
               Laisse-nous ton email pour être notifiée en première.
             </p>
+
+            <div className="mx-auto mt-4 max-w-md">
+              <NewsletterSignup variant="light" />
+            </div>
           </motion.div>
         </section>
       </main>
