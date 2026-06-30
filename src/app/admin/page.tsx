@@ -1274,14 +1274,12 @@ export default function AdminPage() {
                       </span>
                     )}
 
-                    {typeof t.rating === "number" && (
-                      <span className="ml-2 text-xs text-amber-300">
-                        {"★".repeat(t.rating)}
-                        <span className="text-white/20">
-                          {"★".repeat(5 - t.rating)}
-                        </span>
+                    <span className="ml-2 text-xs text-amber-300">
+                      {"★".repeat(t.rating ?? 5)}
+                      <span className="text-white/20">
+                        {"★".repeat(5 - (t.rating ?? 5))}
                       </span>
-                    )}
+                    </span>
 
                     {t.showAvatar && (
                       <span className="ml-2 text-xs text-white/40">
