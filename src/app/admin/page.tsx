@@ -69,7 +69,13 @@ interface AdminUser {
   identityVerificationStatus: string;
 }
 
-type TabId = "stats" | "users" | "reports" | "testimonials" | "tools";
+type TabId =
+  | "stats"
+  | "users"
+  | "reports"
+  | "testimonials"
+  | "newsletter"
+  | "tools";
 
 type ResetTarget = "messages" | "matches" | "visits" | "posts" | "journal";
 
@@ -218,6 +224,66 @@ export default function AdminPage() {
   >([]);
   const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(false);
 
+  // Newsletter
+  const [newsletterStats, setNewsletterStats] = useState<{
+    subscriberCount: number;
+    audienceConfigured: boolean;
+  } | null>(null);
+  const [nlSubject, setNlSubject] = useState("");
+  const [nlContent, setNlContent] = useState("");
+  const [nlStatus, setNlStatus] = useState<
+    "idle" | "sending" | "success" | "error"
+  >("idle");
+  const [nlMessage, setNlMessage] = useState("");
+
+  const fetchNewsletterStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/newsletter");
+      const data = await res.json();
+      if (data.success) {
+        setNewsletterStats({
+          subscriberCount: data.subscriberCount ?? 0,
+          audienceConfigured: Boolean(data.audienceConfigured),
+        });
+      }
+    } catch {
+      // silencieux
+    }
+  }, []);
+
+  const handleSendNewsletter = async () => {
+    if (nlSubject.trim().length < 3 || nlContent.trim().length < 20) {
+      setNlStatus("error");
+      setNlMessage("Objet (3+) et contenu (20+) requis.");
+      return;
+    }
+
+    setNlStatus("sending");
+    setNlMessage("");
+
+    try {
+      const res = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: nlSubject, content: nlContent }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setNlStatus("success");
+        setNlMessage("Newsletter envoyée à l'audience ✅");
+        setNlSubject("");
+        setNlContent("");
+      } else {
+        setNlStatus("error");
+        setNlMessage(data.error ?? "Envoi échoué.");
+      }
+    } catch {
+      setNlStatus("error");
+      setNlMessage("Erreur de connexion.");
+    }
+  };
+
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -340,6 +406,12 @@ export default function AdminPage() {
       fetchTestimonials();
     }
   }, [status, activeTab, fetchTestimonials]);
+
+  useEffect(() => {
+    if (status === "authenticated" && activeTab === "newsletter") {
+      fetchNewsletterStats();
+    }
+  }, [status, activeTab, fetchNewsletterStats]);
 
   useEffect(() => {
     if (status === "authenticated" && activeTab === "reports") fetchReports();
@@ -544,6 +616,7 @@ export default function AdminPage() {
     { id: "users", label: "👥 Users" },
     { id: "reports", label: "🚨 Reports" },
     { id: "testimonials", label: "💬 Avis" },
+    { id: "newsletter", label: "📨 Newsletter" },
     { id: "tools", label: "🛠 Outils" },
   ];
 
@@ -1502,6 +1575,104 @@ export default function AdminPage() {
                 )}
               </article>
             ))}
+          </motion.section>
+        )}
+
+        {/* Newsletter */}
+        {activeTab === "newsletter" && (
+          <motion.section
+            key="newsletter"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  📨 Newsletter & actualités
+                </p>
+                <p className="text-xs text-white/50">
+                  {newsletterStats
+                    ? `${newsletterStats.subscriberCount} abonnée(s)`
+                    : "Chargement…"}
+                </p>
+              </div>
+
+              <button
+                onClick={fetchNewsletterStats}
+                className="flex items-center gap-1 text-xs text-white/40 transition hover:text-white"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Actualiser
+              </button>
+            </div>
+
+            {newsletterStats && !newsletterStats.audienceConfigured && (
+              <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-xs text-yellow-100">
+                ⚠️ Audience Resend non configurée. Crée une Audience dans le
+                dashboard Resend puis renseigne{" "}
+                <code className="rounded bg-black/30 px-1">RESEND_AUDIENCE_ID</code>{" "}
+                dans les variables d&apos;environnement Vercel pour activer
+                l&apos;envoi.
+              </div>
+            )}
+
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-white/60">
+                  Objet
+                </label>
+                <input
+                  type="text"
+                  value={nlSubject}
+                  onChange={(e) => setNlSubject(e.target.value)}
+                  placeholder="Les nouveautés du mois sur SferaLuna 💜"
+                  maxLength={120}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-purple-400/50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-white/60">
+                  Message
+                </label>
+                <textarea
+                  value={nlContent}
+                  onChange={(e) => setNlContent(e.target.value)}
+                  rows={8}
+                  placeholder={
+                    "Écris ton actualité ici…\n\nSaute une ligne pour séparer les paragraphes. Un lien de désabonnement est ajouté automatiquement."
+                  }
+                  className="w-full resize-y rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-purple-400/50"
+                />
+              </div>
+
+              {nlMessage && (
+                <p
+                  className={`text-xs ${
+                    nlStatus === "success"
+                      ? "text-green-300"
+                      : "text-red-300"
+                  }`}
+                >
+                  {nlMessage}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] text-white/40">
+                  L&apos;envoi part vers toute l&apos;audience Resend.
+                </p>
+
+                <button
+                  onClick={handleSendNewsletter}
+                  disabled={nlStatus === "sending"}
+                  className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {nlStatus === "sending" ? "Envoi…" : "Envoyer la newsletter"}
+                </button>
+              </div>
+            </div>
           </motion.section>
         )}
 

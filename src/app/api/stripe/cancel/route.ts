@@ -12,6 +12,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { stripe } from "@/lib/stripe";
+import { sendSubscriptionCanceledEmail } from "@/lib/emails";
 
 export const runtime = "nodejs";
 
@@ -46,6 +47,17 @@ export async function POST() {
     const periodEnd = typeof (subscription as any).current_period_end === "number"
       ? new Date((subscription as any).current_period_end * 1000)
       : null;
+
+    // Email de confirmation de résiliation (non bloquant).
+    try {
+      await sendSubscriptionCanceledEmail(
+        user.email,
+        user.pseudonyme || "membre Luna",
+        periodEnd ?? user.premiumExpiresAt ?? null
+      );
+    } catch (mailErr) {
+      console.warn("Email résiliation échoué :", mailErr);
+    }
 
     return NextResponse.json({
       success: true,

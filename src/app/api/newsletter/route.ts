@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { NewsletterSubscriber } from "@/models/NewsletterSubscriber";
+import { addNewsletterContact } from "@/lib/newsletter";
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +28,9 @@ export async function POST(req: Request) {
     }
 
     await NewsletterSubscriber.create({ email: email.toLowerCase().trim() });
+
+    // Synchronisation vers l'Audience Resend (non bloquant).
+    await addNewsletterContact(email);
 
     // Envoi email de bienvenue newsletter via Resend (non-bloquant)
     try {

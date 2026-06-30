@@ -6,6 +6,24 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { connectDB } from "@/lib/db";
 import { User, type SubscriptionStatus, type UserPlan } from "@/models/User";
+import {
+  sendPaymentSuccessEmail,
+  sendPaymentFailedEmail,
+} from "@/lib/emails";
+
+/**
+ * Libellés lisibles des plans, pour les emails transactionnels.
+ */
+const PLAN_LABELS: Record<string, string> = {
+  free: "Gratuit",
+  "essential-monthly": "Essentiel",
+  "premium-monthly": "Premium",
+  "elite-monthly": "Elite",
+};
+
+function planLabel(plan?: string | null): string {
+  return (plan && PLAN_LABELS[plan]) || "Premium";
+}
 
 /**
  * Important pour Stripe Webhook avec Next.js App Router.
@@ -421,7 +439,7 @@ export async function POST(req: NextRequest) {
             ? new Date((invoice as any).period_end * 1000)
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-          await User.findOneAndUpdate(
+          const paidUser = await User.findOneAndUpdate(
             { stripeCustomerId: customerId },
             {
               $set: {
@@ -432,7 +450,8 @@ export async function POST(req: NextRequest) {
                 subscriptionCancelAtPeriodEnd: false,
                 subscriptionPaused: false,
               },
-            }
+            },
+            { new: true }
           );
 
           console.log("✅ Renouvellement Stripe payé :", {
@@ -440,6 +459,20 @@ export async function POST(req: NextRequest) {
             invoiceId: invoice.id,
             periodEnd: periodEnd.toISOString(),
           });
+
+          // Email de confirmation (non bloquant).
+          if (paidUser?.email) {
+            try {
+              await sendPaymentSuccessEmail(
+                paidUser.email,
+                paidUser.pseudonyme || "membre Luna",
+                planLabel(paidUser.plan),
+                periodEnd
+              );
+            } catch (mailErr) {
+              console.warn("Email paiement confirmé échoué :", mailErr);
+            }
+          }
         }
 
         break;
@@ -450,15 +483,28 @@ export async function POST(req: NextRequest) {
         const customerIdFailed = invoiceFailed.customer as string;
 
         if (customerIdFailed) {
-          await User.findOneAndUpdate(
+          const failedUser = await User.findOneAndUpdate(
             { stripeCustomerId: customerIdFailed },
-            { $set: { subscriptionStatus: "past_due" } }
+            { $set: { subscriptionStatus: "past_due" } },
+            { new: true }
           );
 
           console.warn("⚠️ Paiement Stripe échoué :", {
             customerId: customerIdFailed,
             invoiceId: invoiceFailed.id,
           });
+
+          // Email d'alerte (non bloquant).
+          if (failedUser?.email) {
+            try {
+              await sendPaymentFailedEmail(
+                failedUser.email,
+                failedUser.pseudonyme || "membre Luna"
+              );
+            } catch (mailErr) {
+              console.warn("Email échec paiement échoué :", mailErr);
+            }
+          }
         }
 
         break;

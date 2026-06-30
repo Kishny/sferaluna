@@ -147,6 +147,9 @@ export interface IUser extends Document {
   lastLoginAt?: Date | null;
   lastPaymentAt?: Date | null;
 
+  // Dernier email de rappel de renouvellement envoyé (anti-doublon cron).
+  renewalReminderSentAt?: Date | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -597,6 +600,15 @@ const UserSchema = new Schema<IUser>(
      * Date du dernier paiement confirmé.
      */
     lastPaymentAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Date du dernier email de rappel de renouvellement.
+     * Sert au cron J-3 pour éviter d'envoyer plusieurs rappels par cycle.
+     */
+    renewalReminderSentAt: {
       type: Date,
       default: null,
     },

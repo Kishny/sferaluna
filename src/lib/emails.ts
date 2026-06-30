@@ -130,3 +130,149 @@ export async function sendWelcomeEmail(
     html,
   });
 }
+
+// ─── Helpers abonnement ───────────────────────────────────────────────────────
+
+function formatDateFr(date?: Date | string | null): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const ACCOUNT_URL = `${APP_URL}/mon-compte?tab=premium`;
+
+// ─── Email : paiement / renouvellement confirmé ───────────────────────────────
+
+export async function sendPaymentSuccessEmail(
+  to: string,
+  pseudonyme: string,
+  planLabel: string,
+  periodEnd?: Date | string | null
+): Promise<void> {
+  const nextDate = formatDateFr(periodEnd);
+
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Paiement confirmé 💜</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">Bonjour ${pseudonyme},</p>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Ton abonnement <strong>${planLabel}</strong> est actif. Merci de faire partie de la communauté SferaLuna !
+    </p>
+    ${
+      nextDate
+        ? `<p style="color:#666;line-height:1.6;margin:0 0 8px;">
+            🔄 Prochain renouvellement automatique : <strong>${nextDate}</strong>.
+          </p>`
+        : ""
+    }
+    <p style="color:#999;font-size:13px;line-height:1.6;margin:0 0 8px;">
+      Tu peux gérer, mettre en pause ou résilier ton abonnement à tout moment depuis ton compte.
+    </p>
+    ${primaryButton("Gérer mon abonnement", ACCOUNT_URL)}
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "💜 Ton abonnement SferaLuna est confirmé",
+    html,
+  });
+}
+
+// ─── Email : échec de paiement ────────────────────────────────────────────────
+
+export async function sendPaymentFailedEmail(
+  to: string,
+  pseudonyme: string
+): Promise<void> {
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Souci avec ton paiement ⚠️</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">Bonjour ${pseudonyme},</p>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Nous n'avons pas pu prélever le renouvellement de ton abonnement SferaLuna. Cela arrive souvent
+      pour une carte expirée ou un plafond atteint.
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 8px;">
+      Pour ne pas perdre ton accès Premium, mets à jour ton moyen de paiement depuis ton compte.
+      Un nouvel essai de prélèvement sera effectué automatiquement.
+    </p>
+    ${primaryButton("Mettre à jour mon paiement", ACCOUNT_URL)}
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "⚠️ Paiement de ton abonnement SferaLuna — action requise",
+    html,
+  });
+}
+
+// ─── Email : résiliation confirmée ────────────────────────────────────────────
+
+export async function sendSubscriptionCanceledEmail(
+  to: string,
+  pseudonyme: string,
+  accessUntil?: Date | string | null
+): Promise<void> {
+  const untilDate = formatDateFr(accessUntil);
+
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Résiliation prise en compte</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">Bonjour ${pseudonyme},</p>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Ton abonnement SferaLuna ne se renouvellera plus.
+      ${
+        untilDate
+          ? `Tu conserves l'accès Premium jusqu'au <strong>${untilDate}</strong>.`
+          : "Tu conserves l'accès Premium jusqu'à la fin de ta période en cours."
+      }
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 8px;">
+      Tu changes d'avis ? Tu peux réactiver ton abonnement à tout moment, sans rien reperdre.
+    </p>
+    ${primaryButton("Réactiver mon abonnement", ACCOUNT_URL)}
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Ton abonnement SferaLuna a été résilié",
+    html,
+  });
+}
+
+// ─── Email : rappel avant renouvellement (J-3) ────────────────────────────────
+
+export async function sendRenewalReminderEmail(
+  to: string,
+  pseudonyme: string,
+  planLabel: string,
+  renewalDate?: Date | string | null
+): Promise<void> {
+  const dateStr = formatDateFr(renewalDate);
+
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Ton abonnement se renouvelle bientôt 🔄</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">Bonjour ${pseudonyme},</p>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Petit rappel amical : ton abonnement <strong>${planLabel}</strong> sera renouvelé automatiquement
+      ${dateStr ? `le <strong>${dateStr}</strong>` : "très bientôt"}.
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 8px;">
+      Tu n'as rien à faire pour continuer à profiter de SferaLuna. Si tu préfères ne pas renouveler,
+      tu peux résilier en un clic depuis ton compte avant cette date.
+    </p>
+    ${primaryButton("Gérer mon abonnement", ACCOUNT_URL)}
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "🔄 Ton abonnement SferaLuna se renouvelle bientôt",
+    html,
+  });
+}
