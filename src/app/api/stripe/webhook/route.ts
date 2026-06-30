@@ -572,6 +572,51 @@ export async function POST(req: NextRequest) {
       }
 
       /**
+       * 7. Vérification d'identité annulée.
+       *
+       * Survient notamment quand un admin annule la session depuis le
+       * dashboard Stripe, ou que la session expire. On repasse la personne
+       * en "failed" pour qu'elle voie le bouton "Recommencer la vérification"
+       * et puisse relancer une nouvelle session. Aucun appareil n'est bloqué.
+       */
+      case "identity.verification_session.canceled": {
+        const verificationSession =
+          event.data.object as Stripe.Identity.VerificationSession;
+
+        const userId = verificationSession.metadata?.userId;
+
+        if (!userId) {
+          console.warn("⚠️ Vérification identité canceled sans userId :", {
+            eventId: event.id,
+            verificationSessionId: verificationSession.id,
+          });
+
+          break;
+        }
+
+        await User.findByIdAndUpdate(
+          userId,
+          {
+            $set: {
+              identityVerified: false,
+              identityVerificationStatus: "failed",
+            },
+          },
+          {
+            new: true,
+            runValidators: true,
+          }
+        );
+
+        console.log("🚫 Vérification identité annulée :", {
+          userId,
+          verificationSessionId: verificationSession.id,
+        });
+
+        break;
+      }
+
+      /**
        * Events Stripe non traités.
        *
        * On répond quand même 200 pour éviter les retries inutiles Stripe.

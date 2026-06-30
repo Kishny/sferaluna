@@ -291,6 +291,26 @@ function InscriptionPageContent() {
   const [isLaunchingVerification, setIsLaunchingVerification] = useState(false);
 
   /**
+   * Détection d'un navigateur intégré à une app (webview Instagram, Facebook,
+   * TikTok, Snapchat, etc.). Ces navigateurs bloquent souvent l'accès à la
+   * caméra, ce qui fait échouer la vérification d'identité Stripe. On avertit
+   * la personne d'ouvrir la page dans Safari ou Chrome.
+   */
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+
+    const ua = navigator.userAgent || "";
+
+    // Tokens typiques des webviews intégrés aux applications.
+    const inAppPatterns =
+      /(FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|TikTok|musical_ly|BytedanceWebview|Trill|Snapchat|LinkedInApp|Pinterest\/|WhatsApp|Messenger|GSA\/)/i;
+
+    setIsInAppBrowser(inAppPatterns.test(ua));
+  }, []);
+
+  /**
    * Statistiques réelles (MongoDB), affichées dans la colonne latérale.
    * Remplacent les chiffres marketing en dur — se mettent à jour
    * automatiquement à chaque inscription, message, match, etc.
@@ -869,6 +889,24 @@ function InscriptionPageContent() {
                         </div>
                       </div>
 
+                      {/* Avertissement navigateur in-app (Instagram, Facebook,
+                          TikTok…) : la caméra y est souvent bloquée. */}
+                      {isInAppBrowser && identityStatus !== "verified" && (
+                        <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                          <span className="shrink-0 text-base">⚠️</span>
+                          <span>
+                            Vous semblez naviguer depuis l&apos;application
+                            d&apos;un réseau social. La caméra peut y être
+                            bloquée et faire échouer la vérification.{" "}
+                            <strong className="font-semibold">
+                              Ouvrez plutôt cette page dans Safari ou Chrome
+                            </strong>{" "}
+                            (menu « … » → « Ouvrir dans le navigateur ») avant de
+                            lancer la vérification.
+                          </span>
+                        </div>
+                      )}
+
                       {identityStatus === "verified" ? (
                         <div className="flex items-center gap-2 rounded-lg border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
                           <Check className="h-4 w-4 shrink-0" />
@@ -897,6 +935,27 @@ function InscriptionPageContent() {
                               ? "Vérification du statut..."
                               : "Rafraîchir le statut"}
                           </button>
+
+                          {/* Filet de sécurité : permettre de relancer une
+                              nouvelle vérification si la personne est bloquée
+                              (page fermée, caméra refusée, souci technique…). */}
+                          <div className="mt-3 border-t border-white/10 pt-3">
+                            <p className="mb-2 text-center text-xs text-white/50">
+                              Un problème, une fenêtre fermée ou un blocage
+                              technique pendant la vérification ?
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={handleStartIdentityVerification}
+                              disabled={isLaunchingVerification}
+                              className="w-full rounded-xl border border-purple-400/40 bg-purple-500/15 py-3 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/25 disabled:opacity-60"
+                            >
+                              {isLaunchingVerification
+                                ? "Préparation..."
+                                : "↻ Recommencer la vérification"}
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <>
@@ -923,7 +982,9 @@ function InscriptionPageContent() {
                           >
                             {isLaunchingVerification
                               ? "Préparation..."
-                              : "Vérifier mon identité maintenant"}
+                              : identityStatus === "failed"
+                                ? "↻ Recommencer la vérification d'identité"
+                                : "Vérifier mon identité maintenant"}
                           </button>
 
                           {!isProfileSaved && (
