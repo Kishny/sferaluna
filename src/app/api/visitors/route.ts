@@ -8,7 +8,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { ProfileVisit, getVisitDay } from "@/models/ProfileVisit";
-import { checkSubscriptionAccess } from "@/lib/subscription/subscription-check";
+import { checkSubscriptionAccess, SubscriptionChecker } from "@/lib/subscription/subscription-check";
+import { sendProfileVisitPush } from "@/lib/push";
 
 /**
  * GET /api/visitors
@@ -311,6 +312,20 @@ export async function POST(req: NextRequest) {
     const visitDay = getVisitDay();
 
     /**
+     * On vérifie l'existence AVANT l'upsert pour savoir s'il s'agit d'une
+     * toute nouvelle visite (première de la journée pour ce couple
+     * visiteuse/visitée) ou d'une simple mise à jour d'une visite déjà
+     * comptabilisée aujourd'hui. Seule une vraie nouvelle visite doit
+     * déclencher une notification push — sinon une utilisatrice qui
+     * recharge plusieurs fois le même profil recevrait un push à chaque fois.
+     */
+    const existingVisitToday = await ProfileVisit.exists({
+      visitorId,
+      visitedId,
+      visitDay,
+    });
+
+    /**
      * Upsert propre.
      *
      * Grâce à l'index unique :
@@ -343,6 +358,39 @@ export async function POST(req: NextRequest) {
         setDefaultsOnInsert: true,
       }
     );
+
+    /**
+     * Notification push de visite de profil.
+     *
+     * Règle métier (voir src/lib/subscription/config.ts) : la feature
+     * "profileVisitors" — savoir qui a visité son profil — est réservée à
+     * premium-monthly et elite-monthly, comme le mode Fantôme. On vérifie
+     * donc le plan de la PERSONNE VISITÉE (pas celle qui visite) avant
+     * d'envoyer le push, pour ne jamais notifier une utilisatrice qui n'a
+     * pas accès à cette fonctionnalité de toute façon.
+     *
+     * Silencieux en cas d'échec — une notification ratée ne doit jamais
+     * casser l'enregistrement de la visite, déjà acquis à ce stade.
+     */
+    if (!existingVisitToday) {
+      try {
+        const visitedChecker = new SubscriptionChecker(visitedId.toString());
+        const canSeeVisitors = await visitedChecker.hasFeature("profileVisitors");
+
+        if (canSeeVisitors) {
+          const visitorProfile = await User.findById(visitorId)
+            .select("pseudonyme")
+            .lean();
+
+          await sendProfileVisitPush({
+            recipientUserId: visitedId.toString(),
+            visitorName: (visitorProfile as { pseudonyme?: string } | null)?.pseudonyme ?? "Quelqu'un",
+          });
+        }
+      } catch (pushErr) {
+        console.warn("Push notification visite de profil échouée :", pushErr);
+      }
+    }
 
     return NextResponse.json(
       {

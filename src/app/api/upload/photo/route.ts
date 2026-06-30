@@ -14,7 +14,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
+import { ModerationLog } from "@/models/ModerationLog";
 import cloudinary from "@/lib/cloudinary";
+import {
+  getModerationUploadOption,
+  evaluateModeration,
+  MODERATION_REJECTION_MESSAGE,
+} from "@/lib/moderation";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
@@ -59,7 +65,7 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const result = await new Promise<{ secure_url: string; public_id: string }>(
+    const result = await new Promise<{ secure_url: string; public_id: string; moderation?: unknown }>(
       (resolve, reject) => {
         cloudinary.uploader
           .upload_stream(
@@ -69,15 +75,31 @@ export async function POST(req: NextRequest) {
                 { width: 800, height: 1000, crop: "fill", gravity: "face" },
               ],
               resource_type: "image",
+              moderation: getModerationUploadOption(),
             },
             (err, res) => {
               if (err || !res) reject(err ?? new Error("Cloudinary upload failed"));
-              else resolve(res as { secure_url: string; public_id: string });
+              else resolve(res as { secure_url: string; public_id: string; moderation?: unknown });
             }
           )
           .end(buffer);
       }
     );
+
+    // Modération automatique : rejet → suppression Cloudinary, jamais ajoutée à User.photos.
+    const verdict = evaluateModeration(result);
+    if (!verdict.approved) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      await ModerationLog.create({
+        userId: user._id,
+        context: "profile_photo",
+        reason: verdict.reason ?? "Contenu rejeté",
+      }).catch(() => {});
+      return NextResponse.json(
+        { success: false, error: MODERATION_REJECTION_MESSAGE },
+        { status: 400 }
+      );
+    }
 
     const updatedUser = await User.findOneAndUpdate(
       { email },

@@ -192,6 +192,8 @@ interface MatchItem {
   matchId: string;
   createdAt: string;
   lastMessageAt: string | null;
+  unreadCount?: number;
+  hasUnreadMessage?: boolean;
   user: MatchUser | null;
 }
 
@@ -335,10 +337,10 @@ const subscriptionLabels: Record<SubscriptionStatus, string> = {
 const tabs: { id: TabId; label: string; emoji: string; icon: ElementType }[] = [
   { id: "dashboard", label: "Accueil", emoji: "🏠", icon: Sparkles },
   { id: "profil", label: "Profil", emoji: "✨", icon: User },
+  { id: "connexions", label: "Intéractions", emoji: "💞", icon: Heart },
   { id: "preferences", label: "Préférences", emoji: "💫", icon: Heart },
   { id: "premium", label: "Premium", emoji: "👑", icon: Crown },
   { id: "securite", label: "Sécurité", emoji: "🔒", icon: Shield },
-  { id: "connexions", label: "Connexions", emoji: "💞", icon: Heart },
 ];
 
 // ─────────────────────────────────────────────
@@ -582,6 +584,43 @@ function MonCompteContent() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   /**
+   * Nombre total de notifications non lues (messages + matches + visites).
+   * Sert à afficher la pastille lumineuse sur l'onglet "Intéractions".
+   */
+  const [notifCount, setNotifCount] = useState(0);
+
+  /**
+   * Récupère le nombre de notifications non lues sans les marquer comme lues.
+   * Le marquage "lu" se fait uniquement quand on ouvre l'onglet Intéractions.
+   */
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setNotifCount(typeof data.total === "number" ? data.total : 0);
+      }
+    } catch {
+      // Silencieux : une erreur de notifications ne doit pas bloquer la page.
+    }
+  }, []);
+
+  /**
+   * Marque les notifications comme lues et éteint la pastille.
+   * Déclenché quand l'utilisatrice ouvre l'onglet Intéractions.
+   */
+  const markNotificationsSeen = useCallback(async () => {
+    setNotifCount(0);
+
+    try {
+      await fetch("/api/notifications", { method: "POST" });
+    } catch {
+      // Silencieux.
+    }
+  }, []);
+
+  /**
    * Redirection si non connecté.
    */
   useEffect(() => {
@@ -660,12 +699,13 @@ function MonCompteContent() {
       fetchProfile();
 
       /**
-       * Marque les notifications comme lues à l'ouverture de Mon Compte.
-       * On ignore l'erreur pour ne pas bloquer la page.
+       * On récupère le nombre de notifications pour afficher la pastille
+       * lumineuse sur l'onglet "Intéractions". On NE marque PLUS comme lu
+       * au chargement : le badge ne s'éteint qu'une fois l'onglet ouvert.
        */
-      fetch("/api/notifications", { method: "POST" }).catch(() => {});
+      fetchNotifications();
     }
-  }, [status, fetchProfile]);
+  }, [status, fetchProfile, fetchNotifications]);
 
   /**
    * Permet d'ouvrir directement un onglet via :
@@ -678,6 +718,16 @@ function MonCompteContent() {
       setActiveTab(tab);
     }
   }, [searchParams, status]);
+
+  /**
+   * Dès que l'onglet "Intéractions" est ouvert, on marque les notifications
+   * comme lues et on éteint la pastille lumineuse.
+   */
+  useEffect(() => {
+    if (activeTab === "connexions") {
+      markNotificationsSeen();
+    }
+  }, [activeTab, markNotificationsSeen]);
 
   /**
    * Gestion du retour après paiement Stripe.
@@ -1096,31 +1146,47 @@ function MonCompteContent() {
           transition={{ delay: 0.1 }}
           className="scrollbar-none sticky top-0 z-20 -mx-3 mb-4 flex gap-1.5 overflow-x-auto border-y border-white/5 bg-[#1a0b2e]/70 px-3 py-2 backdrop-blur-xl sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id);
-                if (isEditing) handleCancel();
-              }}
-              className={`relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex-1 sm:px-4 sm:text-sm ${
-                activeTab === tab.id
-                  ? `border ${planAccent[user.plan].tabBorder} bg-gradient-to-r ${planAccent[user.plan].tabBg} text-white shadow-lg`
-                  : "border border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <span>{tab.emoji}</span>
-              <span>{tab.label}</span>
+          {tabs.map((tab) => {
+            const hasNotif = tab.id === "connexions" && notifCount > 0;
 
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="tab-indicator"
-                  className={`pointer-events-none absolute inset-0 rounded-xl border ${planAccent[user.plan].tabBorder}`}
-                />
-              )}
-            </button>
-          ))}
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (isEditing) handleCancel();
+                }}
+                className={`relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex-1 sm:px-4 sm:text-sm ${
+                  activeTab === tab.id
+                    ? `border ${planAccent[user.plan].tabBorder} bg-gradient-to-r ${planAccent[user.plan].tabBg} text-white shadow-lg`
+                    : hasNotif
+                      ? "border border-pink-400/50 bg-pink-500/10 text-white animate-notif-glow"
+                      : "border border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span>{tab.emoji}</span>
+                <span>{tab.label}</span>
+
+                {/* Pastille lumineuse avec le nombre de notifications */}
+                {hasNotif && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-500/60" />
+                    <span className="relative inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-500 px-1 text-[10px] font-bold text-white shadow-lg shadow-pink-500/50 ring-2 ring-[#1a0b2e]">
+                      {notifCount > 99 ? "99+" : notifCount}
+                    </span>
+                  </span>
+                )}
+
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    className={`pointer-events-none absolute inset-0 rounded-xl border ${planAccent[user.plan].tabBorder}`}
+                  />
+                )}
+              </button>
+            );
+          })}
         </motion.div>
 
         {/* Contenu onglets */}
@@ -1235,6 +1301,40 @@ function MonCompteContent() {
           100% {
             transform: translateX(200%);
           }
+        }
+
+        @keyframes notif-glow {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+            border-color: rgba(244, 114, 182, 0.4);
+          }
+
+          50% {
+            box-shadow: 0 0 14px 2px rgba(236, 72, 153, 0.55);
+            border-color: rgba(244, 114, 182, 0.9);
+          }
+        }
+
+        .animate-notif-glow {
+          animation: notif-glow 1.8s ease-in-out infinite;
+        }
+
+        @keyframes msg-pulse {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+            transform: scale(1);
+          }
+
+          50% {
+            box-shadow: 0 0 12px 1px rgba(168, 85, 247, 0.6);
+            transform: scale(1.04);
+          }
+        }
+
+        .animate-msg-pulse {
+          animation: msg-pulse 1.4s ease-in-out infinite;
         }
 
         .input-luna {
@@ -2433,6 +2533,7 @@ function SecurityTab({ user }: { user: LunaUser }) {
 // ─────────────────────────────────────────────
 
 function ConnexionsTab({ user }: { user: LunaUser }) {
+  const router = useRouter();
   const [reportUserId, setReportUserId] = useState<string | null>(null);
 
   const [matches, setMatches] = useState<MatchItem[]>([]);
@@ -2603,6 +2704,8 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
 
                 if (!matchedUser) return null;
 
+                const hasUnread = Boolean(match.hasUnreadMessage);
+
                 return (
                   <motion.div
                     key={match.matchId}
@@ -2610,10 +2713,27 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/5 p-4 transition hover:bg-white/8 sm:flex-row sm:items-center sm:gap-4"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      router.push(`/profil/${matchedUser._id}?from=connexions`)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(
+                          `/profil/${matchedUser._id}?from=connexions`
+                        );
+                      }
+                    }}
+                    className={`flex cursor-pointer flex-col gap-3 rounded-2xl border bg-white/5 p-4 transition hover:bg-white/8 sm:flex-row sm:items-center sm:gap-4 ${
+                      hasUnread
+                        ? "border-purple-400/40 ring-1 ring-purple-400/30"
+                        : "border-white/8"
+                    }`}
                   >
                     <div className="flex items-center gap-3 sm:flex-1">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-lg font-bold">
+                      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-lg font-bold">
                         {matchedUser.image ? (
                           <img
                             src={matchedUser.image}
@@ -2644,10 +2764,16 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                           </p>
                         )}
 
-                        {match.lastMessageAt && (
-                          <p className="mt-0.5 text-xs text-purple-300/70">
-                            💬 {relativeTime(match.lastMessageAt)}
+                        {hasUnread ? (
+                          <p className="mt-0.5 text-xs font-semibold text-pink-300">
+                            ✨ Nouveau message
                           </p>
+                        ) : (
+                          match.lastMessageAt && (
+                            <p className="mt-0.5 text-xs text-purple-300/70">
+                              💬 {relativeTime(match.lastMessageAt)}
+                            </p>
+                          )
                         )}
                       </div>
                     </div>
@@ -2659,14 +2785,27 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
 
                       <Link
                         href={`/messages/${match.matchId}`}
-                        className="flex items-center gap-1.5 rounded-xl border border-purple-400/20 bg-purple-500/25 px-3 py-1.5 text-xs font-medium text-purple-200 transition hover:bg-purple-500/40"
+                        onClick={(e) => e.stopPropagation()}
+                        className={`relative flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                          hasUnread
+                            ? "animate-msg-pulse border-pink-400/50 bg-pink-500/30 text-pink-100"
+                            : "border-purple-400/20 bg-purple-500/25 text-purple-200 hover:bg-purple-500/40"
+                        }`}
                       >
                         <MessageCircle className="h-3.5 w-3.5" />
                         Message
+                        {hasUnread && (
+                          <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-500 px-1 text-[9px] font-bold text-white ring-2 ring-[#1a0b2e]">
+                            {(match.unreadCount ?? 0) > 9
+                              ? "9+"
+                              : match.unreadCount ?? ""}
+                          </span>
+                        )}
                       </Link>
 
                       <Link
                         href={`/profil/${matchedUser._id}?from=connexions`}
+                        onClick={(e) => e.stopPropagation()}
                         className="rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-pink-500/20 transition-all duration-200 hover:scale-105 hover:opacity-90"
                       >
                         Voir ✨
@@ -2674,7 +2813,10 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
 
                       <button
                         type="button"
-                        onClick={() => setReportUserId(matchedUser._id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReportUserId(matchedUser._id);
+                        }}
                         className="rounded-lg border border-red-400/20 bg-red-500/10 p-1.5 text-red-300 transition hover:bg-red-500/20"
                         title="Signaler"
                         aria-label="Signaler ce profil"
@@ -2746,7 +2888,18 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
-                    className="flex items-center gap-4 rounded-2xl border border-white/8 bg-white/5 p-4 transition hover:bg-white/8"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      router.push(`/profil/${visitor._id}?from=visiteurs`)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/profil/${visitor._id}?from=visiteurs`);
+                      }
+                    }}
+                    className="flex cursor-pointer items-center gap-4 rounded-2xl border border-white/8 bg-white/5 p-4 transition hover:border-purple-400/30 hover:bg-white/8"
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-lg font-bold">
                       {visitor.image ? (
@@ -2790,6 +2943,11 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
                           🔄 {visitCount} visites
                         </p>
                       )}
+
+                      <p className="mt-0.5 flex items-center justify-end gap-0.5 text-[11px] text-purple-300/70">
+                        Voir le profil
+                        <ChevronRight className="h-3 w-3" />
+                      </p>
                     </div>
                   </motion.div>
                 );

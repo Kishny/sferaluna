@@ -42,6 +42,14 @@ export interface IMatch extends Document {
    */
   deletedBy: mongoose.Types.ObjectId[];
 
+  /**
+   * Date d'envoi du push de relance "aucun message depuis 24h".
+   * null tant qu'aucune relance n'a été envoyée — sert à garantir
+   * qu'un même match ne déclenche qu'une seule relance (voir
+   * /api/cron/match-reminders).
+   */
+  firstMessageReminderSentAt: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,6 +101,11 @@ const MatchSchema = new Schema<IMatch>(
       type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
       default: [],
     },
+
+    firstMessageReminderSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -135,6 +148,12 @@ MatchSchema.index({ user2Id: 1, isActive: 1, lastMessageAt: -1 });
  * Index utile pour trier les conversations récentes.
  */
 MatchSchema.index({ isActive: 1, lastMessageAt: -1, createdAt: -1 });
+
+/**
+ * Index utilisé par le cron de relance (/api/cron/match-reminders) :
+ * matches actifs, sans aucun message, jamais relancés, triés par createdAt.
+ */
+MatchSchema.index({ isActive: 1, lastMessageAt: 1, firstMessageReminderSentAt: 1, createdAt: 1 });
 
 export interface MatchModel extends Model<IMatch> {}
 

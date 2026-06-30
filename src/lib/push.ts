@@ -115,6 +115,55 @@ export async function sendProfileVisitPush(params: {
   });
 }
 
+/**
+ * Relance pour un match sans premier message après 24h.
+ * Envoyée aux deux utilisatrices (ni l'une ni l'autre n'a encore écrit) —
+ * voir /api/cron/match-reminders.
+ */
+export async function sendMatchReminderPush(params: {
+  recipientUserId: string;
+  matchedWithName: string;
+  matchId: string;
+}): Promise<void> {
+  const token = await getPushToken(params.recipientUserId);
+  if (!token) return;
+
+  await sendPushNotification({
+    to: token,
+    title: "🌙 Ne le laisse pas filer",
+    body: `Tu as matché avec ${params.matchedWithName}. Dis-lui bonjour !`,
+    data: { type: "new_match", matchId: params.matchId },
+    sound: "default",
+    channelId: "matches",
+  });
+}
+
+/**
+ * Digest matinal : résumé du nombre de nouveaux profils compatibles
+ * inscrits dans les dernières 24h — voir /api/cron/morning-digest.
+ */
+export async function sendMorningDigestPush(params: {
+  recipientUserId: string;
+  newProfilesCount: number;
+}): Promise<void> {
+  const token = await getPushToken(params.recipientUserId);
+  if (!token) return;
+
+  const label =
+    params.newProfilesCount === 1
+      ? "1 nouveau profil"
+      : `${params.newProfilesCount} nouveaux profils`;
+
+  await sendPushNotification({
+    to: token,
+    title: "🌙 De nouvelles arrivantes sur SferaLuna",
+    body: `${label} compatible${params.newProfilesCount > 1 ? "s" : ""} avec toi depuis hier.`,
+    data: { type: "morning_digest" },
+    sound: "default",
+    channelId: "default",
+  });
+}
+
 // ── Utilitaire ─────────────────────────────────────────────────────────────
 
 async function getPushToken(userId: string): Promise<string | null> {

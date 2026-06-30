@@ -10,7 +10,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
+import { ModerationLog } from "@/models/ModerationLog";
 import cloudinary from "@/lib/cloudinary";
+import {
+  getModerationUploadOption,
+  evaluateModeration,
+  MODERATION_REJECTION_MESSAGE,
+} from "@/lib/moderation";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -55,8 +61,8 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload vers Cloudinary
-    const result = await new Promise<{ secure_url: string; public_id: string }>(
+    // Upload vers Cloudinary (avec modération automatique si activée — voir lib/moderation.ts)
+    const result = await new Promise<{ secure_url: string; public_id: string; moderation?: unknown }>(
       (resolve, reject) => {
         cloudinary.uploader
           .upload_stream(
@@ -66,12 +72,13 @@ export async function POST(req: NextRequest) {
                 { width: 400, height: 400, crop: "fill", gravity: "face" },
               ],
               resource_type: "image",
+              moderation: getModerationUploadOption(),
             },
             (err, res) => {
               if (err || !res) {
                 reject(err ?? new Error("Cloudinary upload failed"));
               } else {
-                resolve(res as { secure_url: string; public_id: string });
+                resolve(res as { secure_url: string; public_id: string; moderation?: unknown });
               }
             }
           )
@@ -79,9 +86,27 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Sauvegarder l'URL dans MongoDB
     await connectDB();
 
+    // Modération automatique : rejet → suppression immédiate sur Cloudinary, jamais sauvegardé en base.
+    const verdict = evaluateModeration(result);
+    if (!verdict.approved) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      const rejectedUser = await User.findOne({ email: session.user.email.toLowerCase().trim() }).select("_id");
+      if (rejectedUser) {
+        await ModerationLog.create({
+          userId: rejectedUser._id,
+          context: "avatar",
+          reason: verdict.reason ?? "Contenu rejeté",
+        }).catch(() => {});
+      }
+      return NextResponse.json(
+        { success: false, error: MODERATION_REJECTION_MESSAGE },
+        { status: 400 }
+      );
+    }
+
+    // Sauvegarder l'URL dans MongoDB
     const email = session.user.email.toLowerCase().trim();
     await User.findOneAndUpdate(
       { email },

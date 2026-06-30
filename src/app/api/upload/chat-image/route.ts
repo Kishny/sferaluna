@@ -15,7 +15,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { connectDB } from '@/lib/db';
+import { User } from '@/models/User';
+import { ModerationLog } from '@/models/ModerationLog';
 import cloudinary from '@/lib/cloudinary';
+import {
+  getModerationUploadOption,
+  evaluateModeration,
+  MODERATION_REJECTION_MESSAGE,
+} from '@/lib/moderation';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE = 8 * 1024 * 1024; // 8 Mo
@@ -55,7 +63,7 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(bytes);
 
   try {
-    const result = await new Promise<{ secure_url: string }>(
+    const result = await new Promise<{ secure_url: string; public_id: string; moderation?: unknown }>(
       (resolve, reject) => {
         cloudinary.uploader
           .upload_stream(
@@ -65,15 +73,39 @@ export async function POST(req: NextRequest) {
                 { width: 1200, height: 1200, crop: 'limit', quality: 80 },
               ],
               resource_type: 'image',
+              moderation: getModerationUploadOption(),
             },
             (err, res) => {
               if (err || !res) reject(err ?? new Error('Cloudinary upload failed'));
-              else resolve(res as { secure_url: string });
+              else resolve(res as { secure_url: string; public_id: string; moderation?: unknown });
             }
           )
           .end(buffer);
       }
     );
+
+    // Modération automatique : rejet → suppression Cloudinary, image jamais envoyée dans le chat.
+    const verdict = evaluateModeration(result);
+    if (!verdict.approved) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      try {
+        await connectDB();
+        const user = await User.findOne({ email: session.user.email.toLowerCase().trim() }).select('_id');
+        if (user) {
+          await ModerationLog.create({
+            userId: user._id,
+            context: 'chat_image',
+            reason: verdict.reason ?? 'Contenu rejeté',
+          });
+        }
+      } catch {
+        // Le log de modération ne doit jamais empêcher de répondre à l'utilisatrice.
+      }
+      return NextResponse.json(
+        { success: false, error: MODERATION_REJECTION_MESSAGE },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({ success: true, url: result.secure_url });
   } catch (err) {
