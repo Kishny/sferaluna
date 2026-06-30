@@ -5,9 +5,8 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
-import TestimonialCard, {
-  PublicTestimonial,
-} from "@/components/testimonials/TestimonialCard";
+import { PublicTestimonial } from "@/components/testimonials/TestimonialCard";
+import TestimonialsExplorer from "@/components/testimonials/TestimonialsExplorer";
 import TestimonialSubmitSection from "@/components/testimonials/TestimonialSubmitSection";
 import { buildMeta } from "@/app/layout-meta";
 import { connectDB } from "@/lib/db";
@@ -36,7 +35,7 @@ async function getApprovedTestimonials(): Promise<PublicTestimonial[]> {
 
     const docs = await Testimonial.find({ status: "approved" })
       .sort({ createdAt: -1 })
-      .limit(60)
+      .limit(300)
       .select("authorName age city content rating avatar showAvatar createdAt")
       .lean();
 
@@ -147,14 +146,7 @@ export default async function TemoignagesPage() {
         <section className="relative px-4 pb-10 sm:px-6 sm:pb-16">
           <div className="mx-auto max-w-6xl">
             {count > 0 ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {testimonials.map((testimonial) => (
-                  <TestimonialCard
-                    key={testimonial._id}
-                    testimonial={testimonial}
-                  />
-                ))}
-              </div>
+              <TestimonialsExplorer testimonials={testimonials} pageSize={12} />
             ) : (
               <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-[#E8E0FF] bg-white px-4 py-10 text-center">
                 <div className="mb-3 text-5xl">💜</div>

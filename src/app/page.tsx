@@ -1311,7 +1311,7 @@ export default function Home() {
               </p>
             </motion.div>
 
-            <TestimonialsCarousel />
+            <TestimonialsCarousel layout="carousel" limit={6} autoPlay />
           </div>
         </section>
 
