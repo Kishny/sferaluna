@@ -172,16 +172,22 @@ export async function GET(req: NextRequest) {
      * Évite par exemple qu'une membre à La Réunion (974) se voie proposer
      * des profils métropolitains à 9 000 km.
      */
-    const departementParam = searchParams.get("departement");
+    const departementParam = (searchParams.get("departement") || "").trim();
     const currentDept = (currentUser as { departement?: string }).departement;
     const currentRayon = (currentUser as { rayon?: string }).rayon;
 
-    const effectiveDepartement =
-      departementParam && departementParam.trim()
-        ? departementParam.trim()
-        : currentRayon === "departement" && currentDept
-          ? currentDept
-          : "";
+    let effectiveDepartement = "";
+
+    if (departementParam === "all") {
+      // Choix explicite "Toute la France" depuis Explorer : aucune restriction.
+      effectiveDepartement = "";
+    } else if (departementParam) {
+      // Département explicitement sélectionné dans Explorer.
+      effectiveDepartement = departementParam;
+    } else if (currentRayon === "departement" && currentDept) {
+      // Par défaut : on reste dans le bassin de la membre.
+      effectiveDepartement = currentDept;
+    }
 
     if (effectiveDepartement) {
       query.departement = effectiveDepartement;

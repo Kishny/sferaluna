@@ -53,6 +53,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
+import { DEPARTEMENTS } from "@/lib/locations";
 
 // ─────────────────────────────────────────────
 // Types
@@ -74,6 +75,7 @@ interface Filters {
   age_max: string;
   intentions: string;
   localisation: string;
+  departement: string;
 
   /**
    * Filtres premium.
@@ -179,6 +181,7 @@ export default function ExplorerPage() {
     age_max: "99",
     intentions: "",
     localisation: "",
+    departement: "",
     orientation: "",
     actif_recemment: false,
   });
@@ -231,6 +234,9 @@ export default function ExplorerPage() {
         if (filters.intentions) params.set("intentions", filters.intentions);
         if (filters.localisation) {
           params.set("localisation", filters.localisation);
+        }
+        if (filters.departement) {
+          params.set("departement", filters.departement);
         }
 
         /**
@@ -327,6 +333,7 @@ export default function ExplorerPage() {
       age_max: "99",
       intentions: "",
       localisation: "",
+      departement: "",
       orientation: "",
       actif_recemment: false,
     });
@@ -707,8 +714,51 @@ export default function ExplorerPage() {
                     </FilterField>
                   </div>
 
-                  {/* Localisation */}
-                  <FilterField label="Ville / région">
+                  {/* Département */}
+                  <FilterField label="Département">
+                    <select
+                      value={filters.departement}
+                      onChange={(event) =>
+                        setFilters((current) => ({
+                          ...current,
+                          departement: event.target.value,
+                        }))
+                      }
+                      className="select-explorer"
+                    >
+                      <option value="">Mon département (par défaut)</option>
+                      <option value="all" className="bg-gray-900">
+                        Toute la France
+                      </option>
+
+                      <optgroup label="France métropolitaine" className="bg-gray-900">
+                        {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
+                          <option
+                            key={d.code}
+                            value={d.code}
+                            className="bg-gray-900"
+                          >
+                            {d.code} — {d.nom}
+                          </option>
+                        ))}
+                      </optgroup>
+
+                      <optgroup label="Outre-mer" className="bg-gray-900">
+                        {DEPARTEMENTS.filter((d) => d.outreMer).map((d) => (
+                          <option
+                            key={d.code}
+                            value={d.code}
+                            className="bg-gray-900"
+                          >
+                            {d.code} — {d.nom}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </FilterField>
+
+                  {/* Ville */}
+                  <FilterField label="Ville">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
 
@@ -722,7 +772,7 @@ export default function ExplorerPage() {
                           }))
                         }
                         className="input-explorer pl-9"
-                        placeholder="Paris, Lyon..."
+                        placeholder="Paris, Fort-de-France..."
                       />
                     </div>
                   </FilterField>
