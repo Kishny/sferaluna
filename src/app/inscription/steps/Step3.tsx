@@ -6,68 +6,28 @@
  * Étape 3 du formulaire d'inscription SferaLuna.
  *
  * Objectif :
- * - définir une localisation ;
- * - choisir un rayon de recherche ;
- * - proposer des villes rapides ;
+ * - choisir son département (métropole ou outre-mer) ;
+ * - préciser sa ville ;
+ * - définir la portée de recherche ;
  * - garder une UX fluide sur mobile.
  */
 
 import { useFormContext } from "react-hook-form";
+import {
+  DEPARTEMENTS,
+  getVillesPourDepartement,
+  isOutreMer,
+} from "@/lib/locations";
 
 /**
- * Rayons de recherche proposés.
- * Ces valeurs sont envoyées dans MongoDB via le champ "rayon".
+ * Portée de recherche proposée.
+ * Le « rayon » historique en km n'avait pas de sens entre territoires
+ * éloignés (métropole ↔ outre-mer) : on raisonne par bassin géographique.
  */
-const rayons = [
-  { value: "5 km", label: "5 km" },
-  { value: "10 km", label: "10 km" },
-  { value: "25 km", label: "25 km" },
-  { value: "50 km", label: "50 km" },
-  { value: "100 km", label: "100 km" },
-  { value: "region", label: "Toute la région" },
+const portees = [
+  { value: "departement", label: "Mon département" },
+  { value: "region", label: "Ma région" },
   { value: "france", label: "Toute la France" },
-];
-
-/**
- * Villes rapides proposées.
- */
-const villesPrincipales = [
-  "Paris",
-  "Lyon",
-  "Marseille",
-  "Toulouse",
-  "Bordeaux",
-  "Lille",
-  "Nantes",
-  "Strasbourg",
-  "Rennes",
-  "Reims",
-  "Le Mans",
-  "Toulon",
-  "Aix-en-Provence",
-  "Clermont-Ferrand",
-  "Limoges",
-  "Tours",
-  "Versailles",
-  "Amiens",
-  "Orléans",
-  "Mulhouse",
-  "Rouen",
-  "Nancy",
-  "Besançon",
-  "Troyes",
-  "Dijon",
-  "Grenoble",
-  "Saint-Etienne",
-  "Brest",
-  "Ajaccio",
-  "Nice",
-  "Saint-Denis",
-  "Saint-Pierre",
-  "Saint-Paul",
-  "Saint-Benoit",
-  "Saint-Louis",
-  "Saint-Louis",
 ];
 
 export default function Step3() {
@@ -79,7 +39,10 @@ export default function Step3() {
   } = useFormContext();
 
   const selectedLocalisation = watch("localisation") || "";
+  const selectedDepartement = watch("departement") || "";
   const selectedRayon = watch("rayon") || "";
+
+  const villesSuggerees = getVillesPourDepartement(selectedDepartement);
 
   const handleLocalisationClick = (ville: string) => {
     setValue("localisation", ville, {
@@ -98,21 +61,68 @@ export default function Step3() {
         </h2>
 
         <p className="mt-2 text-sm leading-relaxed text-gray-300">
-          Indiquez votre zone de recherche pour recevoir des suggestions proches
-          de vous.
+          Indiquez votre département et votre ville pour recevoir des
+          suggestions cohérentes — métropole comme outre-mer.
         </p>
       </div>
 
-      {/* Champ localisation */}
+      {/* Département */}
       <section className="space-y-4">
         <label className="block text-sm font-semibold text-gray-100">
-          Où êtes-vous situé(e) ? <span className="text-pink-400">*</span>
+          Votre département <span className="text-pink-400">*</span>
+        </label>
+
+        <select
+          {...register("departement")}
+          className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
+        >
+          <option value="" className="bg-[#1a0b2e] text-gray-300">
+            Sélectionnez votre département…
+          </option>
+
+          <optgroup label="France métropolitaine" className="bg-[#1a0b2e]">
+            {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
+              <option
+                key={d.code}
+                value={d.code}
+                className="bg-[#1a0b2e] text-white"
+              >
+                {d.code} — {d.nom}
+              </option>
+            ))}
+          </optgroup>
+
+          <optgroup label="Outre-mer" className="bg-[#1a0b2e]">
+            {DEPARTEMENTS.filter((d) => d.outreMer).map((d) => (
+              <option
+                key={d.code}
+                value={d.code}
+                className="bg-[#1a0b2e] text-white"
+              >
+                {d.code} — {d.nom}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+
+        {selectedDepartement && isOutreMer(selectedDepartement) && (
+          <p className="text-xs text-purple-200">
+            🌴 Territoire d&apos;outre-mer — tes suggestions resteront dans ton
+            bassin local.
+          </p>
+        )}
+      </section>
+
+      {/* Ville */}
+      <section className="space-y-4">
+        <label className="block text-sm font-semibold text-gray-100">
+          Votre ville <span className="text-pink-400">*</span>
         </label>
 
         <input
           {...register("localisation")}
           type="text"
-          placeholder="Saisissez votre ville ou code postal"
+          placeholder="Saisissez votre ville"
           className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
         />
 
@@ -120,7 +130,7 @@ export default function Step3() {
           <p className="mb-3 text-sm text-gray-300">Villes principales :</p>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {villesPrincipales.map((ville) => {
+            {villesSuggerees.map((ville) => {
               const isSelected = selectedLocalisation === ville;
 
               return (
@@ -148,19 +158,19 @@ export default function Step3() {
         )}
       </section>
 
-      {/* Rayon de recherche */}
+      {/* Portée de recherche */}
       <section className="space-y-4">
         <label className="block text-sm font-semibold text-gray-100">
-          Rayon de recherche <span className="text-pink-400">*</span>
+          Portée de recherche <span className="text-pink-400">*</span>
         </label>
 
-        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
-          {rayons.map((rayon) => {
-            const isSelected = selectedRayon === rayon.value;
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
+          {portees.map((portee) => {
+            const isSelected = selectedRayon === portee.value;
 
             return (
               <label
-                key={rayon.value}
+                key={portee.value}
                 className={`flex cursor-pointer items-center rounded-xl border p-3 transition-all sm:p-4 ${
                   isSelected
                     ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
@@ -170,7 +180,7 @@ export default function Step3() {
                 <input
                   type="radio"
                   {...register("rayon")}
-                  value={rayon.value}
+                  value={portee.value}
                   className="h-4 w-4 accent-pink-500"
                 />
 
@@ -179,7 +189,7 @@ export default function Step3() {
                     isSelected ? "text-white" : "text-gray-100"
                   }`}
                 >
-                  {rayon.label}
+                  {portee.label}
                 </span>
               </label>
             );
@@ -187,7 +197,7 @@ export default function Step3() {
         </div>
 
         <p className="text-sm text-gray-300">
-          Ce rayon définit la distance maximale pour vos suggestions de profils.
+          Cette portée définit l&apos;étendue de tes suggestions de profils.
         </p>
 
         {errors.rayon && (

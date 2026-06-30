@@ -94,6 +94,7 @@ export interface IUser extends Document {
   orientation?: string;
   intentions: string[];
   localisation?: string;
+  departement?: string;
   rayon?: string;
   question?: string;
   reponse?: string;
@@ -298,12 +299,25 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
-     * Rayon de recherche.
-     * Exemple : 10 km, 25 km, france, region.
+     * Code du département (ex. "75", "2A", "974" pour La Réunion).
+     * Sert au filtrage des profils par bassin géographique cohérent,
+     * métropole comme outre-mer.
+     */
+    departement: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: [3, "Code département invalide."],
+      index: true,
+    },
+
+    /**
+     * Rayon / portée de recherche.
+     * Exemple : departement, region, france (anciennes valeurs "10 km" tolérées).
      */
     rayon: {
       type: String,
-      default: "10 km",
+      default: "departement",
       trim: true,
     },
 

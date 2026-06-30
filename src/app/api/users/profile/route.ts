@@ -73,6 +73,8 @@ const profileUpdateSchema = z.object({
 
   localisation: z.string().trim().max(120).optional(),
 
+  departement: z.string().trim().max(3).optional(),
+
   rayon: z.string().trim().max(50).optional(),
 
   question: z.string().trim().max(300).optional(),
@@ -568,6 +570,10 @@ export async function PUT(req: NextRequest) {
 
     if (data.localisation !== undefined) {
       updateData.localisation = data.localisation;
+    }
+
+    if (data.departement !== undefined) {
+      updateData.departement = data.departement;
     }
 
     if (data.rayon !== undefined) {

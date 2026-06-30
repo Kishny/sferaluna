@@ -60,6 +60,8 @@ const updateProfileSchema = z.object({
 
   localisation: z.string().trim().max(120).optional(),
 
+  departement: z.string().trim().max(3).optional(),
+
   rayon: z.string().trim().max(50).optional(),
 
   question: z.string().trim().max(300).optional(),
@@ -230,6 +232,7 @@ export async function POST(req: NextRequest) {
     if (data.orientation !== undefined) updateData.orientation = data.orientation;
     if (data.intentions !== undefined) updateData.intentions = data.intentions;
     if (data.localisation !== undefined) updateData.localisation = data.localisation;
+    if (data.departement !== undefined) updateData.departement = data.departement;
     if (data.rayon !== undefined) updateData.rayon = data.rayon;
     if (data.question !== undefined) updateData.question = data.question;
     if (data.reponse !== undefined) updateData.reponse = data.reponse;

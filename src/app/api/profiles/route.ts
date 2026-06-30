@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     const sessionEmail = session.user.email.toLowerCase().trim();
 
     const currentUser = await User.findOne({ email: sessionEmail }).select(
-      "_id isPremium plan subscriptionStatus"
+      "_id isPremium plan subscriptionStatus departement rayon"
     );
 
     if (!currentUser) {
@@ -160,6 +160,33 @@ export async function GET(req: NextRequest) {
       };
     }
 
+    /**
+     * Filtre par département (bassin géographique cohérent, DOM inclus).
+     *
+     * - Un département explicite passé en query param prime (filtre manuel).
+     * - Sinon, si la membre a choisi la portée "Mon département" et qu'un
+     *   département est renseigné, on restreint à ce même département.
+     * - Pour "Ma région" / "Toute la France" (ou anciennes valeurs en km),
+     *   on n'ajoute pas de restriction départementale.
+     *
+     * Évite par exemple qu'une membre à La Réunion (974) se voie proposer
+     * des profils métropolitains à 9 000 km.
+     */
+    const departementParam = searchParams.get("departement");
+    const currentDept = (currentUser as { departement?: string }).departement;
+    const currentRayon = (currentUser as { rayon?: string }).rayon;
+
+    const effectiveDepartement =
+      departementParam && departementParam.trim()
+        ? departementParam.trim()
+        : currentRayon === "departement" && currentDept
+          ? currentDept
+          : "";
+
+    if (effectiveDepartement) {
+      query.departement = effectiveDepartement;
+    }
+
     if (orientation && orientation.trim().length > 0) {
       query.orientation = orientation.trim();
     }
@@ -172,7 +199,7 @@ export async function GET(req: NextRequest) {
     const [profiles, total] = await Promise.all([
       User.find(query)
         .select(
-          "pseudonyme age localisation interets intentions visibilite image photos identityVerified createdAt updatedAt"
+          "pseudonyme age localisation departement interets intentions visibilite image photos identityVerified createdAt updatedAt"
         )
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)

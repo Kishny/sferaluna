@@ -67,6 +67,7 @@ import {
 import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
 import TestimonialForm from "@/components/testimonials/TestimonialForm";
+import { DEPARTEMENTS, getDepartementLabel } from "@/lib/locations";
 
 // ─────────────────────────────────────────────
 // Types
@@ -125,6 +126,7 @@ interface LunaUser {
   orientation?: string;
   intentions: string[];
   localisation?: string;
+  departement?: string;
   rayon?: string;
   question?: string;
   reponse?: string;       // champ local uniquement : jamais retourné par l'API
@@ -215,7 +217,8 @@ const emptyUser: LunaUser = {
   orientation: "",
   intentions: [],
   localisation: "",
-  rayon: "10 km",
+  departement: "",
+  rayon: "departement",
   question: "",
   reponse: "",
   interets: [],
@@ -491,7 +494,8 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     orientation: rawUser?.orientation || "",
     intentions: Array.isArray(rawUser?.intentions) ? rawUser.intentions : [],
     localisation: rawUser?.localisation || "",
-    rayon: rawUser?.rayon || "10 km",
+    departement: rawUser?.departement || "",
+    rayon: rawUser?.rayon || "departement",
     question: rawUser?.question || "",
     reponse: "",          // toujours vide au chargement (jamais renvoyée par l'API)
     hasReponse: Boolean(rawUser?.hasReponse), // true si déjà renseignée en BDD
@@ -814,6 +818,7 @@ function MonCompteContent() {
           orientation: draftUser.orientation,
           intentions: draftUser.intentions,
           localisation: draftUser.localisation,
+          departement: draftUser.departement,
           rayon: draftUser.rayon,
           question: draftUser.question,
           // N'envoyer reponse que si l'utilisatrice a tapé quelque chose.
@@ -1555,7 +1560,10 @@ function DashboardTab({
           {
             emoji: "📍",
             label: "Localisation",
-            value: user.localisation || "—",
+            value:
+              [user.localisation, getDepartementLabel(user.departement)]
+                .filter(Boolean)
+                .join(" · ") || "—",
           },
           {
             emoji: "💞",
@@ -1838,34 +1846,51 @@ function ProfilTab({
           />
         </Field>
 
-        <Field label="Localisation 📍">
+        <Field label="Département 🗺️">
+          <select
+            disabled={!isEditing}
+            value={user.departement || ""}
+            onChange={(event) => updateDraft("departement", event.target.value)}
+            className="input-luna"
+          >
+            <option value="">Non renseigné</option>
+            <optgroup label="France métropolitaine">
+              {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} — {d.nom}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Outre-mer">
+              {DEPARTEMENTS.filter((d) => d.outreMer).map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} — {d.nom}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </Field>
+
+        <Field label="Ville 📍">
           <input
             disabled={!isEditing}
             value={user.localisation || ""}
             onChange={(event) => updateDraft("localisation", event.target.value)}
             className="input-luna"
-            placeholder="Paris, Lyon…"
+            placeholder="Paris, Fort-de-France, Saint-Denis…"
           />
         </Field>
 
-        <Field label="Rayon de recherche 🗺️">
+        <Field label="Portée de recherche 🔎">
           <select
             disabled={!isEditing}
-            value={user.rayon || "10 km"}
+            value={user.rayon || "departement"}
             onChange={(event) => updateDraft("rayon", event.target.value)}
             className="input-luna"
           >
-            {["5 km", "10 km", "25 km", "50 km", "100 km", "region", "france"].map(
-              (value) => (
-                <option key={value} value={value}>
-                  {value === "region"
-                    ? "Toute la région"
-                    : value === "france"
-                      ? "Toute la France"
-                      : value}
-                </option>
-              )
-            )}
+            <option value="departement">Mon département</option>
+            <option value="region">Ma région</option>
+            <option value="france">Toute la France</option>
           </select>
         </Field>
 

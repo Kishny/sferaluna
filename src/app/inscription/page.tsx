@@ -99,6 +99,8 @@ const formSchema = z.object({
 
   localisation: z.string().min(2, "Veuillez renseigner votre localisation"),
 
+  departement: z.string().optional(),
+
   rayon: z.string().min(1, "Veuillez choisir un rayon de recherche"),
 
   question: z.string().min(1, "Veuillez choisir une question de sécurité"),
@@ -144,7 +146,7 @@ const steps = [Step1, Step2, Step3, Step4, Step5];
 const stepFields: FieldPath<FormData>[][] = [
   ["pseudonyme", "email", "age"],
   ["orientation", "intentions"],
-  ["localisation", "rayon"],
+  ["localisation", "departement", "rayon"],
   ["question", "reponse", "interets"],
   ["visibilite", "consentement"],
 ];
@@ -344,7 +346,8 @@ function InscriptionPageContent() {
       orientation: "",
       intentions: [],
       localisation: "",
-      rayon: "10 km",
+      departement: "",
+      rayon: "departement",
       question: "",
       reponse: "",
       interets: [],
