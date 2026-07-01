@@ -1665,6 +1665,11 @@ export default function AdminPage() {
                               handleUserAction(u._id, "toggle_premium")
                             }
                             disabled={actionLoading === u._id + "toggle_premium"}
+                            title={
+                              u.isPremium
+                                ? "Retirer l'accès premium"
+                                : "Rendre premium"
+                            }
                             className={`rounded-lg border p-2 transition ${
                               u.isPremium
                                 ? "border-yellow-400/20 bg-yellow-400/15 text-yellow-300"
@@ -1688,6 +1693,11 @@ export default function AdminPage() {
                             disabled={
                               actionLoading ===
                               u._id + (u.role === "admin" ? "demote" : "promote")
+                            }
+                            title={
+                              u.role === "admin"
+                                ? "Rétrograder en membre"
+                                : "Promouvoir administratrice"
                             }
                             className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/40 transition hover:bg-white/10 hover:text-white"
                           >
@@ -1728,6 +1738,7 @@ export default function AdminPage() {
                             <button
                               onClick={() => handleDeleteUser(u._id, u.pseudonyme)}
                               disabled={actionLoading === u._id + "delete"}
+                              title="Supprimer définitivement le compte"
                               className="rounded-lg border border-red-400/20 bg-red-400/10 p-2 text-red-300 transition hover:bg-red-400/20"
                             >
                               {actionLoading === u._id + "delete" ? (
@@ -1838,6 +1849,11 @@ export default function AdminPage() {
                                     disabled={
                                       actionLoading === u._id + "toggle_premium"
                                     }
+                                    title={
+                                      u.isPremium
+                                        ? "Retirer l'accès premium"
+                                        : "Rendre premium"
+                                    }
                                     className={`rounded-lg border p-1.5 text-xs transition ${
                                       u.isPremium
                                         ? "border-yellow-400/20 bg-yellow-400/15 text-yellow-300"
@@ -1862,6 +1878,11 @@ export default function AdminPage() {
                                       actionLoading ===
                                       u._id +
                                         (u.role === "admin" ? "demote" : "promote")
+                                    }
+                                    title={
+                                      u.role === "admin"
+                                        ? "Rétrograder en membre"
+                                        : "Promouvoir administratrice"
                                     }
                                     className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-white/40 transition hover:bg-white/10 hover:text-white"
                                   >
@@ -1910,6 +1931,7 @@ export default function AdminPage() {
                                         handleDeleteUser(u._id, u.pseudonyme)
                                       }
                                       disabled={actionLoading === u._id + "delete"}
+                                      title="Supprimer définitivement le compte"
                                       className="rounded-lg border border-red-400/20 bg-red-400/10 p-1.5 text-red-300 transition hover:bg-red-400/20"
                                     >
                                       {actionLoading === u._id + "delete" ? (
