@@ -56,7 +56,10 @@ async function main() {
     process.exit(1);
   }
 
-  await mongoose.connect(uri);
+  // L'app force la base "sferaluna" (voir src/lib/db.ts), quel que soit le
+  // nom de base présent dans l'URI. On fait pareil ici, sinon on lirait une
+  // autre base (ex : "lunavibe-db") potentiellement vide.
+  await mongoose.connect(uri, { dbName: "sferaluna" });
   const dbName = mongoose.connection.db.databaseName;
   const users = mongoose.connection.db.collection("users");
   const totalUsers = await users.countDocuments();
