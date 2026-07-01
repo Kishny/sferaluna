@@ -103,37 +103,37 @@ const moodSuggestions: MoodName[] = [
 
 const playlistItems = [
   {
-    title: "Lunar Chill",
+    title: "Douceur Lunaire",
     url: "https://www.youtube.com/watch?v=nSD7qJm1Dr0",
     mood: "Apaisé",
     description: "Une ambiance douce pour ralentir et respirer.",
   },
   {
-    title: "Cosmic Flow",
+    title: "Élan Cosmique",
     url: "https://www.youtube.com/watch?v=DOIekJF3fUk",
     mood: "Énergique",
     description: "Pour canaliser ton énergie dans une vibe positive.",
   },
   {
-    title: "Emotional Release",
+    title: "Lâcher-Prise",
     url: "https://www.youtube.com/watch?v=PmSFj5onIOk",
     mood: "Triste",
     description: "Un espace sonore pour laisser sortir ce qui pèse.",
   },
   {
-    title: "Inner Peace",
+    title: "Paix Intérieure",
     url: "https://www.youtube.com/watch?v=5F0sP7n1cBQ",
     mood: "Pensif",
     description: "Parfait pour accompagner tes réflexions intérieures.",
   },
   {
-    title: "Love Frequency",
+    title: "Onde Amoureuse",
     url: "https://www.youtube.com/watch?v=YUlU-u3DD1E",
     mood: "Amoureux",
     description: "R&B tendre et enveloppant pour les moments doux.",
   },
   {
-    title: "Sunny Morning",
+    title: "Matin Radieux",
     url: "https://www.youtube.com/watch?v=37nFAfCrKp0",
     mood: "Heureux",
     description: "Une playlist lumineuse pour amplifier ta bonne humeur.",
@@ -145,7 +145,7 @@ const playlistItems = [
     description: "Un second cocon sonore pour t'apaiser en douceur.",
   },
   {
-    title: "Good Vibes",
+    title: "Bonnes Ondes",
     url: "https://www.youtube.com/watch?v=g4G5FgKJZa8",
     mood: "Heureux",
     description: "Encore plus d'ondes positives pour rayonner.",
