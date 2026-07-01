@@ -34,6 +34,7 @@ import {
   Loader2,
   Moon,
   Music,
+  Play,
   RefreshCw,
   Sparkles,
   Sun,
@@ -159,6 +160,14 @@ function isMoodName(value: string): value is MoodName {
   return value in moodEmojiMap;
 }
 
+type PlaylistItem = (typeof playlistItems)[number];
+
+/** Extrait l'ID vidéo d'une URL YouTube (watch?v=...). */
+function getYouTubeId(url: string): string {
+  const match = url.match(/[?&]v=([^&]+)/);
+  return match ? match[1] : "";
+}
+
 function simulateAiAnalysis(mood: string): string {
   const responses: Record<string, string> = {
     Apaisé:
@@ -253,6 +262,9 @@ export default function JournalPage() {
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+
+  /** Morceau en cours de lecture dans le lecteur intégré (dock bas de page). */
+  const [playingTrack, setPlayingTrack] = useState<PlaylistItem | null>(null);
 
   const isDay = period === "jour";
 
@@ -818,37 +830,78 @@ export default function JournalPage() {
             subtitle="Une sélection musicale selon ton mood."
           >
             <div className="grid gap-3 md:grid-cols-2">
-              {filteredPlaylist.map((track) => (
-                <a
-                  key={`${track.title}-${track.mood}`}
-                  href={track.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block rounded-2xl border p-3 text-left backdrop-blur-md transition hover:scale-[1.02] ${softCardBg}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/20 text-lg">
-                      {isMoodName(track.mood)
-                        ? moodEmojiMap[track.mood]
-                        : "🎵"}
+              {filteredPlaylist.map((track) => {
+                const isPlaying = playingTrack?.url === track.url;
+
+                return (
+                  <button
+                    key={`${track.title}-${track.mood}`}
+                    type="button"
+                    onClick={() => setPlayingTrack(track)}
+                    className={`group relative w-full overflow-hidden rounded-2xl border p-3 text-left backdrop-blur-md transition hover:scale-[1.02] ${
+                      isPlaying
+                        ? "border-[#8E7AB5] bg-[#8E7AB5]/15 ring-1 ring-[#8E7AB5]/40"
+                        : softCardBg
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Pochette / bouton lecture */}
+                      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#8E7AB5]/35 to-[#5B4B8A]/20 text-lg">
+                        <span
+                          className={
+                            isPlaying
+                              ? "opacity-0"
+                              : "transition group-hover:opacity-0"
+                          }
+                        >
+                          {isMoodName(track.mood) ? moodEmojiMap[track.mood] : "🎵"}
+                        </span>
+
+                        <span
+                          className={`absolute inset-0 flex items-center justify-center ${
+                            isPlaying
+                              ? "opacity-100"
+                              : "opacity-0 transition group-hover:opacity-100"
+                          }`}
+                        >
+                          {isPlaying ? (
+                            <span className="flex items-end gap-[2px]">
+                              <span className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]" />
+                              <span
+                                className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]"
+                                style={{ animationDelay: "0.2s" }}
+                              />
+                              <span
+                                className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]"
+                                style={{ animationDelay: "0.4s" }}
+                              />
+                            </span>
+                          ) : (
+                            <Play
+                              className="h-4 w-4 text-[#8E7AB5]"
+                              fill="currentColor"
+                            />
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className={`text-sm font-semibold ${textPrimary}`}>
+                          {track.title}
+                        </h3>
+
+                        <p className={`text-xs ${textMuted}`}>
+                          Humeur : {track.mood}
+                        </p>
+
+                        <p className={`mt-1 text-xs leading-relaxed ${textMuted}`}>
+                          {track.description}
+                        </p>
+                      </div>
                     </div>
-
-                    <div>
-                      <h3 className={`text-sm font-semibold ${textPrimary}`}>
-                        {track.title}
-                      </h3>
-
-                      <p className={`text-xs ${textMuted}`}>
-                        Humeur : {track.mood}
-                      </p>
-
-                      <p className={`mt-1 text-xs leading-relaxed ${textMuted}`}>
-                        {track.description}
-                      </p>
-                    </div>
-                  </div>
-                </a>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </AccordionSection>
 
@@ -877,6 +930,9 @@ export default function JournalPage() {
       <div className="hidden sm:block">
         <Footer />
       </div>
+
+      {/* Lecteur musical intégré (dock bas de page, style Spotify) */}
+      <MoodPlayer track={playingTrack} onClose={() => setPlayingTrack(null)} />
 
       <style jsx global>{`
         @keyframes journal-spin {
@@ -923,11 +979,27 @@ export default function JournalPage() {
         .journal-float-slow {
           animation: journal-float-slow 16s ease-in-out infinite;
         }
+        @keyframes eq {
+          0%,
+          100% {
+            transform: scaleY(0.35);
+          }
+          50% {
+            transform: scaleY(1);
+          }
+        }
+        .eq-bar {
+          display: inline-block;
+          transform-origin: bottom;
+          animation: eq 0.9s ease-in-out infinite;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .journal-spin,
           .journal-spin-rev,
           .journal-float,
-          .journal-float-slow {
+          .journal-float-slow,
+          .eq-bar {
             animation: none;
           }
         }
@@ -1221,5 +1293,86 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="text-xl font-bold text-[#8E7AB5] sm:text-2xl">{value}</p>
       <p className="text-xs text-[#6B5F8E] sm:text-sm">{label}</p>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Lecteur musical intégré (dock bas de page)
+// ─────────────────────────────────────────────
+
+function MoodPlayer({
+  track,
+  onClose,
+}: {
+  track: PlaylistItem | null;
+  onClose: () => void;
+}) {
+  const videoId = track ? getYouTubeId(track.url) : "";
+  const emoji = track && isMoodName(track.mood) ? moodEmojiMap[track.mood] : "🎵";
+
+  return (
+    <AnimatePresence>
+      {track && videoId && (
+        <motion.div
+          initial={{ y: 130, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 130, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 26 }}
+          className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-3 sm:px-4 sm:pb-4"
+        >
+          <div className="relative mx-auto max-w-3xl">
+            {/* Halo dégradé */}
+            <div className="pointer-events-none absolute -inset-1 rounded-3xl bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-violet-500/30 opacity-80 blur-xl" />
+
+            <div className="relative flex items-center gap-3 rounded-2xl border border-white/15 bg-[#160a2e]/95 p-2.5 shadow-2xl backdrop-blur-xl sm:gap-4 sm:p-3">
+              {/* Lecteur YouTube embarqué */}
+              <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/15 sm:w-40">
+                <iframe
+                  key={videoId}
+                  src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title={track.title}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 h-full w-full"
+                />
+              </div>
+
+              {/* Infos + égaliseur */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{emoji}</span>
+                  <p className="truncate text-sm font-semibold text-white sm:text-base">
+                    {track.title}
+                  </p>
+                </div>
+
+                <p className="truncate text-[11px] text-white/45 sm:text-xs">
+                  Humeur : {track.mood}
+                </p>
+
+                <div className="mt-2 flex items-end gap-[3px]">
+                  {[0, 0.15, 0.3, 0.45, 0.6, 0.2, 0.4].map((delay, i) => (
+                    <span
+                      key={i}
+                      className="eq-bar h-3.5 w-[3px] rounded-full bg-gradient-to-t from-purple-400 to-pink-400 sm:h-4"
+                      style={{ animationDelay: `${delay}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-full border border-white/10 bg-white/5 p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+                aria-label="Fermer le lecteur"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
