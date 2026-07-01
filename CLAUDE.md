@@ -16,7 +16,7 @@ Stack technique
 * Temps réel : Pusher (messagerie + notifications)
 * Upload media : Cloudinary (photos de profil)
 * Emails transactionnels : Resend (src/lib/resend.ts + src/lib/emails.ts)
-* Rate limiting : rate-limiter-flexible (src/lib/rate-limiter.ts)
+* Rate limiting : src/lib/rate-limiter.ts — Upstash Redis (REST) distribué avec fallback mémoire, fail-open
 
 ⸻
 
@@ -94,7 +94,7 @@ src/
 │   ├── paiement/page.tsx                     ← Choix offre Stripe
 │   ├── profil/[id]/page.tsx                  ← Page profil public d'une utilisatrice ✅
 │   ├── vibementor/page.tsx                   ← Q&A mentorat communauté ✅
-│   ├── vibeplanner/page.tsx                  ← Vitrine "bientôt disponible" (protégée useSession), pas encore branchée à l'API ⚠️
+│   ├── vibeplanner/page.tsx                  ← Fonctionnel ✅ : propose une idée à un match (POST) + accepte/refuse (PATCH), branché sur /api/vibeplanner + /api/matches
 │   ├── vibesphere/page.tsx                   ← Feed social mood board ✅
 │   ├── vibesphere/journal/page.tsx           ← Journal émotionnel localStorage ✅
 │   ├── sitemap.ts                            ← Sitemap SEO
@@ -122,7 +122,7 @@ src/
 │   ├── pusher-client.ts                      ← client Pusher navigateur
 │   ├── resend.ts                             ← client Resend emails (RESEND_API_KEY)
 │   ├── emails.ts                             ← templates HTML emails transactionnels
-│   ├── rate-limiter.ts                       ← rate limiting par IP (rate-limiter-flexible)
+│   ├── rate-limiter.ts                       ← rate limiting par IP — distribué Upstash Redis (REST) si UPSTASH_* défini, sinon fallback mémoire ; fail-open. Câblé sur register/reset-password/newsletter
 │   ├── audit.ts                              ← createAuditLog() helper
 │   ├── utils.ts
 │   ├── guards/
@@ -241,6 +241,9 @@ NEXT_PUBLIC_PUSHER_CLUSTER=eu
 # Resend (emails transactionnels)
 RESEND_API_KEY=...
 RESEND_FROM_EMAIL=...
+# Upstash Redis (rate limiting distribué — OPTIONNEL, fallback mémoire si absent)
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
 
 Flux utilisateur complet :   /auth (login/register)
   → /inscription (5 étapes profil)
@@ -285,7 +288,7 @@ Notifications :
 * Circle of Six /circle, 6 profils curatés/semaine.
 * VibeSphere /vibesphere, feed social mood board.
 * Journal émotionnel /vibesphere/journal, persisté en MongoDB, rituels, playlist, analyse IA simulée.
-* VibePlanner /vibeplanner — page protégée (useSession + redirection /auth) qui affiche pour l'instant une vitrine "bientôt disponible" (idées de rendez-vous statiques). Le backend `/api/vibeplanner` (GET/POST/PATCH plans de rendez-vous, protégé par session) existe déjà mais n'est pas encore branché à cette UI — reste à connecter pour rendre la fonctionnalité réellement opérationnelle.
+* VibePlanner /vibeplanner — fonctionnel ✅ : page protégée qui charge les matchs (/api/matches) et les propositions (/api/vibeplanner), permet de proposer une idée de rendez-vous (catégorie/titre/description/date, POST) et à l'autre personne d'accepter ou refuser (PATCH). Modal de création, états vides gérés (aucun match / aucune proposition).
 * VibeMentor /vibementor, Q&A communauté.
 * Événements Luna /evenements, inscription/désinscription.
 * Communauté Luna /communaute, forum, posts, commentaires, likes.
@@ -301,9 +304,13 @@ Notifications :
 * Emails transactionnels via Resend (vérification email, reset password, etc.).
 * Temps réel via Pusher (messagerie + notifications).
 * Vérification d'identité via Stripe Identity (/api/identity-verification).
-* Rate limiting par IP (implémentation native Map, sans dépendance externe).
+* Rate limiting par IP (Upstash Redis distribué + fallback mémoire, fail-open ; câblé register/reset-password/newsletter).
 * Audit logs centralisés (src/lib/audit.ts + AuditLog model).
 * Page profil public /profil/[id].
+* Filtre anti-harcèlement messagerie (src/lib/text-moderation.ts) : bloque les messages abusifs + crée un signalement auto (Report) visible dans /admin.
+* Badges de vérification d'identité visibles sur /explorer, /profil/[id] et /matches (identityVerified).
+* Relances email cron protégées (/api/cron/reengagement, secret CRON_SECRET) : inactifs, dunning past_due, win-back résiliés — anti-doublon via reengagementSentAt, PAS planifié dans vercel.json (déclenchement manuel/dry-run ?dry=1).
+* Analytics : Vercel Analytics (@vercel/analytics) dans le RootLayout.
 * Consentement cookies RGPD (CookieConsent + useCookieConsent hook).
 * Tests unitaires Vitest (subscription, rate-limiter, cookie consent, premium).
 * Aperçu profil public depuis Mon Compte (/profil/[id]?preview=1).

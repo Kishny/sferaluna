@@ -150,6 +150,9 @@ export interface IUser extends Document {
   // Dernier email de rappel de renouvellement envoyé (anti-doublon cron).
   renewalReminderSentAt?: Date | null;
 
+  // Dernier email de relance / win-back envoyé (anti-doublon cron reengagement).
+  reengagementSentAt?: Date | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -609,6 +612,15 @@ const UserSchema = new Schema<IUser>(
      * Sert au cron J-3 pour éviter d'envoyer plusieurs rappels par cycle.
      */
     renewalReminderSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
+     * Date du dernier email de relance / win-back (cron reengagement).
+     * Sert de garde anti-doublon pour ne pas sur-solliciter un membre.
+     */
+    reengagementSentAt: {
       type: Date,
       default: null,
     },

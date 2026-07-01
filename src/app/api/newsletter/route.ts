@@ -4,9 +4,24 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { NewsletterSubscriber } from "@/models/NewsletterSubscriber";
 import { addNewsletterContact } from "@/lib/newsletter";
+import { rateLimit } from "@/lib/rate-limiter";
 
 export async function POST(req: Request) {
   try {
+    // Anti-spam : 5 inscriptions max / 10 min / IP.
+    const rl = await rateLimit(req, 5, 600);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Trop de tentatives. Réessaie dans quelques minutes." },
+        {
+          status: 429,
+          headers: rl.retryAfter
+            ? { "Retry-After": String(rl.retryAfter) }
+            : undefined,
+        }
+      );
+    }
+
     const { email } = await req.json();
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

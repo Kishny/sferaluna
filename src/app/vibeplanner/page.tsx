@@ -3,173 +3,279 @@
 "use client";
 
 /**
- * Page VibePlanner SferaLuna.
+ * Page VibePlanner SferaLuna — version fonctionnelle.
  *
- * Objectif :
- * - présenter une fonctionnalité bientôt disponible ;
- * - garder une page belle, compacte et cohérente avec le reste du site ;
- * - préparer la structure pour une future version dynamique.
+ * Branchée sur :
+ * - GET  /api/matches       → liste des matchs actifs (pour choisir avec qui)
+ * - GET  /api/vibeplanner   → toutes mes propositions (tous matchs confondus)
+ * - POST /api/vibeplanner   → proposer une idée de rendez-vous
+ * - PATCH /api/vibeplanner  → accepter / refuser (réservé à l'autre personne)
  *
- * Version mobile-first :
- * - hero compact ;
- * - cards en accordéon sur mobile ;
- * - cards détaillées sur desktop ;
- * - footer masqué sur mobile pour éviter de surcharger l'écran.
+ * Style premium sombre cohérent avec le reste du site, mobile-first.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import {
-  Calendar,
-  ChevronDown,
+  CalendarClock,
+  Check,
+  Clock,
   Heart,
-  Lightbulb,
   Loader2,
-  MapPin,
+  Plus,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 // ─────────────────────────────────────────────
-// Données de présentation
+// Types
 // ─────────────────────────────────────────────
 
-const plannerIdeas = [
-  {
-    emoji: "🎨",
-    title: "Idées créatives",
-    description:
-      "Atelier peinture, expo immersive, carnet à deux, création d'une playlist commune…",
-    icon: Lightbulb,
-  },
-  {
-    emoji: "🌿",
-    title: "Sorties nature",
-    description:
-      "Balade au parc, pique-nique lunaire, jardin botanique, coucher de soleil à deux…",
-    icon: MapPin,
-  },
-  {
-    emoji: "🛋️",
-    title: "Soirées cosy",
-    description:
-      "Film choisi par vos vibes, dîner maison, conversation guidée, soirée sans pression…",
-    icon: Heart,
-  },
-];
-
-/**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera". Variante blanche pour fond sombre.
- */
-function OrbitGlow({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
-    >
-      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
-      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
-      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
-      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
-    </svg>
-  );
+interface MatchUser {
+  _id: string;
+  pseudonyme: string;
+  image?: string;
+  age?: number;
+  localisation?: string;
 }
 
-/**
- * Thème couleur cyclique pour les 3 catégories d'idées.
- */
-const ideaThemes = [
-  { iconBg: "from-[#FF9A3C] to-[#FFD166]", chip: "bg-[#FF9A3C]/15", bar: "from-[#FF9A3C] to-[#FFD166]" },
-  { iconBg: "from-[#4ECDC4] to-[#8FE9E0]", chip: "bg-[#4ECDC4]/15", bar: "from-[#4ECDC4] to-[#8FE9E0]" },
-  { iconBg: "from-[#FF6B9D] to-[#FF8E53]", chip: "bg-[#FF6B9D]/15", bar: "from-[#FF6B9D] to-[#FF8E53]" },
+interface MatchItem {
+  matchId: string;
+  user: MatchUser | null;
+}
+
+interface PlanUser {
+  _id: string;
+  pseudonyme: string;
+  image?: string;
+}
+
+type PlanStatus = "pending" | "accepted" | "rejected";
+
+interface Plan {
+  _id: string;
+  matchId: string | { _id: string };
+  proposedById: PlanUser;
+  title: string;
+  description: string;
+  category: string;
+  emoji: string;
+  scheduledAt?: string | null;
+  status: PlanStatus;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────
+// Catégories
+// ─────────────────────────────────────────────
+
+const CATEGORIES = [
+  { key: "cafe", label: "Café", emoji: "☕" },
+  { key: "restaurant", label: "Restaurant", emoji: "🍽️" },
+  { key: "balade", label: "Balade", emoji: "🌿" },
+  { key: "culture", label: "Culture", emoji: "🎨" },
+  { key: "appel-video", label: "Appel vidéo", emoji: "📹" },
+  { key: "autre", label: "Autre", emoji: "✨" },
 ];
 
-const futureFeatures = [
-  {
-    emoji: "💫",
-    title: "Suggestions selon vos vibes",
-    description:
-      "Le VibePlanner proposera des idées selon vos centres d'intérêt, votre humeur et vos intentions.",
+const categoryLabel = (key: string) =>
+  CATEGORIES.find((c) => c.key === key)?.label || key;
+
+const statusMeta: Record<
+  PlanStatus,
+  { label: string; style: string }
+> = {
+  pending: {
+    label: "En attente",
+    style: "border-amber-300/30 bg-amber-400/10 text-amber-200",
   },
-  {
-    emoji: "💜",
-    title: "Activités pour chaque rythme",
-    description:
-      "Premier rendez-vous doux, moment complice, sortie spontanée ou activité plus intime.",
+  accepted: {
+    label: "Accepté",
+    style: "border-emerald-300/30 bg-emerald-400/10 text-emerald-200",
   },
-  {
-    emoji: "🌙",
-    title: "Planning avec vos matchs",
-    description:
-      "À terme, vous pourrez proposer une activité directement depuis une conversation.",
+  rejected: {
+    label: "Refusé",
+    style: "border-rose-300/30 bg-rose-400/10 text-rose-200",
   },
-];
+};
+
+function matchIdOf(plan: Plan): string {
+  return typeof plan.matchId === "string" ? plan.matchId : plan.matchId._id;
+}
+
+function formatSchedule(date?: string | null) {
+  if (!date) return null;
+  const d = new Date(date);
+  return d.toLocaleString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// ─────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────
 
 export default function VibePlannerPage() {
   const { status } = useSession();
   const router = useRouter();
 
-  /**
-   * Accordéon mobile.
-   * null = aucun bloc ouvert.
-   * 0 = premier bloc ouvert par défaut.
-   */
-  const [openIdeaIndex, setOpenIdeaIndex] = useState<number | null>(0);
+  const [matches, setMatches] = useState<MatchItem[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  /**
-   * VibePlanner est réservé aux utilisatrices connectées (même si l'aperçu
-   * actuel n'est qu'une vitrine "bientôt disponible" : l'API /api/vibeplanner
-   * existe déjà côté serveur et est protégée par session).
-   */
+  // Formulaire de proposition
+  const [showForm, setShowForm] = useState(false);
+  const [formMatchId, setFormMatchId] = useState("");
+  const [formCategory, setFormCategory] = useState(CATEGORIES[0].key);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const [actionId, setActionId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth?mode=login");
-    }
+    if (status === "unauthenticated") router.push("/auth?mode=login");
   }, [status, router]);
 
-  /**
-   * Loading global — le temps que useSession() résolve son statut.
-   */
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [mRes, pRes] = await Promise.all([
+        fetch("/api/matches", { cache: "no-store" }),
+        fetch("/api/vibeplanner", { cache: "no-store" }),
+      ]);
+      const mData = await mRes.json();
+      const pData = await pRes.json();
+
+      if (mData.success) setMatches(mData.matches ?? []);
+      if (pData.success) setPlans(pData.plans ?? []);
+      if (!mData.success && !pData.success) {
+        setError("Impossible de charger tes données.");
+      }
+    } catch {
+      setError("Erreur de connexion.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") load();
+  }, [status, load]);
+
+  // Map matchId → autre personne (pour l'affichage et la logique de réponse).
+  const otherByMatch = useMemo(() => {
+    const map = new Map<string, MatchUser | null>();
+    for (const m of matches) map.set(m.matchId, m.user);
+    return map;
+  }, [matches]);
+
+  const openForm = () => {
+    setFormMatchId(matches[0]?.matchId ?? "");
+    setFormCategory(CATEGORIES[0].key);
+    setFormTitle("");
+    setFormDescription("");
+    setFormDate("");
+    setError("");
+    setShowForm(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formMatchId) {
+      setError("Choisis un match.");
+      return;
+    }
+    if (formTitle.trim().length < 2 || formDescription.trim().length < 2) {
+      setError("Titre et description sont requis.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    const emoji =
+      CATEGORIES.find((c) => c.key === formCategory)?.emoji || "✨";
+
+    try {
+      const res = await fetch("/api/vibeplanner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchId: formMatchId,
+          title: formTitle.trim(),
+          description: formDescription.trim(),
+          category: formCategory,
+          emoji,
+          scheduledAt: formDate ? new Date(formDate).toISOString() : null,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setShowForm(false);
+        load();
+      } else {
+        setError(data.error || "Échec de l'envoi.");
+      }
+    } catch {
+      setError("Erreur de connexion.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRespond = async (planId: string, next: "accepted" | "rejected") => {
+    setActionId(planId + next);
+    try {
+      const res = await fetch("/api/vibeplanner", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, status: next }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPlans((prev) =>
+          prev.map((p) => (p._id === planId ? { ...p, status: next } : p))
+        );
+      } else {
+        setError(data.error || "Action impossible.");
+      }
+    } catch {
+      setError("Erreur de connexion.");
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  // Loading / non connecté
   if (status === "loading" || status === "unauthenticated") {
     return (
       <>
         <div className="min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
           <Header />
-
           <main className="flex min-h-screen items-center justify-center px-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center"
-            >
+            <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/10 backdrop-blur">
                 <Loader2 className="h-8 w-8 animate-spin text-purple-200" />
               </div>
-
               <p className="text-sm text-white/60">Chargement…</p>
-            </motion.div>
+            </div>
           </main>
         </div>
-
         <div className="hidden sm:block">
           <Footer />
         </div>
@@ -179,278 +285,331 @@ export default function VibePlannerPage() {
 
   return (
     <>
-      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#0d0a1e] via-[#1a0b2e] to-[#2d1b69] text-white">
         <Header />
 
-        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
-        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-
-        <main className="relative z-10 mx-auto max-w-5xl px-4 pb-8 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
-          {/* ─────────────────────────────
-              Hero compact mobile
-          ───────────────────────────── */}
+        <main className="relative z-10 mx-auto max-w-4xl px-4 pb-10 pt-20 sm:px-6 sm:pb-16 sm:pt-28">
+          {/* Hero */}
           <motion.section
-            initial={{ opacity: 0, y: 22 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            className="mb-5 overflow-hidden rounded-3xl border border-white/10 bg-white/8 p-5 text-center shadow-2xl backdrop-blur-xl sm:mb-8 sm:p-10"
+            className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/8 p-5 shadow-2xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-8"
           >
-            {/* Icône animée */}
-            <motion.div
-              animate={{
-                rotate: [0, -8, 8, -8, 0],
-                y: [0, -4, 0],
-              }}
-              transition={{
-                duration: 2.4,
-                repeat: Infinity,
-                repeatDelay: 3,
-                ease: "easeInOut",
-              }}
-              className="mb-3 text-5xl sm:mb-5 sm:text-7xl"
-            >
-              🗓️
-            </motion.div>
-
-            {/* Badge */}
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/25 bg-purple-500/15 px-3 py-1.5 text-xs font-semibold text-purple-200 sm:mb-5 sm:px-4 sm:text-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              Bientôt disponible
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-300/25 bg-purple-500/15 px-3 py-1 text-xs font-semibold text-purple-200">
+                <Sparkles className="h-3.5 w-3.5" />
+                VibePlanner
+              </div>
+              <h1 className="bg-gradient-to-r from-purple-200 via-pink-200 to-white bg-clip-text text-3xl font-black text-transparent sm:text-4xl">
+                Planifie tes rendez-vous
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60">
+                Propose une idée d&apos;activité à tes matchs. La personne reçoit
+                ta proposition et peut l&apos;accepter ou la refuser.
+              </p>
             </div>
 
-            <h1 className="bg-gradient-to-r from-purple-200 via-pink-200 to-white bg-clip-text text-3xl font-black text-transparent sm:text-5xl">
-              VibePlanner
-            </h1>
+            {matches.length > 0 && (
+              <button
+                onClick={openForm}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-pink-500"
+              >
+                <Plus className="h-4 w-4" />
+                Proposer une idée
+              </button>
+            )}
+          </motion.section>
 
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-white/60 sm:mt-5 sm:text-lg">
-              Planifiez des idées de rendez-vous magiques avec vos matchs.
-              Une fonctionnalité pensée pour éviter les blancs, réduire la
-              pression et créer des moments vraiment alignés.
-            </p>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4"
+              >
+                <div className="flex items-center gap-2 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                  <span className="flex-1">{error}</span>
+                  <button onClick={() => setError("")}>✕</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-            <div className="mt-5 flex flex-col justify-center gap-2.5 sm:mt-8 sm:flex-row sm:gap-4">
+          {/* Contenu */}
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-200" />
+            </div>
+          ) : matches.length === 0 ? (
+            <div className="rounded-3xl border border-white/10 bg-white/6 p-10 text-center backdrop-blur">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-2xl">
+                💜
+              </div>
+              <h2 className="mb-2 text-lg font-bold">Aucun match pour l&apos;instant</h2>
+              <p className="mx-auto mb-5 max-w-md text-sm text-white/55">
+                Le VibePlanner s&apos;active dès que tu as un match. Va découvrir
+                des profils pour commencer.
+              </p>
               <Link
                 href="/explorer"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-pink-500 sm:w-auto sm:px-7"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-purple-500 hover:to-pink-500"
               >
                 Découvrir des profils
                 <Users className="h-4 w-4" />
               </Link>
-
-              <Link
-                href="/fonctionnalites"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/8 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/14 hover:text-white sm:w-auto sm:px-7"
-              >
-                Voir les fonctionnalités
-                <Sparkles className="h-4 w-4" />
-              </Link>
             </div>
-          </motion.section>
-
-          {/* ─────────────────────────────
-              Résumé compact
-          ───────────────────────────── */}
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: 0.45 }}
-            className="mb-5 grid grid-cols-3 gap-2 sm:mb-8 sm:gap-4"
-          >
-            {[
-              { value: "3", label: "types d'idées" },
-              { value: "IA", label: "suggestions" },
-              { value: "Soon", label: "arrive vite" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-white/10 bg-white/6 px-2 py-3 text-center backdrop-blur sm:px-4 sm:py-5"
-              >
-                <p className="text-lg font-black text-purple-200 sm:text-3xl">
-                  {stat.value}
-                </p>
-                <p className="mt-0.5 text-[10px] text-white/45 sm:text-sm">
-                  {stat.label}
-                </p>
+          ) : plans.length === 0 ? (
+            <div className="rounded-3xl border border-white/10 bg-white/6 p-10 text-center backdrop-blur">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-2xl">
+                🗓️
               </div>
-            ))}
-          </motion.section>
+              <h2 className="mb-2 text-lg font-bold">Aucune proposition</h2>
+              <p className="mx-auto mb-5 max-w-md text-sm text-white/55">
+                Lance-toi : propose une première idée de rendez-vous à l&apos;un de
+                tes matchs.
+              </p>
+              <button
+                onClick={openForm}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-purple-500 hover:to-pink-500"
+              >
+                <Plus className="h-4 w-4" />
+                Proposer une idée
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {plans.map((plan) => {
+                const other = otherByMatch.get(matchIdOf(plan)) ?? null;
+                const proposedByOther =
+                  !!other && plan.proposedById?._id === other._id;
+                const partnerName = other?.pseudonyme ?? "Ton match";
+                const schedule = formatSchedule(plan.scheduledAt);
+                const meta = statusMeta[plan.status];
 
-          {/* ─────────────────────────────
-              Mobile : idées en accordéon
-          ───────────────────────────── */}
-          <section className="space-y-2 sm:hidden">
-            {plannerIdeas.map((item, index) => {
-              const isOpen = openIdeaIndex === index;
-              const theme = ideaThemes[index % ideaThemes.length];
-
-              return (
-                <motion.article
-                  key={item.title}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/8 backdrop-blur"
-                >
-                  <div
-                    className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme.bar}`}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setOpenIdeaIndex(isOpen ? null : index)}
-                    className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                return (
+                  <motion.article
+                    key={plan._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur sm:p-5"
                   >
-                    <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${theme.chip} text-lg`}
-                    >
-                      {item.emoji}
-                    </span>
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl">
+                        {plan.emoji}
+                      </div>
 
-                    <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-sm font-bold text-white">
-                        {item.title}
-                      </h2>
-
-                      <p className="truncate text-[11px] text-white/45">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-purple-200 transition-transform ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.22, ease: "easeOut" }}
-                        className="overflow-hidden"
-                      >
-                        <div className="border-t border-white/10 px-3 pb-3 pt-2">
-                          <p className="text-xs leading-relaxed text-white/60">
-                            {item.description}
-                          </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-white">{plan.title}</h3>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.style}`}
+                          >
+                            {meta.label}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/50">
+                            {categoryLabel(plan.category)}
+                          </span>
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.article>
-              );
-            })}
-          </section>
 
-          {/* ─────────────────────────────
-              Desktop/tablette : cards complètes
-          ───────────────────────────── */}
-          <section className="hidden grid-cols-3 gap-4 sm:grid">
-            {plannerIdeas.map((item, index) => {
-              const Icon = item.icon;
-              const theme = ideaThemes[index % ideaThemes.length];
+                        <p className="mt-1 text-sm leading-relaxed text-white/60">
+                          {plan.description}
+                        </p>
 
-              return (
-                <motion.article
-                  key={item.title}
-                  initial={{ opacity: 0, y: 22 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  whileHover={{ y: -6, scale: 1.02 }}
-                  className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/8 p-6 shadow-xl backdrop-blur-xl transition"
-                >
-                  <div
-                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme.bar}`}
-                  />
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/40">
+                          <span className="inline-flex items-center gap-1">
+                            <Heart className="h-3 w-3 text-pink-400" />
+                            {proposedByOther
+                              ? `${partnerName} te propose`
+                              : `Proposé à ${partnerName}`}
+                          </span>
+                          {schedule && (
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarClock className="h-3 w-3" />
+                              {schedule}
+                            </span>
+                          )}
+                        </div>
 
-                  <div
-                    className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.iconBg} text-white`}
-                  >
-                    <Icon className="h-7 w-7" />
-                  </div>
+                        {/* Actions */}
+                        {plan.status === "pending" && proposedByOther && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={() => handleRespond(plan._id, "accepted")}
+                              disabled={actionId === plan._id + "accepted"}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-50"
+                            >
+                              {actionId === plan._id + "accepted" ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                              Accepter
+                            </button>
+                            <button
+                              onClick={() => handleRespond(plan._id, "rejected")}
+                              disabled={actionId === plan._id + "rejected"}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/60 transition hover:bg-white/10 disabled:opacity-50"
+                            >
+                              {actionId === plan._id + "rejected" ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <X className="h-3.5 w-3.5" />
+                              )}
+                              Refuser
+                            </button>
+                          </div>
+                        )}
 
-                  <div className="mb-3 text-3xl">{item.emoji}</div>
-
-                  <h2 className="mb-2 text-xl font-bold text-white">
-                    {item.title}
-                  </h2>
-
-                  <p className="text-sm leading-relaxed text-white/55">
-                    {item.description}
-                  </p>
-                </motion.article>
-              );
-            })}
-          </section>
-
-          {/* ─────────────────────────────
-              Bloc "ce qui arrive"
-          ───────────────────────────── */}
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="relative overflow-hidden mt-5 rounded-3xl border border-purple-300/15 bg-purple-500/10 p-4 backdrop-blur-xl sm:mt-8 sm:p-6"
-          >
-            <OrbitGlow className="right-[-15%] top-[-25%] h-56 w-56 sm:h-72 sm:w-72" />
-
-            <div className="relative z-10 mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-400/15 text-xl">
-                ✨
-              </div>
-
-              <div>
-                <h2 className="text-base font-bold text-white sm:text-xl">
-                  Ce que VibePlanner apportera
-                </h2>
-
-                <p className="text-xs text-white/45 sm:text-sm">
-                  Une aide douce pour créer des moments qui ressemblent aux deux
-                  personnes.
-                </p>
-              </div>
+                        {plan.status === "pending" && !proposedByOther && (
+                          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-white/35">
+                            <Clock className="h-3 w-3" />
+                            En attente de la réponse de {partnerName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.article>
+                );
+              })}
             </div>
-
-            <div className="space-y-2 sm:grid sm:grid-cols-3 sm:gap-3 sm:space-y-0">
-              {futureFeatures.map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-2xl border border-white/10 bg-white/6 p-3 sm:p-4"
-                >
-                  <div className="mb-2 text-xl">{item.emoji}</div>
-
-                  <h3 className="mb-1 text-sm font-semibold text-white">
-                    {item.title}
-                  </h3>
-
-                  <p className="text-xs leading-relaxed text-white/50">
-                    {item.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* ─────────────────────────────
-              Message final compact
-          ───────────────────────────── */}
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-center text-xs text-white/45 backdrop-blur sm:mt-8 sm:text-sm"
-          >
-            <Heart className="h-4 w-4 shrink-0 text-pink-400" />
-            <span>Patience… cette fonctionnalité va vraiment servir 💜</span>
-          </motion.section>
+          )}
         </main>
       </div>
 
-      {/* Footer masqué sur mobile pour garder une page compacte. */}
+      {/* Modal de proposition */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+            onClick={() => !submitting && setShowForm(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg rounded-t-3xl border border-white/10 bg-[#160a2e] p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold">Proposer une idée</h2>
+                <button
+                  onClick={() => !submitting && setShowForm(false)}
+                  className="rounded-lg p-1 text-white/50 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Match */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">
+                    Avec qui ?
+                  </label>
+                  <select
+                    value={formMatchId}
+                    onChange={(e) => setFormMatchId(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-[#241447] px-3 py-2.5 text-sm text-white focus:outline-none"
+                  >
+                    {matches.map((m) => (
+                      <option key={m.matchId} value={m.matchId}>
+                        {m.user?.pseudonyme ?? "Match"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Catégorie */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">
+                    Type d&apos;activité
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORIES.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setFormCategory(c.key)}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                          formCategory === c.key
+                            ? "border-purple-400/50 bg-purple-500/20 text-white"
+                            : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
+                        }`}
+                      >
+                        <span>{c.emoji}</span>
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Titre */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">
+                    Titre
+                  </label>
+                  <input
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    maxLength={100}
+                    placeholder="Un café près du canal ?"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:border-purple-400/50 focus:outline-none"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">
+                    Description
+                  </label>
+                  <textarea
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="Ce que tu proposes, l'ambiance, le lieu…"
+                    className="w-full resize-y rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:border-purple-400/50 focus:outline-none"
+                  />
+                </div>
+
+                {/* Date optionnelle */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">
+                    Date proposée{" "}
+                    <span className="text-white/30">(optionnel)</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-purple-400/50 focus:outline-none [color-scheme:dark]"
+                  />
+                </div>
+
+                {error && <p className="text-xs text-rose-300">{error}</p>}
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-3 text-sm font-semibold text-white transition hover:from-purple-500 hover:to-pink-500 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Envoyer la proposition
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="hidden sm:block">
         <Footer />
       </div>

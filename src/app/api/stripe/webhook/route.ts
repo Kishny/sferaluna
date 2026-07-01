@@ -176,11 +176,32 @@ async function syncPremiumUserFromSubscription({
 
   const subscriptionId = subscription?.id || "";
 
+  /**
+   * Hygiène du champ `plan` : on ne persiste le palier payant QUE si l'accès
+   * premium est réellement actif. Sinon on évite le drift (ex : checkout
+   * abandonné → abonnement Stripe "incomplete" → statut "inactive" mais plan
+   * "elite-monthly" resté en base).
+   *
+   * - premium actif (active/trialing) + plan connu → on écrit le plan.
+   * - statut inactif/annulé → on remet "free".
+   * - past_due → on ne touche pas au plan (échec temporaire ; le
+   *   renouvellement réussi restaurera l'accès sans reperdre le palier).
+   */
+  let resolvedPlan: UserPlan | undefined;
+  if (isPremium && plan) {
+    resolvedPlan = plan;
+  } else if (
+    subscriptionStatus === "inactive" ||
+    subscriptionStatus === "canceled"
+  ) {
+    resolvedPlan = "free";
+  }
+
   await User.findByIdAndUpdate(
     userId,
     {
       $set: {
-        ...(plan ? { plan } : {}),
+        ...(resolvedPlan ? { plan: resolvedPlan } : {}),
         isPremium,
         subscriptionStatus,
         ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
@@ -220,6 +241,9 @@ async function disablePremiumUser({
       $set: {
         isPremium: false,
         subscriptionStatus: "canceled",
+        // On repasse le palier à "free" : l'accès premium est perdu, et le
+        // statut "canceled" suffit à afficher "Résilié" côté admin.
+        plan: "free",
         premiumExpiresAt: new Date(),
         ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
       },

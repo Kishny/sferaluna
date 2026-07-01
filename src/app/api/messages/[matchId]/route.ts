@@ -9,8 +9,10 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { Match } from "@/models/Match";
 import { Message } from "@/models/Message";
+import { Report } from "@/models/Report";
 import { pusher } from "@/lib/pusher";
 import { sendNewMessagePush } from "@/lib/push";
+import { moderateText } from "@/lib/text-moderation";
 
 /**
  * API Messages SferaLuna.
@@ -367,6 +369,49 @@ export async function POST(
           code: "TOO_LONG",
         },
         { status: 400 }
+      );
+    }
+
+    /**
+     * Filtre anti-harcèlement.
+     *
+     * Un message clairement abusif n'est PAS envoyé, et un signalement
+     * automatique est créé pour la modération admin (visé : l'expéditeur).
+     * On upsert pour respecter l'index unique (reporterId, targetType,
+     * targetId) et éviter un crash sur récidive.
+     */
+    const moderation = moderateText(content);
+    if (moderation.blocked) {
+      try {
+        await Report.findOneAndUpdate(
+          {
+            reporterId: currentUserId,
+            targetType: "user",
+            targetId: currentUserId,
+          },
+          {
+            $set: {
+              reason: "harcèlement",
+              status: "pending",
+              details:
+                "[AUTO] Filtre anti-harcèlement : message bloqué dans la messagerie " +
+                `(${moderation.category ?? "abus"}).`,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      } catch (reportErr) {
+        console.warn("Signalement auto anti-harcèlement échoué :", reportErr);
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Ce message enfreint nos règles de respect et n'a pas été envoyé. Les échanges doivent rester bienveillants.",
+          code: "MESSAGE_BLOCKED",
+        },
+        { status: 422 }
       );
     }
 

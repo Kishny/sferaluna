@@ -6,10 +6,25 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { sendResetPasswordEmail } from "@/lib/emails";
+import { rateLimit } from "@/lib/rate-limiter";
 
 /** POST /api/auth/reset-password — Demande de reset (envoi email) */
 export async function POST(req: NextRequest) {
   try {
+    // Anti-abus : 5 demandes de reset max / 15 min / IP.
+    const rl = await rateLimit(req, 5, 900);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Trop de demandes. Réessaie dans quelques minutes." },
+        {
+          status: 429,
+          headers: rl.retryAfter
+            ? { "Retry-After": String(rl.retryAfter) }
+            : undefined,
+        }
+      );
+    }
+
     await connectDB();
 
     const { email } = await req.json();

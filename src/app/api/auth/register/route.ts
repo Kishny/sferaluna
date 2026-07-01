@@ -6,9 +6,24 @@ import crypto from "crypto";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { sendVerificationEmail } from "@/lib/emails";
+import { rateLimit } from "@/lib/rate-limiter";
 
 export async function POST(req: NextRequest) {
   try {
+    // Anti-abus : 5 créations de compte max / 10 min / IP.
+    const rl = await rateLimit(req, 5, 600);
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Trop de tentatives. Réessaie dans quelques minutes." },
+        {
+          status: 429,
+          headers: rl.retryAfter
+            ? { "Retry-After": String(rl.retryAfter) }
+            : undefined,
+        }
+      );
+    }
+
     const body = await req.json();
     const { name, email, password, pseudonyme } = body;
 

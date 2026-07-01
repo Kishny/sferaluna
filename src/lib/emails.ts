@@ -276,3 +276,83 @@ export async function sendRenewalReminderEmail(
     html,
   });
 }
+
+// ─── Email : relance membre inactif ───────────────────────────────────────────
+
+export async function sendReengagementEmail(
+  to: string,
+  pseudonyme: string
+): Promise<void> {
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Tu nous manques, ${pseudonyme} 🌙</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      La communauté SferaLuna continue de grandir et de nouvelles personnes t'attendent peut-être.
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 24px;">
+      Reviens jeter un œil : de nouveaux profils, de nouvelles affinités, et toujours le même espace sûr et bienveillant.
+    </p>
+    ${primaryButton("Revenir sur SferaLuna", `${APP_URL}/explorer`)}
+    <p style="color:#999;font-size:13px;text-align:center;margin:0;">À très vite 💜</p>
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "🌙 On t'a gardé une place sur SferaLuna",
+    html,
+  });
+}
+
+// ─── Email : relance paiement en échec (dunning) ──────────────────────────────
+
+export async function sendDunningEmail(
+  to: string,
+  pseudonyme: string
+): Promise<void> {
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Un souci avec ton paiement, ${pseudonyme}</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Le renouvellement de ton abonnement SferaLuna n'a pas pu être prélevé. Ton accès premium risque d'être suspendu.
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 24px;">
+      Mets à jour ton moyen de paiement en quelques secondes pour ne rien perdre.
+    </p>
+    ${primaryButton("Mettre à jour mon paiement", `${APP_URL}/mon-compte`)}
+    <p style="color:#999;font-size:13px;text-align:center;margin:0;">
+      Si c'est déjà réglé, ignore cet email.
+    </p>
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "⚠️ Ton paiement SferaLuna n'a pas abouti",
+    html,
+  });
+}
+
+// ─── Email : win-back abonnement résilié ──────────────────────────────────────
+
+export async function sendWinbackEmail(
+  to: string,
+  pseudonyme: string
+): Promise<void> {
+  const html = emailWrapper(`
+    <h2 style="color:#1C1C1C;font-size:22px;margin:0 0 8px;">Et si on se retrouvait, ${pseudonyme} ?</h2>
+    <p style="color:#666;line-height:1.6;margin:0 0 16px;">
+      Ton abonnement premium s'est terminé, mais ta place dans la communauté SferaLuna reste ouverte.
+    </p>
+    <p style="color:#666;line-height:1.6;margin:0 0 24px;">
+      Réactive ton accès premium quand tu veux pour retrouver toutes tes fonctionnalités : visibilité, mode fantôme, et bien plus.
+    </p>
+    ${primaryButton("Réactiver mon premium", `${APP_URL}/tarifs`)}
+    <p style="color:#999;font-size:13px;text-align:center;margin:0;">On serait ravies de te revoir 💜</p>
+  `);
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "💜 Ta place t'attend sur SferaLuna",
+    html,
+  });
+}

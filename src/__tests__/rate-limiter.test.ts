@@ -23,7 +23,7 @@ describe("rateLimit", () => {
     const { rateLimit } = await import("@/lib/rate-limiter");
 
     for (let i = 0; i < 10; i++) {
-      const result = rateLimit(mockRequest("1.2.3.4"), 10, 60);
+      const result = await rateLimit(mockRequest("1.2.3.4"), 10, 60);
       expect(result.limited).toBe(false);
     }
   });
@@ -32,10 +32,10 @@ describe("rateLimit", () => {
     const { rateLimit } = await import("@/lib/rate-limiter");
 
     for (let i = 0; i < 10; i++) {
-      rateLimit(mockRequest("5.6.7.8"), 10, 60);
+      await rateLimit(mockRequest("5.6.7.8"), 10, 60);
     }
 
-    const result = rateLimit(mockRequest("5.6.7.8"), 10, 60);
+    const result = await rateLimit(mockRequest("5.6.7.8"), 10, 60);
     expect(result.limited).toBe(true);
     expect(result.retryAfter).toBeGreaterThan(0);
   });
@@ -44,11 +44,11 @@ describe("rateLimit", () => {
     const { rateLimit } = await import("@/lib/rate-limiter");
 
     for (let i = 0; i < 10; i++) {
-      rateLimit(mockRequest("10.0.0.1"), 10, 60);
+      await rateLimit(mockRequest("10.0.0.1"), 10, 60);
     }
 
     // Nouvelle IP — ne doit pas être limitée
-    const result = rateLimit(mockRequest("10.0.0.2"), 10, 60);
+    const result = await rateLimit(mockRequest("10.0.0.2"), 10, 60);
     expect(result.limited).toBe(false);
   });
 
@@ -56,10 +56,10 @@ describe("rateLimit", () => {
     const { rateLimit } = await import("@/lib/rate-limiter");
 
     for (let i = 0; i < 3; i++) {
-      rateLimit(mockRequest("9.9.9.9"), 3, 60);
+      await rateLimit(mockRequest("9.9.9.9"), 3, 60);
     }
 
-    const result = rateLimit(mockRequest("9.9.9.9"), 3, 60);
+    const result = await rateLimit(mockRequest("9.9.9.9"), 3, 60);
     expect(result.limited).toBe(true);
     expect(typeof result.retryAfter).toBe("number");
     expect(typeof result.resetTime).toBe("number");
