@@ -676,10 +676,16 @@ export default function VibespherePage() {
             </div>
           </motion.section>
 
-          {/* Feed */}
-          <section className="space-y-3 sm:space-y-4">
-            <AnimatePresence>
-              {posts.map((post, index) => {
+          {/* Feed — carrousel horizontal infini immersif */}
+          {posts.length > 0 && (
+          <div className="vibe-carousel group relative -mx-3 overflow-hidden py-2 sm:-mx-4">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-10 bg-gradient-to-r from-[#1a0b2e] via-[#1a0b2e]/70 to-transparent sm:w-24" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[#3a2a82] via-[#3a2a82]/70 to-transparent sm:w-24" />
+            <div
+              className="vibe-marquee flex w-max"
+              style={{ animationDuration: `${Math.max(posts.length * 7, 24)}s` }}
+            >
+              {[...posts, ...posts].map((post, index) => {
                 const moodData = getMoodData(post.mood);
                 const author = post.userId;
 
@@ -689,17 +695,21 @@ export default function VibespherePage() {
 
                 return (
                   <motion.article
-                    key={post._id}
+                    key={post._id + "-" + index}
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ delay: Math.min(index * 0.025, 0.2) }}
-                    className="relative overflow-hidden rounded-3xl border border-white/12 bg-white/10 p-3 backdrop-blur-sm transition-colors hover:border-white/25 sm:p-5"
+                    transition={{ delay: Math.min(index * 0.02, 0.2) }}
+                    className="group/card relative mr-4 w-[280px] shrink-0 overflow-hidden rounded-3xl border border-white/12 bg-white/10 p-4 backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-white/25 hover:bg-white/[0.14] sm:w-[330px] sm:p-5"
                   >
                     {moodData && (
-                      <div
-                        className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${moodData.color}`}
-                      />
+                      <>
+                        <div
+                          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${moodData.color}`}
+                        />
+                        <div
+                          className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${moodData.color} opacity-20 blur-3xl transition-opacity duration-300 group-hover/card:opacity-40`}
+                        />
+                      </>
                     )}
 
                     <div className="flex items-start gap-3">
@@ -813,8 +823,9 @@ export default function VibespherePage() {
                   </motion.article>
                 );
               })}
-            </AnimatePresence>
-          </section>
+            </div>
+          </div>
+          )}
 
           {/* État vide */}
           {posts.length === 0 && (
@@ -871,6 +882,33 @@ export default function VibespherePage() {
         .scrollbar-none {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+
+        @keyframes vibe-scroll {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+
+        .vibe-marquee {
+          animation-name: vibe-scroll;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+          will-change: transform;
+        }
+
+        /* Pause au survol pour laisser lire / liker / signaler */
+        .vibe-carousel:hover .vibe-marquee {
+          animation-play-state: paused;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .vibe-marquee {
+            animation: none;
+          }
         }
       `}</style>
     </>

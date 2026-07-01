@@ -179,6 +179,42 @@ function createFormattedDate() {
   });
 }
 
+/**
+ * Sphère en orbite décorative (cercles concentriques + points d'accent),
+ * écho visuel du nom "Sfera". La couleur du tracé s'adapte au thème.
+ */
+function OrbitGlow({
+  className = "",
+  stroke = "#FFFFFF",
+}: {
+  className?: string;
+  stroke?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className={`pointer-events-none absolute opacity-[0.16] ${className}`}
+      aria-hidden="true"
+    >
+      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle
+        cx="100"
+        cy="100"
+        r="62"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1"
+        strokeDasharray="4 6"
+      />
+      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
+      <circle cx="100" cy="10" r="3" fill={stroke} />
+      <circle cx="190" cy="100" r="3" fill={stroke} />
+      <circle cx="100" cy="190" r="3" fill={stroke} />
+      <circle cx="10" cy="100" r="3" fill={stroke} />
+    </svg>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
@@ -486,9 +522,31 @@ export default function JournalPage() {
       <Header />
 
       <main
-        className={`min-h-screen px-3 py-20 transition-all duration-500 sm:px-4 sm:py-24 ${mainBackground}`}
+        className={`relative min-h-screen overflow-hidden px-3 py-20 transition-all duration-500 sm:px-4 sm:py-24 ${mainBackground}`}
       >
-        <div className="mx-auto max-w-3xl space-y-4 sm:space-y-10">
+        {/* Décor immersif : sphères en orbite + halos flottants animés */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <OrbitGlow
+            className="journal-spin right-[-14%] top-16 h-72 w-72 sm:h-[26rem] sm:w-[26rem]"
+            stroke={isDay ? "#8E7AB5" : "#FFFFFF"}
+          />
+          <OrbitGlow
+            className="journal-spin-rev left-[-16%] top-[52%] h-80 w-80 sm:h-[32rem] sm:w-[32rem]"
+            stroke={isDay ? "#B79CE0" : "#E9D5FF"}
+          />
+          <div
+            className={`journal-float absolute left-1/4 top-24 h-56 w-56 rounded-full blur-[120px] sm:h-72 sm:w-72 ${
+              isDay ? "bg-purple-300/40" : "bg-violet-600/25"
+            }`}
+          />
+          <div
+            className={`journal-float-slow absolute bottom-10 right-[12%] h-64 w-64 rounded-full blur-[130px] sm:h-80 sm:w-80 ${
+              isDay ? "bg-pink-200/50" : "bg-pink-600/20"
+            }`}
+          />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-3xl space-y-4 sm:space-y-10">
           {/* Hero compact */}
           <motion.section
             initial={{ opacity: 0, y: -24 }}
@@ -807,6 +865,61 @@ export default function JournalPage() {
       <div className="hidden sm:block">
         <Footer />
       </div>
+
+      <style jsx global>{`
+        @keyframes journal-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @keyframes journal-spin-rev {
+          to {
+            transform: rotate(-360deg);
+          }
+        }
+        @keyframes journal-float {
+          0%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translateY(-26px);
+            opacity: 1;
+          }
+        }
+        @keyframes journal-float-slow {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(26px);
+          }
+        }
+        .journal-spin {
+          animation: journal-spin 70s linear infinite;
+          transform-origin: center;
+        }
+        .journal-spin-rev {
+          animation: journal-spin-rev 90s linear infinite;
+          transform-origin: center;
+        }
+        .journal-float {
+          animation: journal-float 12s ease-in-out infinite;
+        }
+        .journal-float-slow {
+          animation: journal-float-slow 16s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .journal-spin,
+          .journal-spin-rev,
+          .journal-float,
+          .journal-float-slow {
+            animation: none;
+          }
+        }
+      `}</style>
     </>
   );
 }
@@ -839,7 +952,13 @@ function AccordionSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`overflow-hidden rounded-3xl border shadow-xl backdrop-blur-md ${className}`}>
+    <motion.section
+      initial={{ opacity: 0, y: 22 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className={`overflow-hidden rounded-3xl border shadow-xl backdrop-blur-md ${className}`}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -885,7 +1004,7 @@ function AccordionSection({
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </motion.section>
   );
 }
 
