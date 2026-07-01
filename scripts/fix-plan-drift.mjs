@@ -48,14 +48,19 @@ function loadEnvValue(key) {
 }
 
 async function main() {
-  const uri = loadEnvValue("MONGODB_URI");
+  // Priorité : argument CLI > variable shell MONGODB_URI > .env.local / .env
+  const uri =
+    process.argv[2] || process.env.MONGODB_URI || loadEnvValue("MONGODB_URI");
   if (!uri) {
     console.error("❌ MONGODB_URI introuvable (.env.local / .env / env).");
     process.exit(1);
   }
 
   await mongoose.connect(uri);
+  const dbName = mongoose.connection.db.databaseName;
   const users = mongoose.connection.db.collection("users");
+  const totalUsers = await users.countDocuments();
+  console.log(`\u2139\ufe0f  Base connect\u00e9e : "${dbName}" \u2014 ${totalUsers} membre(s) au total dans la collection "users".`);
 
   const query = {
     isPremium: false,
