@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
               "connect-src 'self' https://api.stripe.com wss://ws-eu.pusher.com https://sockjs-eu.pusher.com",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com",
             ].join("; "),
           },
         ],
