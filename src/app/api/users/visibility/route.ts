@@ -7,6 +7,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import type { ProfileVisibility } from "@/models/User";
+import { SubscriptionChecker } from "@/lib/subscription/subscription-check";
 
 const ALLOWED_VISIBILITY: ProfileVisibility[] = ["public", "matches", "premium", "invisible"];
 
@@ -47,7 +48,7 @@ export async function PUT(req: NextRequest) {
     await connectDB();
 
     const email = session.user.email.toLowerCase().trim();
-    const user = await User.findOne({ email }).select("_id isPremium subscriptionStatus");
+    const user = await User.findOne({ email }).select("_id");
 
     if (!user) {
       return NextResponse.json(
@@ -56,17 +57,20 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Le mode invisible est réservé aux membres premium
+    // Le Mode Fantôme (visibilité "invisible") est réservé aux offres
+    // premium-monthly et elite-monthly UNIQUEMENT — pas à Essentiel, même si
+    // isPremium y est true. On délègue à la feature "ghostMode" (source de
+    // vérité : config abonnements), exactement comme /api/users/profile et
+    // /api/users/update-profile, pour une règle unique et cohérente.
     if (visibilite === "invisible") {
-      const isPremiumActive =
-        user.isPremium &&
-        (user.subscriptionStatus === "active" || user.subscriptionStatus === "trialing");
+      const checker = new SubscriptionChecker(user._id.toString());
+      const hasGhostMode = await checker.hasFeature("ghostMode");
 
-      if (!isPremiumActive) {
+      if (!hasGhostMode) {
         return NextResponse.json(
           {
             success: false,
-            error: "Le mode invisible est réservé aux membres premium.",
+            error: "Le Mode Fantôme est réservé aux offres Premium et Elite.",
             code: "PREMIUM_REQUIRED",
           },
           { status: 403 }

@@ -1967,10 +1967,14 @@ function PreferencesTab({
   const [togglingInvisible, setTogglingInvisible] = useState(false);
 
   const isInvisible = user.visibilite === "invisible";
-  const premiumActive = isPremiumActive(user);
+  // Mode Fantôme réservé aux offres premium-monthly / elite-monthly — pas
+  // Essentiel, même si isPremiumActive y est vrai. Cohérent backend + mobile.
+  const canGhost =
+    isPremiumActive(user) &&
+    (user.plan === "premium-monthly" || user.plan === "elite-monthly");
 
   const handleToggleInvisible = async () => {
-    if (!premiumActive || togglingInvisible) return;
+    if (!canGhost || togglingInvisible) return;
 
     setTogglingInvisible(true);
 
@@ -2011,13 +2015,13 @@ function PreferencesTab({
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-semibold">Mode invisible</p>
 
-                {!premiumActive && (
+                {!canGhost && (
                   <span className="rounded-full border border-yellow-400/20 bg-yellow-400/15 px-2 py-0.5 text-[10px] font-bold text-yellow-300">
-                    👑 Premium actif requis
+                    👑 Premium ou Elite requis
                   </span>
                 )}
 
-                {isInvisible && premiumActive && (
+                {isInvisible && canGhost && (
                   <span className="animate-pulse rounded-full border border-purple-400/20 bg-purple-400/15 px-2 py-0.5 text-[10px] font-bold text-purple-300">
                     Actif
                   </span>
@@ -2035,7 +2039,7 @@ function PreferencesTab({
           <button
             type="button"
             onClick={handleToggleInvisible}
-            disabled={togglingInvisible || !premiumActive}
+            disabled={togglingInvisible || !canGhost}
             className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               isInvisible ? "bg-purple-500" : "bg-white/20"
             }`}

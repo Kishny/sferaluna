@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { SubscriptionChecker } from "@/lib/subscription/subscription-check";
 
 /**
  * Route de finalisation du profil après inscription.
@@ -212,6 +213,32 @@ export async function POST(req: NextRequest) {
         },
         { status: 404 }
       );
+    }
+
+    /**
+     * Protection du Mode Fantôme (visibilité "invisible").
+     * Cette route acceptait `visibilite` sans aucun contrôle de plan — un
+     * compte gratuit ou Essentiel pouvait donc passer invisible, en violation
+     * de la règle métier (Fantôme réservé à premium-monthly / elite-monthly).
+     * On applique ici le même gating que /api/users/profile et /visibility,
+     * via la feature "ghostMode" (source de vérité : config abonnements).
+     */
+    if (data.visibilite === "invisible") {
+      const checker = new SubscriptionChecker(user._id.toString());
+      const hasGhostMode = await checker.hasFeature("ghostMode");
+
+      if (!hasGhostMode) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Le Mode Fantôme est réservé aux offres Premium et Elite.",
+            code: "PREMIUM_REQUIRED",
+            requiredFeature: "ghostMode",
+            upgradeUrl: "/tarifs",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const updateData: Record<string, unknown> = {};

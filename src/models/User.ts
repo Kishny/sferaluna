@@ -84,6 +84,10 @@ export interface IUser extends Document {
   image?: string;
   photos: string[];
 
+  // Circle of Six — contacts de confiance du réseau de sécurité personnel
+  // (max 6). Stockés côté serveur pour synchro multi-appareils (app mobile).
+  trustedContacts: { name: string; phone: string; addedAt: Date }[];
+
   // Authentification
   password?: string;
   provider: AuthProvider;
@@ -227,6 +231,26 @@ const UserSchema = new Schema<IUser>(
       validate: {
         validator: (arr: string[]) => arr.length <= 3,
         message: "Maximum 3 photos supplémentaires autorisées.",
+      },
+    },
+
+    /**
+     * Circle of Six — contacts de confiance (réseau de sécurité personnel).
+     * Max 6. Chaque sous-document reçoit un _id Mongoose (utilisé côté client
+     * pour la suppression).
+     */
+    trustedContacts: {
+      type: [
+        {
+          name: { type: String, required: true, trim: true, maxlength: 100 },
+          phone: { type: String, required: true, trim: true, maxlength: 30 },
+          addedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+      validate: {
+        validator: (arr: unknown[]) => arr.length <= 6,
+        message: "Maximum 6 contacts de confiance (Circle of Six).",
       },
     },
 

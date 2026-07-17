@@ -121,9 +121,13 @@ export default function ModeFantomePage() {
 
   /**
    * Hook Premium global.
-   * isPremium doit être true uniquement si l'abonnement est actif.
+   * Le Mode Fantôme est réservé aux offres premium-monthly / elite-monthly :
+   * on gate donc sur la feature "ghostMode" et non sur isPremium (qui est vrai
+   * dès l'offre Essentiel). Cohérent avec le backend (/api/users/visibility,
+   * /profile, /update-profile) et l'app mobile (canUseGhostMode).
    */
-  const { isPremium, isLoading: premiumLoading } = usePremium();
+  const { isLoading: premiumLoading, can } = usePremium();
+  const canGhost = can("ghostMode");
 
   /**
    * Visibilité actuelle du profil.
@@ -385,9 +389,9 @@ export default function ModeFantomePage() {
           </AnimatePresence>
 
           {/* ─────────────────────────────
-              Gate Premium
+              Gate Premium (feature ghostMode = premium-monthly / elite-monthly)
           ───────────────────────────── */}
-          {!isPremium ? (
+          {!canGhost ? (
             <motion.section
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
