@@ -448,6 +448,20 @@ export async function POST(
       console.warn("Pusher trigger new-message échoué :", pusherError);
     }
 
+    /**
+     * Signal léger sur le canal perso de la destinataire : permet au
+     * Tableau de bord (/mon-compte) de rafraîchir ses compteurs en direct
+     * sans être abonné à chaque conversation. Aucun contenu transmis.
+     */
+    try {
+      const recipientId = getOtherUserId(match, access.currentUserId);
+      await pusher.trigger(`private-user-${recipientId}`, "new-message", {
+        matchId: match._id.toString(),
+      });
+    } catch (pusherError) {
+      console.warn("Pusher trigger private-user new-message échoué :", pusherError);
+    }
+
     // Push notification vers le destinataire (silencieux si échec)
     try {
       const otherUserId = getOtherUserId(match, access.currentUserId);

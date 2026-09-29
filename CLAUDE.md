@@ -30,6 +30,8 @@ src/
 │   │   │   ├── users/route.ts                ← gestion utilisateurs admin
 │   │   │   ├── reports/route.ts + [id]/      ← gestion signalements
 │   │   │   └── testimonials/route.ts + [id]/ ← approuver/rejeter témoignages
+│   │   ├── dashboard/route.ts                ← GET agrégé Tableau de bord (compteurs, visiteuses, matchs, événement proche, features)
+│   │   ├── dashboard/search/route.ts         ← GET recherche ⌘K (personnes + événements)
 │   │   ├── circle/route.ts                   ← GET 6 profils curatés semaine
 │   │   ├── community/
 │   │   │   ├── route.ts                      ← GET/POST posts communauté
@@ -90,7 +92,7 @@ src/
 │   ├── matches/page.tsx                      ← Liste des matches ✅
 │   ├── messages/[matchId]/page.tsx           ← Chat privé entre matchés ✅
 │   ├── mode-fantome/page.tsx                 ← Toggle invisible mode premium ✅
-│   ├── mon-compte/page.tsx                   ← Dashboard compte utilisateur
+│   ├── mon-compte/page.tsx                   ← Espace compte : shell sidebar + topbar, Tableau de bord (DashboardHome) + sections profil/préférences/premium/sécurité/interactions (?tab=)
 │   ├── paiement/page.tsx                     ← Choix offre Stripe
 │   ├── profil/[id]/page.tsx                  ← Page profil public d'une utilisatrice ✅
 │   ├── vibementor/page.tsx                   ← Q&A mentorat communauté ✅
@@ -104,6 +106,7 @@ src/
 │   ├── accessibilite/, confidentialite/, conditions/, cookies/
 │   └── [pages marketing] commencer, equipe, faq, fonctionnalites, guide, histoire, tarifs, valeurs
 ├── components/
+│   ├── dashboard/                            ← Tableau de bord /mon-compte : DashboardSidebar, DashboardTopbar (recherche ⌘K, cloche, menu), DashboardHome, MoonScene, useDashboardData (Pusher private-user-{id})
 │   ├── Header.tsx                            ← Session-aware
 │   ├── Footer.tsx
 │   ├── JsonLd.tsx

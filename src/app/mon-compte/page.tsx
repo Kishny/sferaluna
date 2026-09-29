@@ -68,6 +68,11 @@ import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
 import TestimonialForm from "@/components/testimonials/TestimonialForm";
 import { DEPARTEMENTS, getDepartementLabel } from "@/lib/locations";
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
+import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
+import DashboardHome from "@/components/dashboard/DashboardHome";
+import { useDashboardData } from "@/components/dashboard/useDashboardData";
+import type { MissingField, NotificationCounts } from "@/components/dashboard/types";
 
 // ─────────────────────────────────────────────
 // Types
@@ -349,6 +354,16 @@ const tabs: { id: TabId; label: string; emoji: string; icon: ElementType }[] = [
   { id: "securite", label: "Sécurité", emoji: "🔒", icon: Shield },
 ];
 
+/** Titre + sous-titre affichés au-dessus de chaque section du compte. */
+const sectionMeta: Record<TabId, { title: string; subtitle: string }> = {
+  dashboard: { title: "Tableau de bord", subtitle: "" },
+  profil: { title: "Mon profil", subtitle: "Photos, bio et informations visibles par les autres membres." },
+  connexions: { title: "Mes interactions", subtitle: "Tes matchs, tes visiteuses et tes échanges." },
+  preferences: { title: "Préférences", subtitle: "Tes intentions, ton orientation et la visibilité de ton profil." },
+  premium: { title: "Premium", subtitle: "Ton offre, tes avantages et la gestion de ton abonnement." },
+  securite: { title: "Sécurité", subtitle: "Vérification d’identité, connexion et confidentialité." },
+};
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -594,7 +609,16 @@ function MonCompteContent() {
    * Nombre total de notifications non lues (messages + matches + visites).
    * Sert à afficher la pastille lumineuse sur l'onglet "Intéractions".
    */
-  const [notifCount, setNotifCount] = useState(0);
+  const [notifs, setNotifs] = useState<NotificationCounts>({
+    total: 0,
+    unreadMessages: 0,
+    newMatches: 0,
+    newVisits: 0,
+  });
+  const notifCount = notifs.total;
+
+  /** Tiroir de navigation mobile. */
+  const [menuOpen, setMenuOpen] = useState(false);
 
   /**
    * Récupère le nombre de notifications non lues sans les marquer comme lues.
@@ -606,7 +630,12 @@ function MonCompteContent() {
       const data = await res.json().catch(() => null);
 
       if (res.ok && data?.success) {
-        setNotifCount(typeof data.total === "number" ? data.total : 0);
+        setNotifs({
+          total: typeof data.total === "number" ? data.total : 0,
+          unreadMessages: typeof data.unreadMessages === "number" ? data.unreadMessages : 0,
+          newMatches: typeof data.newMatches === "number" ? data.newMatches : 0,
+          newVisits: typeof data.newVisits === "number" ? data.newVisits : 0,
+        });
       }
     } catch {
       // Silencieux : une erreur de notifications ne doit pas bloquer la page.
@@ -618,7 +647,7 @@ function MonCompteContent() {
    * Déclenché quand l'utilisatrice ouvre l'onglet Intéractions.
    */
   const markNotificationsSeen = useCallback(async () => {
-    setNotifCount(0);
+    setNotifs({ total: 0, unreadMessages: 0, newMatches: 0, newVisits: 0 });
 
     try {
       await fetch("/api/notifications", { method: "POST" });
@@ -626,6 +655,21 @@ function MonCompteContent() {
       // Silencieux.
     }
   }, []);
+
+  /**
+   * Données du Tableau de bord : /api/dashboard + temps réel Pusher.
+   * Les nouveaux matchs / messages rafraîchissent aussi la cloche.
+   */
+  const {
+    data: dashboardData,
+    isLoading: isDashboardLoading,
+    error: dashboardError,
+    refresh: refreshDashboard,
+  } = useDashboardData(
+    user._id || undefined,
+    status === "authenticated" && !isLoadingProfile,
+    fetchNotifications
+  );
 
   /**
    * Redirection si non connecté.
@@ -780,6 +824,27 @@ function MonCompteContent() {
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
   }, [user]);
 
+  /** Champs du profil encore vides (même liste que profileCompletion). */
+  const missingFields = useMemo<MissingField[]>(() => {
+    const checks: [string, string, unknown][] = [
+      ["pseudonyme", "Pseudonyme", user.pseudonyme],
+      ["age", "Âge", user.age],
+      ["orientation", "Orientation", user.orientation],
+      ["intentions", "Intentions", user.intentions?.length],
+      ["localisation", "Ville", user.localisation],
+      ["rayon", "Zone de recherche", user.rayon],
+      ["question", "Question secrète", user.question],
+      ["reponse", "Réponse secrète", user.hasReponse],
+      ["interets", "Centres d’intérêt", user.interets?.length],
+      ["visibilite", "Visibilité", user.visibilite],
+      ["consentement", "Consentement", user.consentement],
+    ];
+
+    return checks
+      .filter(([, , value]) => !value)
+      .map(([key, label]) => ({ key, label }));
+  }, [user]);
+
   const premiumLabel = getPremiumLabel(user);
   const premiumActive = isPremiumActive(user);
 
@@ -908,6 +973,30 @@ function MonCompteContent() {
     }
   };
 
+  /**
+   * Navigation entre les sections du compte (sidebar, menus, cartes).
+   * L'URL reste synchronisée : /mon-compte?tab=premium est partageable.
+   */
+  const navigateTab = (tab: TabId) => {
+    if (isEditing) handleCancel();
+    setActiveTab(tab);
+    setMenuOpen(false);
+    router.replace(tab === "dashboard" ? "/mon-compte" : `/mon-compte?tab=${tab}`, {
+      scroll: false,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /** Bloque le scroll de la page quand le tiroir mobile est ouvert. */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push("/");
@@ -940,355 +1029,249 @@ function MonCompteContent() {
   if (status === "unauthenticated") return null;
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
-      {/* Orbs décoratifs */}
+    <main className="relative min-h-screen overflow-x-hidden bg-[#150a2e] text-white">
+      {/* Fond : dégradé nuit + halos */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-32 left-1/4 h-80 w-80 rounded-full bg-purple-600/20 blur-3xl sm:h-96 sm:w-96" />
-        <div className="absolute top-1/2 -right-32 h-80 w-80 rounded-full bg-pink-600/20 blur-3xl sm:h-96 sm:w-96" />
-        <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-indigo-600/15 blur-3xl sm:h-80 sm:w-80" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0b2e] via-[#220e4d] to-[#2d1b69]" />
+        <div className="absolute -top-40 left-1/3 h-[30rem] w-[30rem] rounded-full bg-fuchsia-600/15 blur-3xl" />
+        <div className="absolute -right-40 top-1/3 h-[28rem] w-[28rem] rounded-full bg-violet-600/20 blur-3xl" />
+        <div className="absolute -bottom-40 left-0 h-96 w-96 rounded-full bg-indigo-600/15 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-3xl px-3 pb-12 pt-4 sm:px-4 sm:pb-16 sm:pt-6">
-        {/* Nav top */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 flex items-center justify-between gap-2 sm:mb-6"
-        >
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="group flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1.5 transition-all duration-200 hover:border-purple-400/40 hover:bg-white/10 sm:px-3"
-          >
-            <img
-              src="/logo-sferaluna.png"
-              alt="SferaLuna"
-              className="h-6 w-6 shrink-0 rounded-full object-cover"
+      {/* Sidebar desktop */}
+      <div className="fixed inset-y-0 left-0 z-40 hidden w-[284px] border-r border-violet-300/10 bg-[#140828]/70 backdrop-blur-2xl lg:block">
+        <DashboardSidebar
+          user={user}
+          activeTab={activeTab}
+          onNavigate={navigateTab}
+          data={dashboardData}
+          interactionsBadge={notifs.newMatches + notifs.newVisits}
+          premiumActive={premiumActive}
+        />
+      </div>
+
+      {/* Tiroir mobile */}
+      <AnimatePresence>
+        {menuOpen && (
+          <>
+            <motion.div
+              key="drawer-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             />
+            <motion.div
+              key="drawer"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 32, stiffness: 320 }}
+              className="fixed inset-y-0 left-0 z-50 w-[86vw] max-w-[300px] border-r border-violet-300/10 bg-[#140828] lg:hidden"
+            >
+              <DashboardSidebar
+                user={user}
+                activeTab={activeTab}
+                onNavigate={navigateTab}
+                data={dashboardData}
+                interactionsBadge={notifs.newMatches + notifs.newVisits}
+                premiumActive={premiumActive}
+                onClose={() => setMenuOpen(false)}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-            <span className="truncate text-xs font-semibold text-white transition-colors group-hover:text-purple-200 sm:text-sm">
-              SferaLuna
-            </span>
+      <div className="relative z-10 lg:pl-[284px]">
+        <div className="mx-auto max-w-[1400px] px-4 pb-16 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+          <DashboardTopbar
+            user={user}
+            notifs={notifs}
+            messagesHref={
+              dashboardData?.counts.firstUnreadMatchId
+                ? `/messages/${dashboardData.counts.firstUnreadMatchId}`
+                : "/matches"
+            }
+            onMarkNotificationsSeen={markNotificationsSeen}
+            onNavigateTab={navigateTab}
+            onLogout={handleLogout}
+            onOpenMenu={() => setMenuOpen(true)}
+          />
 
-            <ArrowLeft className="hidden h-3.5 w-3.5 text-white/40 transition-all duration-200 group-hover:-translate-x-0.5 group-hover:text-purple-300 sm:block" />
-          </button>
-
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            {user.role === "admin" && (
-              <button
-                type="button"
-                onClick={() => router.push("/admin")}
-                className="flex items-center gap-1 rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-2 py-1.5 text-[11px] font-semibold text-yellow-200 transition hover:bg-yellow-400/20 sm:gap-1.5 sm:px-3 sm:text-xs"
+          {/* Paiement success */}
+          <AnimatePresence>
+            {paymentSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="mt-5 flex items-start gap-3 rounded-2xl border border-green-400/30 bg-green-500/15 px-4 py-3 sm:px-5 sm:py-4"
               >
-                <Star className="h-3.5 w-3.5" />
-                <span className="hidden min-[380px]:inline">Admin</span>
-              </button>
-            )}
+                <span className="text-2xl">🎉</span>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/60 transition hover:bg-white/10 hover:text-white sm:gap-2 sm:px-3 sm:text-sm"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden min-[380px]:inline">Déconnexion</span>
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Paiement success */}
-        <AnimatePresence>
-          {paymentSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -16, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-4 flex items-start gap-3 rounded-2xl border border-green-400/30 bg-green-500/15 px-4 py-3 sm:mb-5 sm:px-5 sm:py-4"
-            >
-              <span className="text-2xl">🎉</span>
-
-              <div>
-                <p className="text-sm font-bold text-green-100 sm:text-base">
-                  Paiement reçu, vérification de l’abonnement en cours.
-                </p>
-
-                <p className="text-xs text-green-200/80 sm:text-sm">
-                  L’accès Premium sera confirmé dès que Stripe aura validé le
-                  paiement via webhook.
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Erreur globale */}
-        <AnimatePresence>
-          {pageError && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-4 overflow-hidden sm:mb-5"
-            >
-              <div className="flex items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-
-                <span className="flex-1">{pageError}</span>
-
-                <button
-                  type="button"
-                  onClick={() => setPageError("")}
-                  aria-label="Fermer l'erreur"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Hero profil */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="mb-4 overflow-hidden rounded-3xl border border-white/10 bg-white/8 backdrop-blur-xl sm:mb-6"
-        >
-          <div
-            className={`relative h-20 bg-gradient-to-r transition-colors duration-500 sm:h-24 ${planAccent[user.plan].banner}`}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.05)_0%,transparent_70%)]" />
-          </div>
-
-          <div className="px-4 pb-5 sm:px-6 sm:pb-6">
-            <div className="-mt-9 flex flex-col gap-4 sm:-mt-10 sm:flex-row sm:items-end">
-              <div className="relative mx-auto shrink-0 sm:mx-0">
-                <ProgressRing completion={profileCompletion} size={88}>
-                  <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-[#1a0b2e] bg-[#1a0b2e]">
-                    {user.image ? (
-                      <img
-                        src={user.image}
-                        alt={user.pseudonyme}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl">
-                        {user.pseudonyme.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                </ProgressRing>
-
-                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#1a0b2e] bg-green-400">
-                  <span className="text-[8px] font-bold text-green-900">
-                    {profileCompletion}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1 pb-1 text-center sm:text-left">
-                <div className="mb-1 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <h1 className="max-w-full truncate text-xl font-bold">
-                    {user.pseudonyme}
-                  </h1>
-
-                  {premiumActive ? (
-                    <span className="relative inline-flex items-center gap-1 overflow-hidden rounded-full border border-yellow-400/30 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-yellow-200">
-                      <span className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                      {planEmoji[user.plan]} {premiumLabel}
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-xs text-white/60">
-                      🌙 Gratuit
-                    </span>
-                  )}
-                </div>
-
-                <p className="truncate text-sm text-white/50">{user.email}</p>
-
-                {user.localisation && (
-                  <p className="mt-0.5 flex items-center justify-center gap-1 text-xs text-white/40 sm:justify-start">
-                    <MapPin className="h-3 w-3" />
-                    {user.localisation}
+                <div>
+                  <p className="text-sm font-bold text-green-100 sm:text-base">
+                    Paiement reçu, vérification de l’abonnement en cours.
                   </p>
-                )}
-              </div>
 
-              <div className="shrink-0 text-center sm:text-right">
-                {/* Stats */}
-                <div className="mb-2 flex justify-center gap-4 sm:justify-end sm:gap-5">
-                  <div>
-                    <p className="text-base font-bold sm:text-lg">{user.age ?? "—"}</p>
-                    <p className="text-[11px] text-white/40 sm:text-xs">ans</p>
-                  </div>
-                  <div>
-                    <p className="text-base font-bold sm:text-lg">{user.interets?.length ?? 0}</p>
-                    <p className="text-[11px] text-white/40 sm:text-xs">intérêts</p>
-                  </div>
-                  <div>
-                    <p className="text-base font-bold sm:text-lg">{profileCompletion}%</p>
-                    <p className="text-[11px] text-white/40 sm:text-xs">profil</p>
-                  </div>
+                  <p className="text-xs text-green-200/80 sm:text-sm">
+                    L’accès Premium sera confirmé dès que Stripe aura validé le
+                    paiement via webhook.
+                  </p>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                {/* Aperçu profil public */}
-                {user._id && (
-                  <Link
-                    href={`/profil/${user._id}?preview=1`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/60 transition hover:border-purple-400/40 hover:bg-purple-500/10 hover:text-white"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    Voir mon profil public
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tabs mobile-first */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="scrollbar-none sticky top-0 z-20 -mx-3 mb-4 flex gap-1.5 overflow-x-auto border-y border-white/5 bg-[#1a0b2e]/70 px-3 py-2 backdrop-blur-xl sm:static sm:mx-0 sm:mb-6 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
-        >
-          {tabs.map((tab) => {
-            const hasNotif = tab.id === "connexions" && notifCount > 0;
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  if (isEditing) handleCancel();
-                }}
-                className={`relative flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all sm:flex-1 sm:px-4 sm:text-sm ${
-                  activeTab === tab.id
-                    ? `border ${planAccent[user.plan].tabBorder} bg-gradient-to-r ${planAccent[user.plan].tabBg} text-white shadow-lg`
-                    : hasNotif
-                      ? "border border-pink-400/50 bg-pink-500/10 text-white animate-notif-glow"
-                      : "border border-white/8 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white"
-                }`}
+          {/* Erreur globale */}
+          <AnimatePresence>
+            {pageError && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-5 overflow-hidden"
               >
-                <span>{tab.emoji}</span>
-                <span>{tab.label}</span>
+                <div className="flex items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
 
-                {/* Pastille lumineuse avec le nombre de notifications */}
-                {hasNotif && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-500/60" />
-                    <span className="relative inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-500 px-1 text-[10px] font-bold text-white shadow-lg shadow-pink-500/50 ring-2 ring-[#1a0b2e]">
-                      {notifCount > 99 ? "99+" : notifCount}
-                    </span>
-                  </span>
-                )}
+                  <span className="flex-1">{pageError}</span>
 
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="tab-indicator"
-                    className={`pointer-events-none absolute inset-0 rounded-xl border ${planAccent[user.plan].tabBorder}`}
+                  <button
+                    type="button"
+                    onClick={() => setPageError("")}
+                    aria-label="Fermer l'erreur"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Contenu */}
+          <div className="mt-5 lg:mt-7">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                variants={tabContentVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {activeTab === "dashboard" ? (
+                  <DashboardHome
+                    user={user}
+                    profileCompletion={profileCompletion}
+                    missingFields={missingFields}
+                    data={dashboardData}
+                    isLoading={isDashboardLoading}
+                    error={dashboardError}
+                    onRefresh={refreshDashboard}
+                    onNavigateTab={navigateTab}
                   />
-                )}
-              </button>
-            );
-          })}
-        </motion.div>
-
-        {/* Contenu onglets */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            variants={tabContentVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-            <div className="rounded-3xl border border-white/10 bg-white/8 p-4 backdrop-blur-xl sm:p-6 md:p-8">
-              {activeTab === "dashboard" && (
-                <DashboardTab
-                  user={user}
-                  profileCompletion={profileCompletion}
-                  router={router}
-                />
-              )}
-
-              {activeTab === "profil" && (
-                <ProfilTab
-                  user={draftUser}
-                  isEditing={isEditing}
-                  updateDraft={updateDraft}
-                  splitToArray={splitToArray}
-                  onPhotosSaved={fetchProfile}
-                />
-              )}
-
-              {activeTab === "preferences" && (
-                <PreferencesTab
-                  user={draftUser}
-                  isEditing={isEditing}
-                  updateDraft={updateDraft}
-                  splitToArray={splitToArray}
-                  onVisibilityChange={handleVisibilityChange}
-                />
-              )}
-
-              {activeTab === "premium" && (
-                <PremiumTab user={user} router={router} />
-              )}
-
-              {activeTab === "securite" && <SecurityTab user={user} />}
-
-              {activeTab === "connexions" && <ConnexionsTab user={user} />}
-
-              {isTabEditable && (
-                <div className="mt-6 flex flex-col justify-end gap-3 border-t border-white/8 pt-5 sm:mt-8 sm:flex-row sm:pt-6">
-                  {!isEditing ? (
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setIsEditing(true)}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 sm:w-auto"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Modifier le profil ✏️
-                    </motion.button>
-                  ) : (
-                    <>
+                ) : (
+                  <div className="mx-auto max-w-4xl">
+                    <div className="mb-5">
                       <button
                         type="button"
-                        onClick={handleCancel}
-                        disabled={isSaving}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/70 transition hover:bg-white/10 disabled:opacity-50 sm:w-auto"
+                        onClick={() => navigateTab("dashboard")}
+                        className="mb-3 inline-flex items-center gap-1.5 text-sm text-white/60 transition hover:text-white"
                       >
-                        <X className="h-4 w-4" />
-                        Annuler
+                        <ArrowLeft className="h-4 w-4" />
+                        Tableau de bord
                       </button>
 
-                      <motion.button
-                        type="button"
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
-                      >
-                        {isSaving ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
+                      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                        {sectionMeta[activeTab].title}
+                      </h1>
 
-                        {isSaving ? "Sauvegarde…" : "Sauvegarder ✅"}
-                      </motion.button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+                      <p className="mt-1 text-sm text-white/60 sm:text-base">
+                        {sectionMeta[activeTab].subtitle}
+                      </p>
+                    </div>
+
+                    <div className="rounded-3xl border border-violet-300/[0.12] bg-[#1d0f3d]/70 p-4 shadow-[0_8px_32px_-12px_rgba(10,0,30,0.6)] backdrop-blur-xl sm:p-6 md:p-8">
+                      {activeTab === "profil" && (
+                        <ProfilTab
+                          user={draftUser}
+                          isEditing={isEditing}
+                          updateDraft={updateDraft}
+                          splitToArray={splitToArray}
+                          onPhotosSaved={fetchProfile}
+                        />
+                      )}
+
+                      {activeTab === "preferences" && (
+                        <PreferencesTab
+                          user={draftUser}
+                          isEditing={isEditing}
+                          updateDraft={updateDraft}
+                          splitToArray={splitToArray}
+                          onVisibilityChange={handleVisibilityChange}
+                        />
+                      )}
+
+                      {activeTab === "premium" && (
+                        <PremiumTab user={user} router={router} />
+                      )}
+
+                      {activeTab === "securite" && <SecurityTab user={user} />}
+
+                      {activeTab === "connexions" && <ConnexionsTab user={user} />}
+
+                      {isTabEditable && (
+                        <div className="mt-6 flex flex-col justify-end gap-3 border-t border-white/8 pt-5 sm:mt-8 sm:flex-row sm:pt-6">
+                          {!isEditing ? (
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => setIsEditing(true)}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 sm:w-auto"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Modifier le profil ✏️
+                            </motion.button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleCancel}
+                                disabled={isSaving}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white/70 transition hover:bg-white/10 disabled:opacity-50 sm:w-auto"
+                              >
+                                <X className="h-4 w-4" />
+                                Annuler
+                              </button>
+
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.97 }}
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+                              >
+                                {isSaving ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Save className="h-4 w-4" />
+                                )}
+
+                                {isSaving ? "Sauvegarde…" : "Sauvegarder ✅"}
+                              </motion.button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       <style jsx global>{`
@@ -1440,199 +1423,6 @@ function ProgressRing({
 
       <div className="absolute" style={{ inset: strokeWidth + 2 }}>
         {children}
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Onglet Dashboard
-// ─────────────────────────────────────────────
-
-function DashboardTab({
-  user,
-  profileCompletion,
-  router,
-}: {
-  user: LunaUser;
-  profileCompletion: number;
-  router: ReturnType<typeof useRouter>;
-}) {
-  const active = isPremiumActive(user);
-  const planLabel = getPremiumLabel(user);
-
-  const statCards = [
-    {
-      emoji: "📊",
-      label: "Profil complété",
-      value: `${profileCompletion}%`,
-      color: "from-purple-500/20 to-pink-500/20",
-      border: "border-purple-400/20",
-    },
-    {
-      emoji: "✅",
-      label: "Compte",
-      value: user.hasCompletedProfile ? "Validé" : "À compléter",
-      color: "from-green-500/15 to-emerald-500/15",
-      border: "border-green-400/20",
-    },
-    {
-      emoji: planEmoji[user.plan],
-      label: "Plan actuel",
-      value: planLabel,
-      color: "from-yellow-500/15 to-amber-500/15",
-      border: "border-yellow-400/20",
-    },
-    {
-      emoji: "💳",
-      label: "Abonnement",
-      value: subscriptionLabels[user.subscriptionStatus] || "Inactif",
-      color: "from-blue-500/15 to-indigo-500/15",
-      border: "border-blue-400/20",
-    },
-  ];
-
-  return (
-    <div className="space-y-5 sm:space-y-6">
-      <div>
-        <h2 className="mb-1 text-lg font-bold sm:text-xl">
-          Bonjour{" "}
-          <span className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
-            {user.pseudonyme}
-          </span>{" "}
-          👋
-        </h2>
-
-        <p className="text-sm text-white/50">
-          Voici un aperçu de votre espace SferaLuna.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-        {statCards.map((card, i) => (
-          <motion.div
-            key={card.label}
-            custom={i}
-            variants={cardVariants}
-            initial="hidden"
-            animate="visible"
-            className={`rounded-2xl border ${card.border} bg-gradient-to-br ${card.color} p-3 sm:p-4`}
-          >
-            <p className="mb-1 text-xl">{card.emoji}</p>
-
-            <p className="mb-0.5 text-[11px] text-white/50 sm:text-xs">
-              {card.label}
-            </p>
-
-            <p className="truncate text-sm font-bold">{card.value}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">✨</span>
-            <span className="text-sm font-semibold">Complétion du profil</span>
-          </div>
-
-          <span className="text-sm font-bold text-purple-300">
-            {profileCompletion}%
-          </span>
-        </div>
-
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${profileCompletion}%` }}
-            transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
-          />
-        </div>
-
-        {profileCompletion < 100 && (
-          <p className="mt-2 text-xs text-white/40">
-            Complétez votre profil pour apparaître dans plus de recherches 🚀
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        {[
-          {
-            emoji: "📍",
-            label: "Localisation",
-            value:
-              [user.localisation, getDepartementLabel(user.departement)]
-                .filter(Boolean)
-                .join(" · ") || "—",
-          },
-          {
-            emoji: "💞",
-            label: "Intentions",
-            value:
-              (user.intentions || [])
-                .map((item) => intentionLabels[item] || item)
-                .join(", ") || "—",
-          },
-          {
-            emoji: "👁️",
-            label: "Visibilité",
-            value: visibilityLabels[user.visibilite] || user.visibilite,
-          },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-white/8 bg-white/5 p-3 text-center"
-          >
-            <p className="mb-1 text-xl">{item.emoji}</p>
-            <p className="mb-0.5 text-[10px] text-white/40">{item.label}</p>
-            <p className="truncate text-xs font-medium leading-tight">
-              {item.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div
-        className={`rounded-2xl border p-4 sm:p-5 ${
-          active
-            ? "border-green-400/20 bg-green-500/10"
-            : "border-yellow-400/20 bg-yellow-400/8"
-        }`}
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p
-              className={`mb-1 font-bold ${
-                active ? "text-green-100" : "text-yellow-100"
-              }`}
-            >
-              {active
-                ? `🎉 Plan ${getPremiumLabel(user)} actif !`
-                : "🌟 Passez Premium"}
-            </p>
-
-            <p className="text-sm text-white/60">
-              {active
-                ? "Vous profitez des fonctionnalités incluses dans votre abonnement."
-                : "Débloquez les likes illimités, le mode invisible et bien plus."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => router.push("/paiement")}
-            className={`flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto ${
-              active
-                ? "bg-gradient-to-r from-green-600 to-emerald-600"
-                : "bg-gradient-to-r from-yellow-500 to-orange-500"
-            }`}
-          >
-            {active ? "Gérer" : "Voir les offres"}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
       </div>
     </div>
   );
