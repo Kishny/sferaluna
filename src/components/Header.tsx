@@ -1,973 +1,470 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+/**
+ * Header public SferaLuna.
+ *
+ * Navigation volontairement minimale :
+ *   Découvrir · Fonctionnalités · Sécurité · Tarifs
+ * puis Connexion + « Créer mon profil » (ou, connectée : cloche,
+ * « Explorer librement » et menu du compte).
+ *
+ * Même langage visuel que l'espace connecté (/mon-compte) : verre fumé
+ * violet nuit, rose lumineux réservé à l'action principale.
+ * Fond toujours sombre et translucide : lisible sur les pages claires
+ * comme sur les pages sombres.
+ */
+
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Menu,
-  X,
-  User,
-  Moon,
-  Sparkles,
-  ChevronDown,
-  LogOut,
-  Crown,
-  Shield,
+  ArrowRight,
+  ArrowUp,
   Bell,
-  Home,
+  ChevronDown,
   Compass,
-  Heart,
-  MessageCircle,
-  Settings,
+  Crown,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  MessageSquareText,
+  Moon,
+  X,
 } from 'lucide-react';
-import { getPusherClient } from '@/lib/pusher-client';
 
-/**
- * Type d'un sous-lien dans le header.
- */
-type HeaderSubItem = {
-  label: string;
-  href: string;
-};
+const NAV = [
+  { href: '/', label: 'Découvrir' },
+  { href: '/fonctionnalites', label: 'Fonctionnalités' },
+  { href: '/securite', label: 'Sécurité' },
+  { href: '/tarifs', label: 'Tarifs' },
+];
 
-/**
- * Type d'un lien principal du header.
- */
-type HeaderLink = {
-  href: string;
-  label: string;
-  icon: ReactNode;
-  mobileIcon: string;
-  badge?: string;
-  subItems?: HeaderSubItem[];
-};
+/** Liens secondaires, uniquement dans le menu mobile (le footer les reprend). */
+const MORE = [
+  { href: '/histoire', label: 'Notre histoire' },
+  { href: '/valeurs', label: 'Nos valeurs' },
+  { href: '/vibesphere', label: 'VibeSphere' },
+  { href: '/vibementor', label: 'VibeMentor' },
+  { href: '/communaute', label: 'Communauté' },
+  { href: '/guide', label: 'Guide' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/contact', label: 'Contact' },
+];
 
-/**
- * Header SferaLuna.
- *
- * Objectifs de cette version :
- * - header desktop conservé, mais plus propre ;
- * - header mobile beaucoup plus compact ;
- * - menu burger différent d'un menu classique ;
- * - menu mobile sous forme de panneau flottant "Luna Dock" ;
- * - sous-sections en accordéon mobile ;
- * - support utilisateur connecté / non connecté ;
- * - notifications temps réel via Pusher ;
- * - bouton retour en haut masqué tant qu'on n'a pas scrollé.
- */
+function isActive(pathname: string | null, href: string) {
+  if (!pathname) return false;
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function Header() {
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
-  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [notifCount, setNotifCount] = useState(0);
-
-  /**
-   * Accordéon mobile :
-   * on ouvre un seul groupe à la fois.
-   */
-  const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
-
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, status } = useSession();
-
   const isLoggedIn = status === 'authenticated' && !!session?.user;
 
-  /**
-   * Liens principaux du header.
-   */
-  const links: HeaderLink[] = [
-    {
-      href: '/',
-      label: 'Luna',
-      icon: <Moon size={17} />,
-      mobileIcon: '🌙',
-      subItems: [
-        { label: 'Accueil', href: '/' },
-        { label: 'Notre histoire', href: '/histoire' },
-        { label: 'Explorer librement', href: '/explorer' },
-        { label: 'Équipe', href: '/equipe' },
-      ],
-    },
-    {
-      href: '/valeurs',
-      label: 'Valeurs',
-      icon: <Heart size={17} />,
-      mobileIcon: '💫',
-      badge: 'Essentiel',
-    },
-    {
-      href: '/fonctionnalites',
-      label: 'Fonctions',
-      icon: <Sparkles size={17} />,
-      mobileIcon: '🚀',
-      subItems: [
-        { label: 'Toutes les fonctionnalités', href: '/fonctionnalites' },
-        { label: 'Circle of Six', href: '/circle' },
-        { label: 'Mode Fantôme', href: '/mode-fantome' },
-        { label: 'VibePlanner', href: '/vibeplanner' },
-        { label: 'VibeSphere', href: '/vibesphere' },
-      ],
-    },
-    {
-      href: '/vibesphere',
-      label: 'VibeSphere',
-      icon: <Compass size={17} />,
-      mobileIcon: '🌌',
-      badge: 'Nouveau',
-    },
-    {
-      href: '/commencer',
-      label: 'Commencer',
-      icon: <Sparkles size={17} />,
-      mobileIcon: '🌟',
-      subItems: [
-        { label: 'Commencer', href: '/commencer' },
-        { label: 'Guide débutant', href: '/guide' },
-        { label: 'FAQ', href: '/faq' },
-        { label: 'Tarifs', href: '/tarifs' },
-      ],
-    },
-  ];
+  const [scrolled, setScrolled] = useState(false);
+  const [showTop, setShowTop] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Détection du scroll pour rendre le header plus compact et lisible.
-   */
+  // Scroll : header plus opaque + bouton "remonter".
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 16);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12);
+      setShowTop(window.scrollY > 700);
     };
-
-    handleScroll();
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  /**
-   * Ferme le menu mobile à chaque changement de route.
-   */
+  // Ferme les menus à chaque navigation.
   useEffect(() => {
-    setOpen(false);
-    setOpenMobileGroup(null);
-    setShowAuthDropdown(false);
-    setShowUserDropdown(false);
+    setMenuOpen(false);
+    setUserMenuOpen(false);
   }, [pathname]);
 
-  /**
-   * Quand le menu mobile est ouvert, on bloque le scroll du body.
-   * Ça évite les bugs de scroll derrière le menu.
-   */
+  // Bloque le scroll derrière le menu mobile.
   useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, [menuOpen]);
 
-  /**
-   * Notifications : polling toutes les 30 secondes.
-   */
+  // Ferme le menu du compte au clic extérieur.
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [userMenuOpen]);
+
+  // Notifications : chargement + rafraîchissement toutes les 30 s.
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const fetchNotifs = async () => {
+    const load = async () => {
       try {
-        const res = await fetch('/api/notifications', {
-          cache: 'no-store',
-        });
-
+        const res = await fetch('/api/notifications', { cache: 'no-store' });
         if (!res.ok) return;
-
         const data = await res.json();
         setNotifCount(data.total || 0);
       } catch {
-        // On ignore volontairement l'erreur pour ne pas casser le header.
+        // silencieux : le header ne doit jamais casser
       }
     };
 
-    fetchNotifs();
-
-    const interval = setInterval(fetchNotifs, 30_000);
-
+    load();
+    const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  /**
-   * Notifications temps réel via Pusher.
-   * Exemple : nouveau match.
-   */
+  // Temps réel Pusher : nouveau match / nouveau message.
   useEffect(() => {
     if (!isLoggedIn) return;
-
-    const sessionUser = session?.user as { id?: string } | undefined;
-    const userId = sessionUser?.id;
-
+    const userId = (session?.user as { id?: string } | undefined)?.id;
     if (!userId) return;
 
-    const channelName = `private-user-${userId}`;
-    const client = getPusherClient();
-    const channel = client.subscribe(channelName);
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
 
-    channel.bind('new-match', () => {
-      setNotifCount((prev) => prev + 1);
-    });
+    (async () => {
+      try {
+        const { getPusherClient } = await import('@/lib/pusher-client');
+        if (cancelled) return;
+        const client = getPusherClient();
+        const channelName = `private-user-${userId}`;
+        const channel = client.subscribe(channelName);
+        const bump = () => setNotifCount((n) => n + 1);
+        channel.bind('new-match', bump);
+        channel.bind('new-message', bump);
+        cleanup = () => {
+          channel.unbind('new-match', bump);
+          channel.unbind('new-message', bump);
+          client.unsubscribe(channelName);
+        };
+      } catch {
+        // Pusher non configuré
+      }
+    })();
 
     return () => {
-      channel.unbind_all();
-      client.unsubscribe(channelName);
+      cancelled = true;
+      cleanup?.();
     };
   }, [isLoggedIn, session?.user]);
 
-  /**
-   * Redirection vers auth.
-   */
-  const handleAuthClick = (mode: 'login' | 'register') => {
-    router.push(`/auth?mode=${mode}`);
-    setOpen(false);
-    setShowAuthDropdown(false);
-  };
-
-  /**
-   * Déconnexion.
-   */
   const handleLogout = async () => {
     await signOut({ redirect: false });
+    setUserMenuOpen(false);
+    setMenuOpen(false);
     router.push('/');
-    setShowUserDropdown(false);
-    setOpen(false);
   };
 
-  /**
-   * Ouvre / ferme un groupe du menu mobile.
-   */
-  const toggleMobileGroup = (href: string) => {
-    setOpenMobileGroup((current) => (current === href ? null : href));
-  };
-
-  /**
-   * Variants du panneau mobile.
-   */
-  const mobilePanelVariants = {
-    closed: {
-      opacity: 0,
-      y: -18,
-      scale: 0.96,
-      filter: 'blur(8px)',
-      transition: {
-        duration: 0.2,
-        ease: 'easeInOut',
-      },
-    },
-    open: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      filter: 'blur(0px)',
-      transition: {
-        duration: 0.28,
-        ease: 'easeOut',
-        staggerChildren: 0.04,
-        delayChildren: 0.05,
-      },
-    },
-  };
-
-  const mobileItemVariants = {
-    closed: { opacity: 0, y: 10 },
-    open: { opacity: 1, y: 0 },
-  };
+  const userName = session?.user?.name || 'Mon compte';
+  const userImage = session?.user?.image || '';
 
   return (
     <>
-      <motion.header
-        initial={{ y: -80 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.45, ease: 'easeOut' }}
-        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? 'border-b border-white/40 bg-white/90 shadow-[0_8px_30px_rgba(80,60,120,0.08)] backdrop-blur-xl'
-            : 'bg-white/65 backdrop-blur-md'
+            ? 'border-b border-violet-300/10 bg-[#12081f]/85 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl'
+            : 'bg-gradient-to-b from-[#12081f]/80 to-[#12081f]/40 backdrop-blur-md'
         }`}
       >
-        {/* Ligne lumineuse très fine */}
-        <motion.div
-          className="h-[2px] origin-left bg-gradient-to-r from-[#8E7AB5] via-[#D9B8FF] to-[#8E7AB5]"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 1.4, ease: 'easeInOut' }}
-        />
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:h-[84px] lg:px-8">
+          {/* Marque */}
+          <Link href="/" className="group flex shrink-0 items-center gap-3" aria-label="SferaLuna — accueil">
+            <span className="relative flex h-10 w-10 items-center justify-center lg:h-12 lg:w-12">
+              <span className="absolute inset-0 rounded-full bg-fuchsia-500/35 blur-lg transition group-hover:bg-fuchsia-400/50" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-sferaluna.png" alt="" className="relative h-9 w-9 rounded-full object-cover lg:h-11 lg:w-11" />
+            </span>
+            <span className="leading-none">
+              <span className="block text-xl font-semibold tracking-tight text-white lg:text-2xl">SferaLuna</span>
+              <span className="mt-1 hidden text-[11px] leading-tight text-white/60 xl:block">
+                Plus que des rencontres,
+                <br />
+                un espace pour être soi.
+              </span>
+            </span>
+          </Link>
 
-        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-          <div className="flex h-14 items-center justify-between sm:h-16 lg:h-20">
-            {/* Logo compact mobile */}
-            <motion.div
-              className="flex shrink-0 items-center"
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: 'spring', stiffness: 400 }}
-            >
-              <Link href="/" className="group relative flex items-center gap-2">
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#8E7AB5]/20 to-[#D9B8FF]/20 opacity-0 blur transition-opacity duration-300 group-hover:opacity-100" />
+          {/* Navigation desktop */}
+          <nav
+            className="mx-auto hidden items-center gap-1 rounded-full border border-violet-300/15 bg-[#1b0d38]/60 p-1.5 backdrop-blur-xl lg:flex"
+            aria-label="Navigation principale"
+          >
+            {NAV.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative rounded-full px-4 py-2 text-sm font-medium transition xl:px-5 ${
+                    active ? 'text-white' : 'text-white/70 hover:text-white'
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      className="absolute inset-0 rounded-full border border-fuchsia-300/40 bg-gradient-to-r from-fuchsia-500/25 to-violet-500/25 shadow-[0_0_20px_-6px_rgba(217,70,239,0.7)]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo-sferaluna.png"
-                  alt="SferaLuna"
-                  width={54}
-                  height={54}
-                  className="relative z-10 block h-11 w-11 shrink-0 object-contain drop-shadow-sm sm:h-14 sm:w-14 lg:h-[72px] lg:w-[72px]"
-                  style={{ background: 'transparent' }}
-                />
+          {/* Actions */}
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3 lg:ml-0">
+            {status === 'loading' ? (
+              <span className="h-10 w-28 animate-pulse rounded-full bg-white/5" />
+            ) : isLoggedIn ? (
+              <>
+                <Link
+                  href="/mon-compte?tab=connexions"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-violet-300/20 bg-white/[0.04] text-white/80 transition hover:border-violet-300/40 hover:text-white"
+                  aria-label={`Notifications${notifCount ? ` (${notifCount})` : ''}`}
+                >
+                  <Bell className="h-[18px] w-[18px]" />
+                  {notifCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-bold text-white ring-2 ring-[#12081f]">
+                      {notifCount > 9 ? '9+' : notifCount}
+                    </span>
+                  )}
+                </Link>
 
-                <div className="hidden min-[380px]:block lg:hidden">
-                  <p className="text-sm font-black leading-none text-[#5B4B8A]">
-                    SferaLuna
-                  </p>
-                  <p className="text-[10px] leading-tight text-[#8E7AB5]/70">
-                    rencontre au féminin
-                  </p>
-                </div>
-              </Link>
+                <Link
+                  href="/explorer"
+                  className="hidden h-11 items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-[0_8px_28px_-8px_rgba(217,70,239,0.8)] ring-1 ring-fuchsia-300/40 transition hover:brightness-110 xl:inline-flex"
+                >
+                  <Compass className="h-4 w-4" />
+                  Explorer librement
+                </Link>
 
-              {/* Badge desktop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.25 }}
-                className="ml-3 hidden items-center gap-1.5 rounded-full border border-[#8E7AB5]/25 bg-white/60 px-3 py-1 backdrop-blur-sm xl:flex"
-              >
-                <Shield size={11} className="text-[#8E7AB5]" />
-
-                <span className="whitespace-nowrap text-[11px] font-medium tracking-wide text-[#5B4B8A]">
-                  100% féminin · sécurisé
-                </span>
-              </motion.div>
-            </motion.div>
-
-            {/* Menu desktop */}
-            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex">
-              {links.map((link) => {
-                const isActive =
-                  pathname === link.href ||
-                  Boolean(
-                    link.subItems?.some((subItem) => pathname === subItem.href)
-                  );
-
-                return (
-                  <div key={link.href} className="group relative">
-                    <Link
-                      href={link.href}
-                      onMouseEnter={() => setHoveredLink(link.href)}
-                      onMouseLeave={() => setHoveredLink(null)}
-                      className={`relative flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-medium transition-all duration-300 ${
-                        isActive
-                          ? 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
-                          : 'text-[#5E5E5E] hover:bg-[#8E7AB5]/8 hover:text-[#8E7AB5]'
-                      }`}
-                    >
-                      <span className="text-[#8E7AB5]">{link.icon}</span>
-
-                      {link.label}
-
-                      {link.badge && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] ${
-                            link.badge === 'Nouveau'
-                              ? 'border border-[#FF6B6B]/20 bg-[#FF6B6B]/10 text-[#FF6B6B]'
-                              : 'border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 text-[#8E7AB5]'
-                          }`}
-                        >
-                          {link.badge}
-                        </span>
-                      )}
-
-                      {link.subItems && (
-                        <ChevronDown
-                          size={14}
-                          className={`transition-transform duration-300 ${
-                            hoveredLink === link.href ? 'rotate-180' : ''
-                          }`}
-                        />
-                      )}
-                    </Link>
-
-                    {/* Dropdown desktop */}
-                    {link.subItems && (
-                      <div className="invisible absolute left-0 top-full pt-2 opacity-0 transition-all duration-300 group-hover:visible group-hover:opacity-100">
-                        <div className="min-w-[220px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
-                          {link.subItems.map((subItem) => (
-                            <Link
-                              key={subItem.href}
-                              href={subItem.href}
-                              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                            >
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#8E7AB5]" />
-                              {subItem.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </nav>
-
-            {/* Actions desktop */}
-            <div className="hidden shrink-0 items-center gap-2 lg:flex">
-              {isLoggedIn ? (
-                <>
-                  <Link
-                    href="/explorer"
-                    className="flex items-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                  >
-                    <Sparkles size={15} className="text-[#8E7AB5]" />
-                    Explorer
-                  </Link>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowUserDropdown((current) => !current);
-                        setNotifCount(0);
-                      }}
-                      className="flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 px-3 py-2 text-[#5B4B8A] transition-all hover:from-[#8E7AB5]/20 hover:to-[#D9B8FF]/20"
-                    >
-                      <div className="relative">
-                        {session?.user?.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={session.user.image}
-                            alt=""
-                            className="h-6 w-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User size={16} />
-                        )}
-
-                        {notifCount > 0 && (
-                          <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold leading-none text-white">
-                            {notifCount > 9 ? '9+' : notifCount}
-                          </span>
-                        )}
-                      </div>
-
-                      <span className="max-w-24 truncate text-sm font-medium">
-                        {session?.user?.name || 'Mon compte'}
-                      </span>
-
-                      <ChevronDown
-                        size={13}
-                        className={`transition-transform ${
-                          showUserDropdown ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence>
-                      {showUserDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                          className="absolute right-0 top-full z-50 mt-2 min-w-[220px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl"
-                        >
-                          <div className="mb-1 border-b border-[#F0F0F0] px-3 py-2">
-                            <p className="truncate text-xs font-semibold text-[#8E7AB5]">
-                              {session?.user?.email}
-                            </p>
-                          </div>
-
-                          <Link
-                            href="/mon-compte"
-                            onClick={() => setShowUserDropdown(false)}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                          >
-                            <User size={15} />
-                            Mon compte
-                          </Link>
-
-                          <Link
-                            href="/mon-compte?tab=premium"
-                            onClick={() => setShowUserDropdown(false)}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                          >
-                            <Crown size={15} />
-                            Premium
-                          </Link>
-
-                          <Link
-                            href="/matches"
-                            onClick={() => setShowUserDropdown(false)}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                          >
-                            <MessageCircle size={15} />
-                            Messages
-                          </Link>
-
-                          <div className="my-1 h-px bg-[#F0F0F0]" />
-
-                          <button
-                            type="button"
-                            onClick={handleLogout}
-                            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[#999] transition-colors hover:bg-red-50 hover:text-red-500"
-                          >
-                            <LogOut size={15} />
-                            Déconnexion
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </>
-              ) : (
-                <>
+                <div ref={userMenuRef} className="relative hidden md:block">
                   <button
                     type="button"
-                    className="rounded-full p-2 transition-colors hover:bg-[#F5F3F7]"
-                    aria-label="Mode nuit"
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    className="flex h-11 items-center gap-2 rounded-full border border-violet-300/20 bg-white/[0.04] py-1 pl-1 pr-3 transition hover:border-violet-300/40"
+                    aria-expanded={userMenuOpen}
+                    aria-label="Menu du compte"
                   >
-                    <Moon size={20} className="text-[#5E5E5E]" />
+                    {userImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={userImage} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-fuchsia-400/50" />
+                    ) : (
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-sm font-semibold text-white">
+                        {userName.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <ChevronDown className={`h-4 w-4 text-white/60 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowAuthDropdown((current) => !current)
-                      }
-                      className="flex items-center gap-2 rounded-full px-4 py-2 text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7]"
-                    >
-                      <User size={18} />
-                      <span>Connexion</span>
-
-                      <ChevronDown
-                        size={14}
-                        className={`transition-transform ${
-                          showAuthDropdown ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence>
-                      {showAuthDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                          className="absolute right-0 top-full z-50 mt-2 min-w-[190px] rounded-2xl border border-white/40 bg-white/95 p-2 shadow-2xl backdrop-blur-xl"
+                  <AnimatePresence>
+                    {userMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-[calc(100%+10px)] w-60 rounded-2xl border border-violet-300/15 bg-[#1a0c38]/95 p-2 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+                      >
+                        <p className="truncate px-3 pb-2 pt-1.5 text-sm font-semibold text-white">{userName}</p>
+                        {[
+                          { href: '/mon-compte', label: 'Mon tableau de bord', icon: LayoutDashboard },
+                          { href: '/matches', label: 'Mes messages', icon: MessageSquareText },
+                          { href: '/mon-compte?tab=premium', label: 'Mon abonnement', icon: Crown },
+                        ].map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+                          >
+                            <item.icon className="h-4 w-4 text-violet-200" />
+                            {item.label}
+                          </Link>
+                        ))}
+                        <div className="my-1 h-px bg-white/10" />
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-rose-200/90 transition hover:bg-white/[0.06]"
                         >
-                          <button
-                            type="button"
-                            onClick={() => handleAuthClick('login')}
-                            className="w-full rounded-xl px-4 py-3 text-left font-medium text-[#5E5E5E] transition-colors hover:bg-[#F5F3F7] hover:text-[#8E7AB5]"
-                          >
-                            Se connecter
-                          </button>
+                          <LogOut className="h-4 w-4" />
+                          Déconnexion
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth?mode=login"
+                  className="hidden h-11 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium text-white/90 transition hover:bg-white/5 lg:inline-flex xl:border xl:border-violet-300/35 xl:px-5 xl:hover:border-fuchsia-300/60"
+                >
+                  Connexion
+                </Link>
+                <Link
+                  href="/auth?mode=register"
+                  className="group hidden h-11 items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-[0_8px_28px_-8px_rgba(217,70,239,0.8)] ring-1 ring-fuchsia-300/40 transition hover:brightness-110 sm:inline-flex"
+                >
+                  Créer mon profil
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </>
+            )}
 
-                          <div className="my-1 h-px bg-gradient-to-r from-transparent via-[#8E7AB5]/20 to-transparent" />
-
-                          <button
-                            type="button"
-                            onClick={() => handleAuthClick('register')}
-                            className="w-full rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-left font-medium text-white transition-all duration-300 hover:shadow-lg"
-                          >
-                            S’inscrire gratuitement
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Actions mobile compactes */}
-            <div className="flex items-center gap-1.5 lg:hidden">
-              {/* Notifications ou accès compte */}
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(isLoggedIn ? '/mon-compte' : '/auth?mode=login')
-                }
-                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#8E7AB5]/10 bg-white/70 text-[#5B4B8A] shadow-sm backdrop-blur transition-colors hover:bg-[#F5F3F7]"
-                aria-label={isLoggedIn ? 'Mon compte' : 'Connexion'}
-              >
-                {isLoggedIn && session?.user?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={session.user.image}
-                    alt=""
-                    className="h-7 w-7 rounded-full object-cover"
-                  />
-                ) : (
-                  <User size={18} />
-                )}
-
-                {isLoggedIn && notifCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                    {notifCount > 9 ? '9+' : notifCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Burger original : pastille lunaire */}
-              <button
-                type="button"
-                onClick={() => setOpen((current) => !current)}
-                className={`relative z-[60] flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border shadow-sm transition-all ${
-                  open
-                    ? 'border-[#8E7AB5]/30 bg-[#1a0b2e] text-white'
-                    : 'border-[#8E7AB5]/15 bg-white/80 text-[#8E7AB5] backdrop-blur'
-                }`}
-                aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'}
-              >
-                <span className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5]/10 to-[#D9B8FF]/20" />
-
-                <AnimatePresence mode="wait">
-                  {open ? (
-                    <motion.span
-                      key="close"
-                      initial={{ rotate: -90, opacity: 0, scale: 0.7 }}
-                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                      exit={{ rotate: 90, opacity: 0, scale: 0.7 }}
-                      className="relative z-10"
-                    >
-                      <X size={20} />
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="menu"
-                      initial={{ rotate: 90, opacity: 0, scale: 0.7 }}
-                      animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                      exit={{ rotate: -90, opacity: 0, scale: 0.7 }}
-                      className="relative z-10"
-                    >
-                      <Menu size={20} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
-            </div>
+            {/* Burger mobile */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-300/20 bg-white/[0.04] text-white lg:hidden"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      {/* Menu mobile : Luna Dock */}
+      {/* Menu mobile */}
       <AnimatePresence>
-        {open && (
+        {menuOpen && (
           <>
-            {/* Overlay */}
-            <motion.button
-              type="button"
+            <motion.div
+              key="overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 bg-[#1a0b2e]/35 backdrop-blur-sm lg:hidden"
-              aria-label="Fermer le menu"
+              onClick={() => setMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             />
-
-            {/* Panneau flottant compact, pas un tiroir classique */}
             <motion.div
-              variants={mobilePanelVariants}
-              initial="closed"
-              animate="open"
-              exit="closed"
-              className="fixed left-3 right-3 top-[4.15rem] z-50 max-h-[calc(100dvh-5rem)] overflow-hidden rounded-[2rem] border border-white/40 bg-white/92 shadow-[0_24px_80px_rgba(53,35,92,0.28)] backdrop-blur-2xl lg:hidden"
+              key="panel"
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-3 top-[72px] z-50 max-h-[calc(100vh-88px)] overflow-y-auto rounded-3xl border border-violet-300/15 bg-[#160a2e]/97 p-4 shadow-2xl shadow-black/60 backdrop-blur-2xl lg:hidden"
             >
-              {/* Décor intérieur */}
-              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#D9B8FF]/40 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#8E7AB5]/25 blur-3xl" />
-
-              <div className="relative max-h-[calc(100dvh-5rem)] overflow-y-auto p-3">
-                {/* Capsule utilisateur compacte */}
-                <motion.div
-                  variants={mobileItemVariants}
-                  className="mb-3 rounded-[1.5rem] border border-[#8E7AB5]/15 bg-gradient-to-r from-[#F5F0FF] to-white p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8E7AB5] to-[#D9B8FF] text-white shadow-md">
-                      {isLoggedIn && session?.user?.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={session.user.image}
-                          alt=""
-                          className="h-full w-full rounded-2xl object-cover"
-                        />
-                      ) : (
-                        <Moon size={21} />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-black text-[#1C1C1C]">
-                        {isLoggedIn
-                          ? session?.user?.name || 'Mon espace Luna'
-                          : 'Bienvenue sur SferaLuna'}
-                      </p>
-
-                      <p className="truncate text-xs text-[#6E6385]">
-                        {isLoggedIn
-                          ? session?.user?.email
-                          : 'Menu rapide, compact et sécurisé'}
-                      </p>
-                    </div>
-
-                    {isLoggedIn && notifCount > 0 && (
-                      <div className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-1 text-[10px] font-bold text-white">
-                        <Bell size={11} />
-                        {notifCount > 9 ? '9+' : notifCount}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-
-                {/* Dock rapide */}
-                <motion.div
-                  variants={mobileItemVariants}
-                  className="mb-3 grid grid-cols-4 gap-2"
-                >
-                  {[
-                    { label: 'Accueil', href: '/', icon: <Home size={17} /> },
-                    {
-                      label: 'Explorer',
-                      href: '/explorer',
-                      icon: <Compass size={17} />,
-                    },
-                    {
-                      label: 'Matches',
-                      href: '/matches',
-                      icon: <Heart size={17} />,
-                    },
-                    {
-                      label: 'Compte',
-                      href: isLoggedIn ? '/mon-compte' : '/auth?mode=login',
-                      icon: <User size={17} />,
-                    },
-                  ].map((item) => (
+              <nav className="flex flex-col gap-1" aria-label="Navigation mobile">
+                {NAV.map((item) => {
+                  const active = isActive(pathname, item.href);
+                  return (
                     <Link
-                      key={item.label}
+                      key={item.href}
                       href={item.href}
-                      onClick={() => setOpen(false)}
-                      className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[#8E7AB5]/10 bg-white/75 px-2 py-2.5 text-[#5B4B8A] shadow-sm transition hover:bg-[#F5F0FF]"
+                      className={`flex items-center justify-between rounded-2xl px-4 py-3 text-base font-medium transition ${
+                        active
+                          ? 'bg-gradient-to-r from-fuchsia-500/25 to-violet-500/20 text-white ring-1 ring-fuchsia-300/30'
+                          : 'text-white/80 hover:bg-white/5'
+                      }`}
                     >
-                      {item.icon}
-                      <span className="text-[10px] font-semibold">
-                        {item.label}
-                      </span>
+                      {item.label}
+                      <ArrowRight className="h-4 w-4 opacity-50" />
                     </Link>
-                  ))}
-                </motion.div>
+                  );
+                })}
+              </nav>
 
-                {/* Navigation accordéon */}
-                <div className="space-y-1.5">
-                  {links.map((link) => {
-                    const isOpen = openMobileGroup === link.href;
-                    const isActive =
-                      pathname === link.href ||
-                      Boolean(
-                        link.subItems?.some(
-                          (subItem) => pathname === subItem.href
-                        )
-                      );
+              <div className="mt-4 grid gap-2">
+                {isLoggedIn ? (
+                  <>
+                    <Link
+                      href="/explorer"
+                      className="flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 text-sm font-semibold text-white"
+                    >
+                      <Compass className="h-4 w-4" /> Explorer librement
+                    </Link>
+                    <Link
+                      href="/mon-compte"
+                      className="flex h-12 items-center justify-center gap-2 rounded-full border border-violet-300/30 text-sm font-medium text-white"
+                    >
+                      <LayoutDashboard className="h-4 w-4" /> Mon tableau de bord
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex h-11 items-center justify-center gap-2 rounded-full text-sm text-rose-200/90"
+                    >
+                      <LogOut className="h-4 w-4" /> Déconnexion
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth?mode=register"
+                      className="flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 text-sm font-semibold text-white"
+                    >
+                      <Moon className="h-4 w-4" /> Créer mon profil
+                    </Link>
+                    <Link
+                      href="/auth?mode=login"
+                      className="flex h-12 items-center justify-center gap-2 rounded-full border border-violet-300/30 text-sm font-medium text-white"
+                    >
+                      <LogIn className="h-4 w-4" /> Connexion
+                    </Link>
+                  </>
+                )}
+              </div>
 
-                    return (
-                      <motion.div
-                        key={link.href}
-                        variants={mobileItemVariants}
-                        className={`overflow-hidden rounded-2xl border transition-colors ${
-                          isActive
-                            ? 'border-[#8E7AB5]/25 bg-[#8E7AB5]/10'
-                            : 'border-[#8E7AB5]/10 bg-white/60'
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          <Link
-                            href={link.href}
-                            onClick={() => {
-                              if (!link.subItems) setOpen(false);
-                            }}
-                            className="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5"
-                          >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-lg">
-                              {link.mobileIcon}
-                            </span>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="truncate text-sm font-bold text-[#5B4B8A]">
-                                  {link.label}
-                                </span>
-
-                                {link.badge && (
-                                  <span
-                                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                                      link.badge === 'Nouveau'
-                                        ? 'bg-red-100 text-red-500'
-                                        : 'bg-[#8E7AB5]/10 text-[#8E7AB5]'
-                                    }`}
-                                  >
-                                    {link.badge}
-                                  </span>
-                                )}
-                              </div>
-
-                              {link.subItems && (
-                                <p className="truncate text-[10px] text-[#7A718A]">
-                                  {link.subItems.length} sous-sections
-                                </p>
-                              )}
-                            </div>
-                          </Link>
-
-                          {link.subItems && (
-                            <button
-                              type="button"
-                              onClick={() => toggleMobileGroup(link.href)}
-                              className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8E7AB5] transition hover:bg-[#8E7AB5]/10"
-                              aria-label={`Ouvrir ${link.label}`}
-                            >
-                              <ChevronDown
-                                size={17}
-                                className={`transition-transform ${
-                                  isOpen ? 'rotate-180' : ''
-                                }`}
-                              />
-                            </button>
-                          )}
-                        </div>
-
-                        <AnimatePresence initial={false}>
-                          {link.subItems && isOpen && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.22, ease: 'easeOut' }}
-                              className="overflow-hidden"
-                            >
-                              <div className="space-y-1 border-t border-[#8E7AB5]/10 px-3 pb-3 pt-2">
-                                {link.subItems.map((subItem) => (
-                                  <Link
-                                    key={subItem.href}
-                                    href={subItem.href}
-                                    onClick={() => setOpen(false)}
-                                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[#6E6385] transition hover:bg-white hover:text-[#8E7AB5]"
-                                  >
-                                    <span className="h-1.5 w-1.5 rounded-full bg-[#8E7AB5]" />
-                                    {subItem.label}
-                                  </Link>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-
-                {/* Actions mobile */}
-                <motion.div
-                  variants={mobileItemVariants}
-                  className="mt-3 border-t border-[#8E7AB5]/10 pt-3"
-                >
-                  {isLoggedIn ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          router.push('/mon-compte');
-                          setOpen(false);
-                        }}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-sm font-bold text-white shadow-lg"
-                      >
-                        <User size={16} />
-                        Compte
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-500"
-                      >
-                        <LogOut size={16} />
-                        Quitter
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAuthClick('login')}
-                        className="flex items-center justify-center gap-2 rounded-2xl border border-[#8E7AB5]/15 bg-white px-4 py-3 text-sm font-bold text-[#5B4B8A]"
-                      >
-                        <User size={16} />
-                        Connexion
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAuthClick('register')}
-                        className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-4 py-3 text-sm font-bold text-white shadow-lg"
-                      >
-                        <Sparkles size={16} />
-                        Inscription
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-
-                <motion.p
-                  variants={mobileItemVariants}
-                  className="mt-3 text-center text-[10px] text-[#8A819A]"
-                >
-                  SferaLuna · Une communauté bienveillante pour femmes 💜
-                </motion.p>
+              <p className="mb-2 mt-5 px-1 text-[11px] font-semibold uppercase tracking-wider text-white/35">
+                Aussi sur SferaLuna
+              </p>
+              <div className="grid grid-cols-2 gap-1">
+                {MORE.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-xl px-3 py-2 text-sm text-white/65 transition hover:bg-white/5 hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Bouton retour haut compact */}
-      <motion.div
-        className="fixed bottom-5 right-4 z-40 lg:hidden"
-        animate={{ y: scrolled ? 0 : 90, opacity: scrolled ? 1 : 0 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-      >
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-white shadow-lg"
-          aria-label="Remonter en haut"
-        >
-          <ChevronDown size={20} className="rotate-180" />
-        </button>
-      </motion.div>
+      {/* Remonter en haut */}
+      <AnimatePresence>
+        {showTop && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-violet-300/25 bg-[#1b0d38]/90 text-white shadow-lg shadow-black/40 backdrop-blur-xl transition hover:border-fuchsia-300/50"
+            aria-label="Remonter en haut"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,1052 +1,432 @@
-// src/app/fonctionnalites/page.tsx
-
-"use client";
+'use client';
 
 /**
- * Page Fonctionnalités SferaLuna.
- *
- * Cette page présente :
- * - les fonctionnalités principales ;
- * - une mise en avant détaillée de la fonctionnalité active sur desktop ;
- * - une version accordéon très compacte sur mobile ;
- * - les statistiques dynamiques ;
- * - un CTA final vers l'inscription ou les forfaits.
- *
- * Objectif mobile-first :
- * - réduire fortement la hauteur du hero ;
- * - éviter une navigation sticky trop volumineuse sur mobile ;
- * - transformer les cards en accordéons sur mobile ;
- * - garder une version premium, visuelle et plus détaillée sur tablette/desktop.
+ * /fonctionnalites — l'expérience SferaLuna en séquences visuelles
+ * (et non plus en catalogue) : chaque fonctionnalité a son nom propriétaire
+ * et un aperçu du produit.
  */
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import Link from "next/link";
-
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import HexagonSix from "@/components/icons/HexagonSix";
-
+import Link from 'next/link';
+import type { ElementType, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Brain,
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  Eye,
-  Ghost,
+  ArrowRight,
+  BadgeCheck,
+  BookOpen,
+  CalendarDays,
+  Check,
+  Compass,
+  Flower2,
   Heart,
-  Lightbulb,
-  MessageCircle,
-  Moon,
-  Shield,
+  Image as ImageIcon,
+  MapPin,
+  MessageSquareText,
+  NotebookPen,
+  Palette,
+  Search,
+  SendHorizontal,
+  SlidersHorizontal,
+  Smile,
   Sparkles,
-} from "lucide-react";
+  Trees,
+  UserRound,
+  Users,
+  UsersRound,
+  UtensilsCrossed,
+  Wine,
+} from 'lucide-react';
+
+import { SceneArt } from '@/components/site/art';
+import { ExplorePreview } from '@/components/site/ProductMockup';
+import { Container, FinalCta, SiteShell, StepsRow, reveal } from '@/components/site/sections';
+import {
+  AvatarStack,
+  GLASS,
+  GLASS_INNER,
+  Glow,
+  IconBadge,
+  IllustratedAvatar,
+  PrimaryButton,
+  ScriptNote,
+  SectionHeading,
+  cn,
+} from '@/components/site/ui';
 
 // ─────────────────────────────────────────────
-// Types
+// Bloc fonctionnalité
 // ─────────────────────────────────────────────
 
-interface SiteStats {
-  membres: number;
-  matchs: number;
-  messages: number;
-  evenements: number;
-}
-
-interface FeatureItem {
-  id: string;
-  icon: React.ReactNode;
-  mobileIcon: React.ReactNode;
-  title: string;
-  description: string;
-  details: string;
-  color: string;
-  stats: string[];
-  link: string;
-  comingSoon?: boolean;
-}
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-/**
- * Formate les statistiques pour éviter les gros chiffres bruts.
- * Exemple :
- * 1200 -> 1.2K+
- * 1000 -> 1K+
- * 0 -> —
- */
-function formatStat(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".0", "")}K+`;
-  if (n === 0) return "—";
-  return n.toString();
-}
-
-// ─────────────────────────────────────────────
-// Motif décoratif orbite
-// ─────────────────────────────────────────────
-
-/**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera".
- */
-function OrbitGlow({
-  className = "",
-  variant = "default",
+function FeatureBlock({
+  id,
+  num,
+  icon: Icon,
+  title,
+  subtitle,
+  text,
+  cta,
+  href,
+  children,
+  className = '',
+  split = 'md:grid-cols-[1fr_1.15fr]',
 }: {
+  id: string;
+  num: string;
+  icon: ElementType;
+  title: string;
+  subtitle: string;
+  text: string;
+  cta: string;
+  href: string;
+  children?: ReactNode;
   className?: string;
-  variant?: "default" | "light";
+  split?: string;
 }) {
-  const stroke = variant === "light" ? "#FFFFFF" : "#8E7AB5";
-  const dot = variant === "light" ? "#FFFFFF" : "#5B4B8A";
-
   return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
+    <motion.article
+      id={id}
+      {...reveal}
+      className={cn(GLASS, 'relative scroll-mt-28 overflow-hidden p-5 sm:p-6', className)}
     >
-      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke={stroke}
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill={dot} />
-      <circle cx="190" cy="100" r="3" fill={dot} />
-      <circle cx="100" cy="190" r="3" fill={dot} />
-      <circle cx="10" cy="100" r="3" fill={dot} />
-    </svg>
+      <div className={cn('grid items-center gap-6', children ? split : '')}>
+        <div>
+          <div className="flex items-start gap-3">
+            <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-violet-300/30 text-[11px] font-semibold text-white/70">
+              {num}
+            </span>
+            <Icon className="mt-1 h-8 w-8 shrink-0 text-fuchsia-300" />
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">{title}</h2>
+              <p className="mt-1 text-base font-medium leading-snug text-white/90">{subtitle}</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-relaxed text-white/65">{text}</p>
+          <PrimaryButton href={href} size="sm" icon={null} className="mt-5">
+            {cta}
+          </PrimaryButton>
+        </div>
+        {children && <div className="min-w-0">{children}</div>}
+      </div>
+    </motion.article>
+  );
+}
+
+function MiniTile({ icon, title, text }: { icon: ElementType; title: string; text: string }) {
+  return (
+    <div className={cn(GLASS_INNER, 'flex items-center gap-3 p-3.5')}>
+      <IconBadge icon={icon} size="sm" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-xs leading-snug text-white/60">{text}</p>
+      </div>
+    </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// Données fonctionnalités
-// ─────────────────────────────────────────────
-
-const features: FeatureItem[] = [
-  {
-    id: "circle",
-    icon: <HexagonSix size={32} />,
-    mobileIcon: <HexagonSix size={20} />,
-    title: "Circle of Six",
-    description: "Des liens choisis, pas des milliers de swipes.",
-    details:
-      "Chaque semaine, notre algorithme te présente 6 femmes qui correspondent à tes valeurs et intérêts. Une approche qualitative pour des rencontres plus authentiques.",
-    color: "from-[#8E7AB5] to-[#D9B8FF]",
-    stats: [
-      "6 personnes par semaine",
-      "Compatibilité optimisée",
-      "Moins de fatigue du swipe",
-    ],
-    link: "/circle",
-  },
-  {
-    id: "ghost",
-    icon: <Ghost className="h-8 w-8" />,
-    mobileIcon: <Ghost className="h-5 w-5" />,
-    title: "Mode Fantôme",
-    description: "Discrétion assurée, photos floutées, pseudonymes.",
-    details:
-      "Protège ton intimité avec des photos floutées et un pseudonyme. Tu décides quand et à qui révéler ton identité.",
-    color: "from-[#4ECDC4] to-[#44A08D]",
-    stats: [
-      "Contrôle total",
-      "Anonymat renforcé",
-      "Activation rapide",
-    ],
-    link: "/mode-fantome",
-  },
-  {
-    id: "vibesphere",
-    icon: <Moon className="h-8 w-8" />,
-    mobileIcon: <Moon className="h-5 w-5" />,
-    title: "VibeSphere",
-    description: "Exprime ta vibe dans ton espace personnalisé.",
-    details:
-      "Crée ton univers digital avec des playlists personnalisées, un journal émotionnel et des avatars d'humeur.",
-    color: "from-[#FF6B6B] to-[#FF8E8E]",
-    stats: [
-      "Journal émotionnel",
-      "Playlists personnalisées",
-      "Avatars d'humeur",
-    ],
-    link: "/vibesphere",
-  },
-  {
-    id: "vibeplanner",
-    icon: <Lightbulb className="h-8 w-8" />,
-    mobileIcon: <Lightbulb className="h-5 w-5" />,
-    title: "VibePlanner",
-    description: "Des idées de rendez-vous qui vous rassemblent.",
-    details:
-      'Plus jamais de "On fait quoi ?". Des suggestions créatives basées sur vos intérêts communs.',
-    color: "from-[#FFD166] to-[#FF9A3C]",
-    stats: [
-      "Idées personnalisées",
-      "Adapté aux budgets",
-      "Planning intégré",
-    ],
-    link: "/vibeplanner",
-  },
-  {
-    id: "events",
-    icon: <Calendar className="h-8 w-8" />,
-    mobileIcon: <Calendar className="h-5 w-5" />,
-    title: "Événements Luna",
-    description: "Participe à des moments inoubliables.",
-    details:
-      "Rejoins notre communauté lors d'événements exclusifs en ligne et en présentiel.",
-    color: "from-[#9D4EDD] to-[#7B2CBF]",
-    stats: [
-      "Événements mensuels",
-      "Communauté bienveillante",
-      "Rencontres organisées",
-    ],
-    link: "/evenements",
-    comingSoon: true,
-  },
-  {
-    id: "coaching",
-    icon: <Brain className="h-8 w-8" />,
-    mobileIcon: <Brain className="h-5 w-5" />,
-    title: "VibeMentor",
-    description: "Sois guidée avec bienveillance et expertise.",
-    details:
-      "Accompagnement personnalisé pour naviguer dans tes relations et ton développement personnel.",
-    color: "from-[#00B09B] to-[#96C93D]",
-    stats: [
-      "Coaching individuel",
-      "Ateliers thématiques",
-      "Ressources exclusives",
-    ],
-    link: "/vibementor",
-    comingSoon: true,
-  },
-  {
-    id: "security",
-    icon: <Shield className="h-8 w-8" />,
-    mobileIcon: <Shield className="h-5 w-5" />,
-    title: "Sécurité Totale",
-    description: "Un espace protégé et bienveillant.",
-    details:
-      "Modération, données protégées et outils de contrôle pour ton bien-être numérique.",
-    color: "from-[#667EEA] to-[#764BA2]",
-    stats: [
-      "Modération active",
-      "Données protégées",
-      "Signalement rapide",
-    ],
-    link: "/securite",
-  },
-  {
-    id: "community",
-    icon: <Heart className="h-8 w-8" />,
-    mobileIcon: <Heart className="h-5 w-5" />,
-    title: "Communauté Luna",
-    description: "Rejoins un réseau bienveillant de femmes.",
-    details:
-      "Échange, partage et grandis avec une communauté qui te comprend et te soutient.",
-    color: "from-[#FF6B9D] to-[#FF8E53]",
-    stats: [
-      "Groupes thématiques",
-      "Forum bienveillant",
-      "Support entre membres",
-    ],
-    link: "/communaute",
-  },
-];
-
-// ─────────────────────────────────────────────
-// Animations
-// ─────────────────────────────────────────────
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.12,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 18 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.42, ease: "easeOut" },
-  },
-};
-
-// ─────────────────────────────────────────────
-// Page principale
+// Page
 // ─────────────────────────────────────────────
 
 export default function FonctionnalitesPage() {
-  /**
-   * Fonction active sur tablette/desktop.
-   * Sur mobile, on utilise plutôt openFeatureIndex pour l'accordéon.
-   */
-  const [activeFeature, setActiveFeature] = useState<string>("circle");
-
-  /**
-   * Accordéon mobile :
-   * null = aucune fonctionnalité ouverte.
-   */
-  const [openFeatureIndex, setOpenFeatureIndex] = useState<number | null>(0);
-
-  /**
-   * État hover uniquement pour desktop.
-   */
-  const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
-
-  /**
-   * Statistiques dynamiques.
-   */
-  const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
-
-  /**
-   * Chargement des statistiques depuis /api/stats.
-   */
-  useEffect(() => {
-    fetch("/api/stats")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) setSiteStats(data.stats);
-      })
-      .catch(() => {});
-  }, []);
-
-  const selectedFeature =
-    features.find((feature) => feature.id === activeFeature) || features[0];
-
   return (
-    <>
-      <Header />
-
-      <main className="min-h-screen overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white pt-16 text-[#1C1C1C] sm:pt-20">
-        {/* ─────────────────────────────
-            Hero compact mobile
-        ───────────────────────────── */}
-        <section className="relative overflow-hidden px-4 py-6 sm:px-6 sm:py-12 md:py-14">
-          <div className="absolute inset-0">
-            <div className="absolute left-0 top-0 h-full w-full bg-gradient-to-br from-[#FDF7FA]/80 via-[#F5F0FF]/60 to-[#E8DFFF]/40" />
-
-            {/* Orbes décoratives réduites sur mobile */}
-            <motion.div
-              animate={{
-                x: [0, 80, 0],
-                y: [0, 35, 0],
-                rotate: [0, 180, 360],
-              }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute left-1/4 top-1/4 h-40 w-40 rounded-full bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 blur-3xl sm:h-64 sm:w-64"
-            />
-
-            <motion.div
-              animate={{
-                x: [0, -80, 0],
-                y: [0, -35, 0],
-                rotate: [360, 180, 0],
-              }}
-              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-              className="absolute bottom-1/4 right-1/4 h-48 w-48 rounded-full bg-gradient-to-r from-[#FDF7FA]/20 to-[#8E7AB5]/10 blur-3xl sm:h-96 sm:w-96"
-            />
-          </div>
-
-          <OrbitGlow className="left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 sm:h-[32rem] sm:w-[32rem]" />
-
-          <div className="relative z-10 mx-auto max-w-5xl text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55 }}
-            >
-              {/* Badge compact */}
-              <motion.div
-                initial={{ scale: 0.94, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.12, type: "spring" }}
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-white/70 px-3 py-1.5 text-xs font-medium text-[#5B4B8A] backdrop-blur sm:mb-8 sm:px-4 sm:py-2 sm:text-sm"
-              >
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#8E7AB5] sm:h-2 sm:w-2" />
-                ✨ Expérience complète
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.22, duration: 0.65 }}
-                className="text-3xl font-black leading-tight sm:text-5xl md:text-7xl"
-              >
-                <span className="bg-gradient-to-r from-[#5B4B8A] via-[#8E7AB5] to-[#D9B8FF] bg-clip-text text-transparent">
-                  Fonctionnalités
-                </span>
-
-                <br />
-
-                <span className="text-2xl font-light text-[#1C1C1C] sm:text-4xl md:text-6xl">
-                  exclusives
-                </span>
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.38, duration: 0.65 }}
-                className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-[#4B4B4B] sm:mt-6 sm:text-xl"
-              >
-                Conçues{" "}
-                <span className="font-semibold text-[#8E7AB5]">pour toi</span>,
-                pour ta liberté, ta sécurité et ta vibe.
-              </motion.p>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            Mobile : accordéons fonctionnalités
-        ───────────────────────────── */}
-        <section className="bg-white px-4 py-5 sm:hidden">
-          <div className="mx-auto max-w-xl">
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              className="mb-4 text-center"
-            >
-              <h2 className="text-xl font-black text-[#1C1C1C]">
-                Tout dans une expérience{" "}
-                <span className="text-[#8E7AB5]">mobile-first</span>
-              </h2>
-
-              <p className="mt-1 text-xs leading-relaxed text-[#666]">
-                Ouvre une fonctionnalité pour voir l&apos;essentiel.
-              </p>
-            </motion.div>
-
-            <div className="space-y-2">
-              {features.map((feature, index) => {
-                const isOpen = openFeatureIndex === index;
-
-                return (
-                  <motion.div
-                    key={feature.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.035 }}
-                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
-                  >
-                    <div
-                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${feature.color}`}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenFeatureIndex(isOpen ? null : index)
-                      }
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
-                    >
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} text-white`}
-                      >
-                        {feature.mobileIcon}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="truncate text-sm font-bold text-[#5B4B8A]">
-                            {feature.title}
-                          </h3>
-
-                          {feature.comingSoon && (
-                            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
-                              Bientôt
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="truncate text-[11px] text-[#666]">
-                          {feature.description}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.22, ease: "easeOut" }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#F0ECFA] px-3 pb-3 pt-2">
-                            <p className="text-xs font-medium leading-relaxed text-[#1C1C1C]">
-                              {feature.details}
-                            </p>
-
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {feature.stats.map((stat) => (
-                                <span
-                                  key={stat}
-                                  className="rounded-full bg-[#8E7AB5]/10 px-2 py-1 text-[10px] font-medium text-[#5B4B8A]"
-                                >
-                                  {stat}
-                                </span>
-                              ))}
-                            </div>
-
-                            {feature.comingSoon ? (
-                              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                                ⏳ Cette fonctionnalité arrive bientôt.
-                              </div>
-                            ) : (
-                              <Link
-                                href={feature.link}
-                                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#8E7AB5]"
-                              >
-                                Découvrir
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              </Link>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            Tablette / desktop : navigation sticky
-        ───────────────────────────── */}
-        <section className="sticky top-20 z-10 hidden border-b border-[#F0F0F0] bg-white px-4 py-4 sm:block md:px-6 md:py-5">
-          <div className="mx-auto max-w-6xl">
-            <div className="flex flex-wrap justify-center gap-2">
-              {features.map((feature) => (
-                <button
-                  key={feature.id}
-                  type="button"
-                  onClick={() => setActiveFeature(feature.id)}
-                  onMouseEnter={() => setHoveredFeature(feature.id)}
-                  onMouseLeave={() => setHoveredFeature(null)}
-                  className={`group relative flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition-all ${
-                    activeFeature === feature.id
-                      ? `bg-gradient-to-r ${feature.color} border-transparent text-white`
-                      : "border-[#E8E0FF] bg-white text-[#666] hover:border-[#8E7AB5]"
-                  }`}
-                >
-                  <div
-                    className={
-                      activeFeature === feature.id
-                        ? "text-white"
-                        : "text-[#8E7AB5]"
-                    }
-                  >
-                    {feature.mobileIcon}
-                  </div>
-
-                  <span className="font-medium">{feature.title}</span>
-
-                  {feature.comingSoon && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                        activeFeature === feature.id
-                          ? "bg-white/20 text-white"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      Bientôt
-                    </span>
-                  )}
-
-                  {activeFeature === feature.id && (
-                    <motion.div
-                      layoutId="activeFeature"
-                      className="absolute inset-0 rounded-full border-2 border-white/30"
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            Desktop / tablette : détail de la fonctionnalité active
-        ───────────────────────────── */}
-        <section className="hidden px-4 py-8 sm:block md:px-6">
-          <div className="mx-auto max-w-6xl">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={selectedFeature.id}
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -18 }}
-                transition={{ duration: 0.3 }}
-                className="grid items-center gap-10 lg:grid-cols-2"
-              >
-                {/* Colonne gauche - Détails */}
-                <div>
-                  <div className="mb-6 flex items-center gap-4">
-                    <div
-                      className={`rounded-2xl bg-gradient-to-r ${selectedFeature.color} p-4 text-white`}
-                    >
-                      {selectedFeature.icon}
-                    </div>
-
-                    <div>
-                      <h2 className="text-4xl font-black text-[#1C1C1C]">
-                        {selectedFeature.title}
-                      </h2>
-
-                      <p className="text-lg font-medium text-[#8E7AB5]">
-                        {selectedFeature.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mb-8 text-lg leading-relaxed text-[#666]">
-                    {selectedFeature.details}
-                  </p>
-
-                  <div className="mb-8 space-y-4">
-                    {selectedFeature.stats.map((stat, index) => (
-                      <motion.div
-                        key={stat}
-                        initial={{ opacity: 0, x: -18 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.08 }}
-                        className="flex items-center gap-3"
-                      >
-                        <div className="h-2 w-2 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]" />
-                        <span className="text-[#1C1C1C]">{stat}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {selectedFeature.comingSoon ? (
-                    <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                      <span className="mt-0.5 text-2xl">⏳</span>
-
-                      <div>
-                        <p className="mb-1 font-semibold text-amber-800">
-                          Bientôt disponible
-                        </p>
-
-                        <p className="text-sm leading-relaxed text-amber-700">
-                          Cette fonctionnalité est en cours de déploiement. Tout
-                          se met en place pour t&apos;offrir une expérience
-                          propre, utile et fiable.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <Link
-                      href={selectedFeature.link}
-                      className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] px-6 py-3 font-semibold text-white transition-all duration-300 hover:shadow-xl"
-                    >
-                      <span>Découvrir</span>
-                      <ChevronRight className="transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  )}
-                </div>
-
-                {/* Colonne droite - Visuel simulé */}
-                <div className="relative">
-                  <div
-                    className={`absolute -inset-4 rounded-3xl bg-gradient-to-r ${selectedFeature.color} opacity-20 blur-xl`}
-                  />
-
-                  <div className="relative overflow-hidden rounded-2xl border border-[#F0F0F0] shadow-2xl">
-                    <div className="bg-gradient-to-br from-[#1a1529] to-[#2d2750] p-6">
-                      {/* En-tête mockup */}
-                      <div className="mb-6 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]" />
-
-                          <div>
-                            <div className="h-2 w-32 rounded bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF]/50" />
-                            <div className="mt-1 h-1 w-24 rounded bg-gradient-to-r from-[#8E7AB5]/30 to-transparent" />
-                          </div>
-                        </div>
-
-                        <div className="text-white/60">
-                          {selectedFeature.id === "ghost"
-                            ? "👻 Mode"
-                            : "✨ Premium"}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        {selectedFeature.id === "circle" && (
-                          <>
-                            <div className="text-center text-white">
-                              <div className="mb-4 text-6xl">👥</div>
-                              <h3 className="mb-2 text-2xl font-bold">
-                                Ton Circle of Six
-                              </h3>
-                              <p className="text-white/80">
-                                6 femmes qui partagent tes valeurs
-                              </p>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2">
-                              {["🎨", "📚", "🌿", "🎵", "🍳", "🧳"].map(
-                                (emoji) => (
-                                  <div
-                                    key={emoji}
-                                    className="flex aspect-square items-center justify-center rounded-xl bg-white/10"
-                                  >
-                                    <div className="text-2xl">{emoji}</div>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </>
-                        )}
-
-                        {selectedFeature.id === "ghost" && (
-                          <div className="text-center text-white">
-                            <div className="mb-4 text-6xl">👻</div>
-                            <h3 className="mb-2 text-2xl font-bold">
-                              Mode Fantôme activé
-                            </h3>
-                            <p className="mb-4 text-white/80">
-                              Ton profil est flouté pour protéger ton intimité.
-                            </p>
-
-                            <div className="flex justify-center gap-2">
-                              <div className="rounded-full bg-white/10 px-3 py-1 text-sm">
-                                Photos floutées
-                              </div>
-
-                              <div className="rounded-full bg-white/10 px-3 py-1 text-sm">
-                                Pseudonyme
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {selectedFeature.id === "vibesphere" && (
-                          <div className="text-center text-white">
-                            <div className="mb-4 text-6xl">🌌</div>
-                            <h3 className="mb-2 text-2xl font-bold">
-                              Ton VibeSphere
-                            </h3>
-                            <p className="text-white/80">
-                              Exprime ton humeur du jour.
-                            </p>
-
-                            <div className="mt-4 flex justify-center gap-3">
-                              {["🌿", "⚡️", "💭"].map((emoji) => (
-                                <div
-                                  key={emoji}
-                                  className="rounded-lg bg-white/10 p-2 text-3xl"
-                                >
-                                  {emoji}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {!["circle", "ghost", "vibesphere"].includes(
-                          selectedFeature.id
-                        ) && (
-                          <div className="text-center text-white">
-                            <div className="mb-4 text-6xl">✨</div>
-
-                            <h3 className="mb-2 text-2xl font-bold">
-                              {selectedFeature.title}
-                            </h3>
-
-                            <p className="text-white/80">
-                              {selectedFeature.description}
-                            </p>
-
-                            <div className="mt-6 rounded-xl bg-white/5 p-4">
-                              <div className="flex items-center justify-center gap-4">
-                                <Eye className="text-white/60" />
-                                <MessageCircle className="text-white/60" />
-                                <Heart className="text-white/60" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            Desktop / tablette : grille complète
-        ───────────────────────────── */}
-        <section className="relative hidden overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-10 sm:block md:px-6">
-          <OrbitGlow className="right-[-8%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
-          <OrbitGlow className="left-[-10%] bottom-0 h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-
-          <div className="relative z-10 mx-auto max-w-6xl">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-8 text-center"
-            >
-              <h2 className="mb-4 text-4xl font-black text-[#1C1C1C]">
-                Une expérience{" "}
-                <span className="text-[#8E7AB5]">complète</span>
-              </h2>
-
-              <p className="mx-auto max-w-3xl text-xl text-[#666]">
-                Tout ce dont tu as besoin pour créer des connexions
-                authentiques.
-              </p>
-            </motion.div>
-
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
-            >
-              {features.map((feature) => {
-                const isActive = activeFeature === feature.id;
-                const isInactive = activeFeature !== null && !isActive;
-
-                return (
-                  <motion.button
-                    key={feature.id}
-                    variants={itemVariants}
-                    type="button"
-                    onMouseEnter={() => setHoveredFeature(feature.id)}
-                    onMouseLeave={() => setHoveredFeature(null)}
-                    onClick={() => setActiveFeature(feature.id)}
-                    animate={{
-                      opacity: isInactive ? 0.35 : 1,
-                      scale: isActive ? 1.02 : 1,
-                    }}
-                    whileHover={{
-                      opacity: isInactive ? 0.7 : 1,
-                      scale: isActive ? 1.02 : 1.01,
-                    }}
-                    transition={{ duration: 0.2 }}
-                    className="group relative cursor-pointer text-left"
-                  >
-                    <div
-                      className={`relative h-full overflow-hidden rounded-2xl border bg-white p-5 transition-all duration-300 ${
-                        isActive
-                          ? "border-[#8E7AB5]/30 shadow-xl shadow-[#8E7AB5]/20 ring-2 ring-[#8E7AB5]"
-                          : "border-[#F0F0F0] shadow-lg hover:shadow-xl"
-                      }`}
-                    >
-                      <div
-                        className={`absolute inset-0 bg-gradient-to-br ${feature.color} transition-opacity duration-300 ${
-                          isActive
-                            ? "opacity-5"
-                            : "opacity-0 group-hover:opacity-5"
-                        }`}
-                      />
-
-                      <div className="relative z-10 mb-4 text-[#8E7AB5]">
-                        {feature.icon}
-                      </div>
-
-                      <h3 className="relative z-10 mb-2 text-xl font-semibold text-[#1C1C1C]">
-                        {feature.title}
-                      </h3>
-
-                      <p className="relative z-10 text-sm leading-relaxed text-[#666]">
-                        {feature.description}
-                      </p>
-
-                      {feature.comingSoon && (
-                        <div className="absolute right-4 top-4">
-                          <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-2 py-1 text-xs font-medium text-white shadow-sm">
-                            <span>⏳</span>
-                            <span>Bientôt</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {isActive && !feature.comingSoon && (
-                        <div className="absolute right-4 top-4">
-                          <div className="rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] px-2 py-1 text-xs font-medium text-white">
-                            Actif
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            Statistiques compactes
-        ───────────────────────────── */}
-        <section className="relative overflow-hidden bg-white px-4 py-5 sm:px-6 sm:py-10">
-          <OrbitGlow className="left-1/2 top-0 h-72 w-72 -translate-x-1/2 sm:h-96 sm:w-96" />
-
-          <div className="relative z-10 mx-auto max-w-6xl">
-            <div className="grid grid-cols-3 gap-2 sm:gap-6">
+    <SiteShell>
+      {/* Hero */}
+      <section className="relative pb-10 pt-28 sm:pt-32 lg:pb-14 lg:pt-40">
+        <Container className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl xl:text-[56px]">
+              Tout ce qu’il vous faut
+              {" "}<br className="hidden sm:block" />
+              pour faire de <Glow>vraies rencontres.</Glow>
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
+              SferaLuna combine découverte, affinités de confiance, échanges sincères, événements et
+              accompagnement premium pour vous offrir une expérience complète et authentique.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
               {[
-                {
-                  value: siteStats ? formatStat(siteStats.membres) : "…",
-                  label: "Membres",
-                  description: "Communauté active",
-                  icon: "👩‍❤️‍👩",
-                },
-                {
-                  value: siteStats ? formatStat(siteStats.matchs) : "…",
-                  label: "Matchs",
-                  description: "Connexions créées",
-                  icon: "💜",
-                },
-                {
-                  value: "24/7",
-                  label: "Sécurité",
-                  description: "Modération active",
-                  icon: "🛡️",
-                },
-              ].map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  className="rounded-2xl border border-[#E8E0FF] bg-gradient-to-b from-[#F9F7FC] to-white px-2 py-3 text-center sm:rounded-3xl sm:p-6"
+                { name: 'Explorer librement', id: 'explorer' },
+                { name: 'Circle of Six', id: 'circle' },
+                { name: 'Messages', id: 'messages' },
+                { name: 'LunaGather', id: 'lunagather' },
+                { name: 'VibePlanner', id: 'vibeplanner' },
+                { name: 'VibeMentor', id: 'vibementor' },
+                { name: 'VibeSphere', id: 'vibesphere' },
+              ].map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  className="rounded-full border border-violet-300/25 bg-white/[0.04] px-3.5 py-2.5 text-xs font-medium text-white/80 transition hover:border-fuchsia-300/60 hover:text-white"
                 >
-                  <div className="mb-1 text-xl sm:mb-4 sm:text-4xl">
-                    {stat.icon}
-                  </div>
-
-                  <div className="text-lg font-black text-[#5B4B8A] sm:text-5xl">
-                    {stat.value}
-                  </div>
-
-                  <div className="mt-0.5 text-xs font-semibold text-[#1C1C1C] sm:mt-2 sm:text-xl">
-                    {stat.label}
-                  </div>
-
-                  <div className="hidden text-[#666] sm:mt-2 sm:block">
-                    {stat.description}
-                  </div>
-                </motion.div>
+                  {item.name}
+                </a>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ─────────────────────────────
-            CTA final compact mobile
-        ───────────────────────────── */}
-        <section className="relative overflow-hidden px-4 py-7 sm:px-6 sm:py-14">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
+          </motion.div>
 
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-            className="absolute -left-1/2 -top-1/2 h-full w-full bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"
-          />
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+            className="relative [perspective:1600px]"
+          >
+            <ScriptNote className="absolute -top-14 right-2 hidden rotate-[-5deg] lg:block">
+              Des rencontres qui
+              <br />
+              font du bien, vraiment. ♡
+            </ScriptNote>
+            <ExplorePreview className="lg:[transform:rotateY(-9deg)_rotateX(3deg)]" />
+          </motion.div>
+        </Container>
+      </section>
 
-          <OrbitGlow
-            variant="light"
-            className="right-[-10%] top-[-15%] h-72 w-72 sm:h-96 sm:w-96"
-          />
-
-          <div className="relative z-10 mx-auto max-w-4xl text-center text-white">
-            <motion.h2
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-2 text-2xl font-black leading-tight sm:mb-6 sm:text-5xl"
-            >
-              Prête à découvrir toutes nos{" "}
-              <span className="text-white">fonctionnalités</span> ?
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.12 }}
-              className="mx-auto mb-4 max-w-2xl text-sm leading-relaxed opacity-90 sm:mb-10 sm:text-xl"
-            >
-              Rejoins des femmes qui utilisent déjà SferaLuna pour créer des
-              connexions plus authentiques.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.22 }}
-              className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-4"
-            >
-              <Link
-                href="/auth?mode=register"
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#8E7AB5] shadow-2xl transition-all duration-300 hover:scale-105 sm:w-auto sm:px-8 sm:py-4 sm:text-lg"
-              >
-                <span>Essayer gratuitement</span>
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Link>
-
-              <Link
-                href="/tarifs"
-                className="w-full rounded-full border-2 border-white px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/10 sm:w-auto sm:px-8 sm:py-4 sm:text-lg"
-              >
-                Voir les forfaits
-              </Link>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.32 }}
-              className="mt-3 text-xs text-white/80 sm:mt-8 sm:text-base"
-            >
-              <span className="font-semibold">30 jours d&apos;essai premium</span>{" "}
-              · Aucune carte requise · Annulation à tout moment
-            </motion.p>
+      <Container className="space-y-5 pb-6">
+        {/* 01 — Explorer librement */}
+        <FeatureBlock
+          id="explorer"
+          num="01"
+          icon={Search}
+          title="Explorer librement"
+          subtitle="Découvrez des profils inspirants, près de chez vous et ailleurs."
+          text="Parcourez des profils authentiques, filtrez selon vos envies et vos affinités, et laissez-vous surprendre par des rencontres inattendues."
+          cta="Découvrir des profils"
+          href="/explorer"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MiniTile icon={UserRound} title="Des profils authentiques" text="Chaque membre a vérifié son identité" />
+            <MiniTile icon={SlidersHorizontal} title="Filtres intelligents" text="Âge, intentions, ville, affinités" />
+            <MiniTile icon={MapPin} title="Découverte locale" text="Dans votre département ou partout en France" />
+            <MiniTile icon={Sparkles} title="Une expérience fluide" text="Un like, une affinité, une conversation" />
           </div>
-        </section>
-      </main>
+        </FeatureBlock>
 
-      {/* Footer masqué sur mobile pour garder une page plus courte et app-like. */}
-      <div className="hidden sm:block">
-        <Footer />
-      </div>
-    </>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* 02 — Circle of Six */}
+          <FeatureBlock
+            id="circle"
+            num="02"
+            icon={Users}
+            title="Circle of Six"
+            subtitle="Des profils sélectionnés selon vos affinités."
+            text="Chaque semaine, une sélection personnalisée de 6 profils, choisis pour leur réelle compatibilité avec vous."
+            cta="Comment ça marche ?"
+            href="/circle"
+            split="xl:grid-cols-[1fr_1.05fr]"
+          >
+            <div className="relative">
+              <div className={cn(GLASS_INNER, 'p-4')}>
+                <AvatarStack count={4} size={46} extra="+2" />
+                <p className="mt-3 text-lg font-semibold text-white">Circle of Six</p>
+                <ul className="mt-2 space-y-1.5">
+                  {['Des profils triés par affinités', 'Une sélection chaque semaine', 'Moins de choix, plus de sens', 'Des rencontres plus justes'].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-[13px] text-white/80">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/90">
+                        <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <ScriptNote className="mt-3 rotate-[-4deg] text-center text-[22px]">
+                Moins de scroll, plus de belles rencontres. ♡
+              </ScriptNote>
+            </div>
+          </FeatureBlock>
+
+          {/* 03 — Messages */}
+          <FeatureBlock
+            id="messages"
+            num="03"
+            icon={MessageSquareText}
+            title="Messages"
+            subtitle="Des conversations sincères et de nouvelles rencontres."
+            text="Échangez en temps réel avec vos affinités. Un filtre anti-harcèlement veille sur chaque conversation."
+            cta="Commencer à échanger"
+            href="/matches"
+            split="xl:grid-cols-[1fr_1.15fr]"
+          >
+            <div className={cn(GLASS_INNER, 'space-y-2.5 p-3.5')}>
+              <div className="flex items-end gap-2">
+                <IllustratedAvatar seed={3} size={30} />
+                <p className="max-w-[80%] rounded-2xl rounded-bl-md bg-white/10 px-3 py-2 text-[12px] text-white/90">
+                  J’adore aussi cet endroit ! Tu connais ce rooftop ? 🌙
+                </p>
+              </div>
+              <p className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-gradient-to-r from-fuchsia-500 to-violet-600 px-3 py-2 text-[12px] text-white">
+                Pas encore ! On pourrait y aller ensemble un de ces jours ?
+              </p>
+              <div className="flex items-end gap-2">
+                <IllustratedAvatar seed={3} size={30} />
+                <p className="rounded-2xl rounded-bl-md bg-white/10 px-3 py-2 text-[12px] text-white/90">Avec plaisir ! 😊</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-violet-300/15 bg-white/[0.04] py-1.5 pl-3 pr-1.5 text-[11px] text-white/40">
+                <Smile className="h-3.5 w-3.5" /> Écrire un message…
+                <ImageIcon className="ml-auto h-3.5 w-3.5" />
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600">
+                  <SendHorizontal className="h-3 w-3 text-white" />
+                </span>
+              </div>
+            </div>
+          </FeatureBlock>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* 04 — LunaGather */}
+          <FeatureBlock
+            id="lunagather"
+            num="04"
+            icon={CalendarDays}
+            title="LunaGather"
+            subtitle="Des sorties et événements près de chez vous."
+            text="Ateliers, dîners, balades, apéros : des moments pour se rencontrer naturellement, en vrai ou en ligne. Inscription en un clic."
+            cta="Voir les événements"
+            href="/evenements"
+            split=""
+          >
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { scene: 'rooftop' as const, icon: UtensilsCrossed, label: 'Dîners & apéros' },
+                { scene: 'night' as const, icon: Palette, label: 'Ateliers & culture' },
+                { scene: 'hills' as const, icon: Trees, label: 'Balades & nature' },
+              ].map((tile, i) => (
+                <div key={tile.label} className="relative h-36 overflow-hidden rounded-2xl border border-violet-300/15">
+                  <SceneArt variant={tile.scene} seed={i + 12} className="absolute inset-0" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#150629] via-[#150629]/40 to-transparent" />
+                  <tile.icon className="absolute left-2.5 top-2.5 h-5 w-5 text-amber-100" />
+                  <p className="absolute inset-x-2.5 bottom-2.5 text-[12px] font-semibold leading-tight text-white">{tile.label}</p>
+                </div>
+              ))}
+            </div>
+          </FeatureBlock>
+
+          {/* 05 — VibePlanner */}
+          <FeatureBlock
+            id="vibeplanner"
+            num="05"
+            icon={Compass}
+            title="VibePlanner"
+            subtitle="Des idées de sorties qui vous ressemblent."
+            text="Proposez une idée de rendez-vous à votre match — dîner, culture, nature, art, bien-être — et choisissez ensemble. Elle accepte, vous y allez."
+            cta="Explorer VibePlanner"
+            href="/vibeplanner"
+            split=""
+          >
+            <div className="relative h-40 overflow-hidden rounded-2xl border border-violet-300/15">
+              <SceneArt variant="map" seed={3} className="absolute inset-0" />
+              <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-1.5">
+                {[
+                  { icon: UtensilsCrossed, label: 'Dîner' },
+                  { icon: Palette, label: 'Culture' },
+                  { icon: Trees, label: 'Nature' },
+                  { icon: Sparkles, label: 'Art' },
+                  { icon: Flower2, label: 'Bien-être' },
+                ].map((chip) => (
+                  <span key={chip.label} className="inline-flex items-center gap-1 rounded-full border border-violet-300/25 bg-[#1b0d38]/85 px-2.5 py-1 text-[11px] text-white/85 backdrop-blur">
+                    <chip.icon className="h-3 w-3 text-fuchsia-200" /> {chip.label}
+                  </span>
+                ))}
+              </div>
+              <div className="absolute bottom-3 right-3 flex items-center gap-2 rounded-xl border border-fuchsia-300/50 bg-[#1b0d38]/90 p-2 pr-3 shadow-lg shadow-fuchsia-900/40 backdrop-blur">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-fuchsia-500/20">
+                  <Wine className="h-4 w-4 text-fuchsia-200" />
+                </span>
+                <div>
+                  <p className="text-[11px] font-semibold text-white">Apéro au coucher du soleil</p>
+                  <p className="text-[10px] text-emerald-300">Idée acceptée ✓</p>
+                </div>
+              </div>
+            </div>
+          </FeatureBlock>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* 06 — VibeMentor */}
+          <FeatureBlock
+            id="vibementor"
+            num="06"
+            icon={Flower2}
+            title="VibeMentor"
+            subtitle="Un accompagnement bienveillant pour des rencontres plus alignées."
+            text="Posez vos questions à la communauté, partagez vos expériences et, avec Elite, profitez d’un coaching mensuel."
+            cta="Découvrir VibeMentor"
+            href="/vibementor"
+            split=""
+          >
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <MiniTile icon={BookOpen} title="Conseils" text="Relations et bien-être" />
+              <MiniTile icon={UsersRound} title="Entraide" text="Questions & réponses entre membres" />
+              <MiniTile icon={Heart} title="Sans jugement" text="Une approche bienveillante" />
+              <MiniTile icon={BadgeCheck} title="Coaching Elite" text="Un rendez-vous chaque mois" />
+            </div>
+          </FeatureBlock>
+
+          {/* 07 — VibeSphere */}
+          <FeatureBlock
+            id="vibesphere"
+            num="07"
+            icon={Sparkles}
+            title="VibeSphere"
+            subtitle="Votre univers, en toute liberté."
+            text="Un mood board partagé pour exprimer vos envies du moment, et un journal émotionnel privé pour prendre soin de vous."
+            cta="Entrer dans la VibeSphere"
+            href="/vibesphere"
+            split=""
+          >
+            <div className="grid grid-cols-3 gap-2.5">
+              {(['dusk', 'river', 'hills'] as const).map((scene, i) => (
+                <div key={scene} className="relative h-28 overflow-hidden rounded-2xl border border-violet-300/15">
+                  <SceneArt variant={scene} seed={i + 30} className="absolute inset-0" />
+                  <Heart className="absolute bottom-2 right-2 h-4 w-4 fill-pink-400/80 text-pink-300" />
+                </div>
+              ))}
+              <div className={cn(GLASS_INNER, 'col-span-3 flex items-center gap-3 p-3')}>
+                <NotebookPen className="h-5 w-5 text-violet-200" />
+                <p className="text-xs text-white/70">Journal émotionnel : humeur du jour, rituels, playlist.</p>
+              </div>
+            </div>
+          </FeatureBlock>
+        </div>
+      </Container>
+
+      {/* Parcours */}
+      <section className="relative py-12 lg:py-16">
+        <Container>
+          <SectionHeading
+            icon="moon"
+            title={
+              <>
+                Une expérience <Glow>fluide</Glow>, du premier regard au premier rendez-vous
+              </>
+            }
+            subtitle="De la découverte à la rencontre, chaque étape est pensée pour être simple, naturelle et agréable."
+          />
+          <div className="mt-7">
+            <StepsRow
+              steps={[
+                { icon: Search, title: 'Découvrir', text: 'Explorez des profils authentiques et des événements près de chez vous.' },
+                { icon: Heart, title: 'Matcher', text: 'Un like réciproque et l’affinité est créée.' },
+                { icon: MessageSquareText, title: 'Échanger', text: 'Apprenez à vous connaître à travers des conversations sincères.' },
+                { icon: Users, title: 'Se rencontrer', text: 'Un événement LunaGather ou une idée VibePlanner, et c’est parti.' },
+              ]}
+            />
+          </div>
+        </Container>
+      </section>
+
+      <FinalCta
+        title="Prête à vivre des rencontres plus vraies ?"
+        text="Rejoignez SferaLuna et découvrez toutes ses fonctionnalités."
+        aside={
+          <ul className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2">
+            {['Gratuit pour commencer', 'Profils vérifiés', 'Une communauté bienveillante'].map((item) => (
+              <li key={item} className="flex items-center gap-2 text-sm text-white/75">
+                <Check className="h-4 w-4 text-emerald-300" /> {item}
+              </li>
+            ))}
+          </ul>
+        }
+      />
+
+    </SiteShell>
   );
 }

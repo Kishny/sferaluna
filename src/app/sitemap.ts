@@ -68,6 +68,11 @@ const publicPages = [
     priority: 0.85,
   },
   {
+    path: "/securite",
+    changeFrequency: "monthly",
+    priority: 0.85,
+  },
+  {
     path: "/valeurs",
     changeFrequency: "monthly",
     priority: 0.8,

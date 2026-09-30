@@ -103,11 +103,13 @@ src/
 │   ├── robots.ts                             ← Robots.txt SEO
 │   ├── layout.tsx                            ← RootLayout React obligatoire
 │   ├── layout-meta.ts                        ← Helper buildMeta SEO
+│   ├── securite/page.tsx                     ← Page Sécurité (vérification, Mode Fantôme, modération, signalement/blocage)
 │   ├── accessibilite/, confidentialite/, conditions/, cookies/
 │   └── [pages marketing] commencer, equipe, faq, fonctionnalites, guide, histoire, tarifs, valeurs
 ├── components/
 │   ├── dashboard/                            ← Tableau de bord /mon-compte : DashboardSidebar, DashboardTopbar (recherche ⌘K, cloche, menu), DashboardHome, MoonScene, useDashboardData (Pusher private-user-{id})
-│   ├── Header.tsx                            ← Session-aware
+│   ├── Header.tsx                            ← Header public sombre : Découvrir · Fonctionnalités · Sécurité · Tarifs + Connexion / Créer mon profil (connectée : cloche, Explorer librement, menu compte)
+│   ├── site/                                 ← Kit du site public : ui (boutons, cartes, avatars illustrés), art (ciel, lune, skyline SVG), ProductMockup, sections (SiteShell, DiscoverGrid, StepsRow, TrustBar, FinalCta), plans (offres publiques)
 │   ├── Footer.tsx
 │   ├── JsonLd.tsx
 │   ├── ReportModal.tsx

@@ -77,7 +77,7 @@ export default function Footer() {
       title: 'Explorer',
       icon: '✨',
       links: [
-        { label: 'Explorer des profils', href: '/explorer' },
+        { label: 'Explorer librement', href: '/explorer' },
         { label: 'Circle of Six', href: '/circle' },
         { label: 'VibeSphere', href: '/vibesphere' },
         { label: 'VibePlanner', href: '/vibeplanner' },
@@ -87,10 +87,11 @@ export default function Footer() {
       title: 'Communauté',
       icon: '💜',
       links: [
-        { label: 'Événements', href: '/evenements' },
+        { label: 'LunaGather', href: '/evenements' },
         { label: 'VibeMentor', href: '/vibementor' },
         { label: 'FAQ', href: '/faq' },
-        { label: 'Centre d’aide', href: '/aide' },
+        { label: 'Sécurité', href: '/securite' },
+        { label: 'Tarifs', href: '/tarifs' },
       ],
     },
     {
