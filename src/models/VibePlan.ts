@@ -34,6 +34,7 @@ export interface IVibePlan extends Document {
   emoji: string;
 
   scheduledAt?: Date | null;
+  location?: string;
 
   status: VibePlanStatus;
 
@@ -123,6 +124,16 @@ const VibePlanSchema = new Schema<IVibePlan>(
       type: Date,
       default: null,
       index: true,
+    },
+
+    /**
+     * Lieu proposé (facultatif) : « Café de la Lune, Lyon », « En visio »…
+     */
+    location: {
+      type: String,
+      trim: true,
+      maxlength: [120, "Le lieu est trop long."],
+      default: "",
     },
 
     /**

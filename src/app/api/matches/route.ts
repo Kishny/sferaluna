@@ -147,7 +147,7 @@ export async function GET() {
       banned: { $ne: true },
     })
       .select(
-        "_id pseudonyme age localisation departement interets intentions image identityVerified visibilite hasCompletedProfile updatedAt"
+        "_id pseudonyme age localisation departement interets intentions image identityVerified visibilite hasCompletedProfile updatedAt bio lastLoginAt"
       )
       .lean();
 
@@ -193,7 +193,22 @@ export async function GET() {
      */
     const result = matches.map((match) => {
       const otherId = getOtherUserId(match, currentUserId);
-      const otherUser = usersById.get(otherId) ?? null;
+      const rawUser = usersById.get(otherId) ?? null;
+
+      /**
+       * lastLoginAt n'est jamais renvoyé tel quel : on expose seulement
+       * « active récemment » (connexion dans les 7 derniers jours).
+       */
+      let otherUser: Record<string, unknown> | null = null;
+      if (rawUser) {
+        const { lastLoginAt, ...rest } = rawUser as typeof rawUser & { lastLoginAt?: Date | null };
+        otherUser = {
+          ...rest,
+          recentlyActive: lastLoginAt
+            ? Date.now() - new Date(lastLoginAt).getTime() < 7 * 24 * 60 * 60 * 1000
+            : false,
+        };
+      }
 
       const unreadCount = unreadCountByMatch.get(match._id.toString()) ?? 0;
 

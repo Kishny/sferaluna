@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     const currentUserId = currentUser._id as mongoose.Types.ObjectId;
     const body = await req.json();
-    const { matchId, title, description, category, emoji, scheduledAt } = body;
+    const { matchId, title, description, category, emoji, scheduledAt, location } = body;
 
     if (!matchId || !title || !description || !category || !emoji) {
       return NextResponse.json({ success: false, error: "Champs requis manquants." }, { status: 400 });
@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       category,
       emoji,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      location: typeof location === "string" ? location.trim().slice(0, 120) : "",
     });
 
     const populated = await plan.populate("proposedById", "pseudonyme image");

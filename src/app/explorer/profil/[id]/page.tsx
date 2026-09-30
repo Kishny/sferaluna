@@ -202,8 +202,13 @@ function ProfileDetailContent() {
     router.replace(`/explorer/profil/${targetId}?from=${from || list?.source || "libre"}`, { scroll: false });
   };
 
-  const fallbackHref = from === "decouvertes" ? "/explorer" : "/explorer/libre";
-  const fallbackLabel = from === "decouvertes" ? "Retour aux découvertes" : "Retour à Explorer librement";
+  const FALLBACKS: Record<string, [string, string]> = {
+    decouvertes: ["/explorer", "Retour aux découvertes"],
+    matches: ["/matches", "Retour à mes matchs"],
+    circle: ["/circle", "Retour à Circle of Six"],
+    libre: ["/explorer/libre", "Retour à Explorer librement"],
+  };
+  const [fallbackHref, fallbackLabel] = FALLBACKS[from ?? ""] ?? FALLBACKS.libre;
 
   const handleLike = async () => {
     if (!detail) return;
@@ -252,7 +257,7 @@ function ProfileDetailContent() {
             </h1>
             <p className="mt-2 text-base text-white/70">Découvrez-en plus sur cette personne et voyez si vous êtes sur la même longueur d’onde.</p>
           </div>
-          {position >= 0 && list && list.ids.length > 1 && (
+          {position >= 0 && list && list.ids.length > 1 && from !== "matches" && (
             <div className="flex items-center justify-center gap-2 lg:justify-end">
               <button type="button" onClick={() => goTo(neighbour(-1))} disabled={!neighbour(-1)} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-violet-300/25 bg-[#1b0d38]/70 px-4 text-sm text-white/85 backdrop-blur hover:border-fuchsia-300/50 disabled:opacity-35">
                 <ChevronLeft className="h-4 w-4" /> Précédent
@@ -367,7 +372,7 @@ function ProfileDetailContent() {
                   </AnimatePresence>
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1b0d38] via-transparent to-transparent" />
 
-                  {from === "decouvertes" && (
+                  {(from === "decouvertes" || from === "circle") && (
                     <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500/90 to-pink-500/90 px-3 py-1.5 text-xs font-semibold text-white">
                       <Sparkles className="h-3.5 w-3.5" /> Sélectionnée pour vous
                     </span>

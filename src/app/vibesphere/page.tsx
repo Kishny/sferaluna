@@ -3,1035 +3,521 @@
 "use client";
 
 /**
- * Page VibeSphere SferaLuna.
+ * VibeSphere — communauté émotionnelle.
  *
- * Cette page gère :
- * - l'affichage du feed communautaire des vibes ;
- * - la création d'un post avec mood ;
- * - le like / unlike optimiste ;
- * - la suppression de ses propres posts ;
- * - le chargement paginé avec cursor pagination ;
- * - le signalement d'un post communautaire ;
- * - l'accès au journal émotionnel.
- *
- * Version mobile-first :
- * - hero très compact sur mobile ;
- * - compose box en accordéon sur mobile ;
- * - moods en scroll horizontal ;
- * - cards du feed plus compactes ;
- * - actions réduites ;
- * - footer masqué sur mobile pour garder la page légère.
+ * Données : GET /api/vibesphere (fil paginé ?before=, filtre ?mood=,
+ * tendances réelles des 30 derniers jours en première page).
+ * Actions : POST /api/vibesphere (publier), POST /api/vibesphere/[id]
+ * (aimer), DELETE /api/vibesphere/[id] (supprimer sa vibe), signalement.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertCircle,
+  BarChart3,
   BookOpen,
-  CheckCircle2,
-  ChevronDown,
   Flag,
   Heart,
   Loader2,
+  MoreVertical,
   RefreshCw,
   Send,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
-  X,
 } from "lucide-react";
 
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
+import { ExplorerShell } from "@/components/explorer/shared";
+import {
+  Avatar,
+  BTN_GHOST,
+  BTN_PRIMARY,
+  ErrorBanner,
+  Eyebrow,
+  LoadingBlock,
+  PANEL,
+  PANEL_FEATURED,
+  PageTitle,
+  timeAgo,
+} from "@/components/app/kit";
+import { SceneArt } from "@/components/site/art";
+import { cn } from "@/components/site/ui";
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-
-type VibeMood =
-  | "joyeuse"
-  | "sereine"
-  | "mélancolique"
-  | "amoureuse"
-  | "curieuse"
-  | "fière"
-  | "mystérieuse";
-
-interface VibeUser {
-  _id: string;
-  pseudonyme: string;
-  image?: string;
-  age?: number;
-  identityVerified?: boolean;
-}
+type VibeMood = "joyeuse" | "sereine" | "mélancolique" | "amoureuse" | "curieuse" | "fière" | "mystérieuse";
 
 interface VibePost {
   _id: string;
-  userId: VibeUser | null;
+  userId: { _id: string; pseudonyme: string; image?: string; age?: number; identityVerified?: boolean } | null;
   content: string;
   mood: VibeMood;
   emoji: string;
   likesCount: number;
   likedByMe: boolean;
   createdAt: string;
-  updatedAt?: string;
 }
 
-interface MoodConfig {
-  mood: VibeMood;
-  emoji: string;
-  label: string;
-  color: string;
-}
+const MAX = 300;
+const LIMIT = 10;
 
-interface VibePagination {
-  limit?: number;
-  before?: string | null;
-  nextBefore?: string | null;
-}
+const MOODS: { mood: VibeMood; emoji: string; label: string; badge: string; bar: string }[] = [
+  { mood: "joyeuse", emoji: "🌟", label: "Joyeuse", badge: "bg-fuchsia-500/85", bar: "from-amber-300 to-yellow-400" },
+  { mood: "sereine", emoji: "🌊", label: "Sereine", badge: "bg-indigo-500/85", bar: "from-indigo-400 to-violet-500" },
+  { mood: "mélancolique", emoji: "🌧️", label: "Mélancolique", badge: "bg-slate-500/85", bar: "from-slate-300 to-slate-500" },
+  { mood: "amoureuse", emoji: "💕", label: "Amoureuse", badge: "bg-pink-500/85", bar: "from-pink-400 to-rose-500" },
+  { mood: "curieuse", emoji: "🔮", label: "Curieuse", badge: "bg-violet-500/85", bar: "from-violet-300 to-purple-500" },
+  { mood: "fière", emoji: "✨", label: "Fière", badge: "bg-amber-500/85", bar: "from-amber-300 to-orange-400" },
+  { mood: "mystérieuse", emoji: "🌙", label: "Mystérieuse", badge: "bg-purple-700/85", bar: "from-purple-400 to-indigo-600" },
+];
+const moodOf = (m: VibeMood) => MOODS.find((x) => x.mood === m) ?? MOODS[0];
 
-// ─────────────────────────────────────────────
-// Constantes
-// ─────────────────────────────────────────────
-
-const MAX_CONTENT_LENGTH = 300;
-const FEED_LIMIT = 10;
-
-const MOODS: MoodConfig[] = [
-  {
-    mood: "joyeuse",
-    emoji: "🌟",
-    label: "Joyeuse",
-    color: "from-yellow-400 to-orange-400",
-  },
-  {
-    mood: "sereine",
-    emoji: "🌊",
-    label: "Sereine",
-    color: "from-blue-400 to-cyan-400",
-  },
-  {
-    mood: "mélancolique",
-    emoji: "🌧️",
-    label: "Mélancolique",
-    color: "from-slate-400 to-blue-500",
-  },
-  {
-    mood: "amoureuse",
-    emoji: "💕",
-    label: "Amoureuse",
-    color: "from-pink-400 to-rose-500",
-  },
-  {
-    mood: "curieuse",
-    emoji: "🔮",
-    label: "Curieuse",
-    color: "from-purple-400 to-violet-500",
-  },
-  {
-    mood: "fière",
-    emoji: "✨",
-    label: "Fière",
-    color: "from-amber-400 to-yellow-500",
-  },
-  {
-    mood: "mystérieuse",
-    emoji: "🌙",
-    label: "Mystérieuse",
-    color: "from-indigo-500 to-purple-700",
-  },
+const GROUPS: { key: string; label: string; emoji: string; moods: VibeMood[] }[] = [
+  { key: "all", label: "Toutes", emoji: "💫", moods: [] },
+  { key: "positives", label: "Positives", emoji: "☀️", moods: ["joyeuse", "fière", "sereine"] },
+  { key: "introspectives", label: "Introspectives", emoji: "🌙", moods: ["mélancolique", "mystérieuse"] },
+  { key: "romantiques", label: "Romantiques", emoji: "💗", moods: ["amoureuse"] },
+  { key: "curieuses", label: "Curieuses", emoji: "🔮", moods: ["curieuse"] },
 ];
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-function getInitials(name?: string) {
-  if (!name) return "?";
-
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function timeAgo(dateStr: string) {
-  const date = new Date(dateStr);
-
-  if (Number.isNaN(date.getTime())) return "date inconnue";
-
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-
-  if (mins < 1) return "à l’instant";
-  if (mins < 60) return `il y a ${mins} min`;
-
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `il y a ${hours}h`;
-
-  const days = Math.floor(hours / 24);
-  return `il y a ${days}j`;
-}
-
-function getMoodData(mood: VibeMood) {
-  return MOODS.find((item) => item.mood === mood);
-}
-
-/**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera". Variante blanche pour fond sombre.
- */
-function OrbitGlow({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
-    >
-      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
-      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
-      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
-      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
-    </svg>
-  );
-}
-
-/**
- * Fusionne les posts sans doublons.
- * Indispensable pour éviter les répétitions pendant le chargement paginé.
- */
-function mergePostsWithoutDuplicates(
-  previousPosts: VibePost[],
-  incomingPosts: VibePost[]
-) {
-  const postsMap = new Map<string, VibePost>();
-
-  [...previousPosts, ...incomingPosts].forEach((post) => {
-    postsMap.set(post._id, post);
-  });
-
-  return Array.from(postsMap.values()).sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-}
-
-// ─────────────────────────────────────────────
-// Page principale
-// ─────────────────────────────────────────────
-
-export default function VibespherePage() {
-  const { data: session, status } = useSession();
+function VibeSphereContent() {
   const router = useRouter();
-
-  const [posts, setPosts] = useState<VibePost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const [pagination, setPagination] = useState<VibePagination | null>(null);
-
-  const [selectedMood, setSelectedMood] = useState<VibeMood | null>(null);
-  const [content, setContent] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const [pageError, setPageError] = useState("");
-  const [submitError, setSubmitError] = useState("");
-
-  /**
-   * Accordéon mobile pour la zone de publication.
-   * Fermé par défaut sur mobile pour compacter la page.
-   */
-  const [composeOpen, setComposeOpen] = useState(false);
-
-  /**
-   * ID du post à signaler.
-   */
-  const [reportPostId, setReportPostId] = useState<string | null>(null);
-
-  /**
-   * ID utilisateur connecté.
-   * Selon ta config NextAuth, l'id peut être sur _id ou id.
-   */
-  const currentUserId = useMemo(() => {
-    const user = session?.user as { _id?: string; id?: string } | undefined;
-    return user?._id ?? user?.id ?? "";
+  const { data: session } = useSession();
+  const me = useMemo(() => {
+    const u = session?.user as { _id?: string; id?: string } | undefined;
+    return u?._id ?? u?.id ?? "";
   }, [session]);
 
-  /**
-   * Redirection si non connecté.
-   */
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth?mode=login");
-    }
-  }, [status, router]);
+  const [posts, setPosts] = useState<VibePost[]>([]);
+  const [moodStats, setMoodStats] = useState<{ mood: string; count: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextBefore, setNextBefore] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [group, setGroup] = useState("all");
 
-  /**
-   * Chargement du feed.
-   */
-  const fetchPosts = useCallback(
-    async ({
-      before,
-      refresh = false,
-    }: {
-      before?: string | null;
-      refresh?: boolean;
-    } = {}) => {
-      if (before) {
-        setLoadingMore(true);
-      } else if (refresh) {
-        setIsRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+  const [mood, setMood] = useState<VibeMood | null>(null);
+  const [content, setContent] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState("");
+  const [reportId, setReportId] = useState<string | null>(null);
 
-      setPageError("");
+  const moodQuery = GROUPS.find((g) => g.key === group)?.moods.join(",") ?? "";
 
+  const fetchFeed = useCallback(
+    async (mode: "initial" | "refresh" | "more", before?: string | null) => {
+      if (mode === "more") setLoadingMore(true);
+      else if (mode === "refresh") setRefreshing(true);
+      else setLoading(true);
+      setError("");
       try {
-        const url = before
-          ? `/api/vibesphere?before=${encodeURIComponent(
-              before
-            )}&limit=${FEED_LIMIT}`
-          : `/api/vibesphere?limit=${FEED_LIMIT}`;
-
-        const response = await fetch(url, {
-          cache: "no-store",
-        });
-
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok || !data?.success) {
-          setPageError(data?.error ?? "Impossible de charger les vibes.");
+        const q = new URLSearchParams({ limit: String(LIMIT) });
+        if (before) q.set("before", before);
+        if (moodQuery) q.set("mood", moodQuery);
+        const res = await fetch(`/api/vibesphere?${q}`, { cache: "no-store" });
+        if (res.status === 401) {
+          router.replace("/auth?mode=login&callbackUrl=%2Fvibesphere");
           return;
         }
-
-        const incomingPosts: VibePost[] = data.posts ?? [];
-
-        if (before) {
-          setPosts((previousPosts) =>
-            mergePostsWithoutDuplicates(previousPosts, incomingPosts)
-          );
-        } else {
-          setPosts(incomingPosts);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) {
+          setError(data?.error || "Impossible de charger les vibes.");
+          return;
         }
-
+        const incoming: VibePost[] = data.posts ?? [];
+        setPosts((prev) => {
+          if (mode !== "more") return incoming;
+          const seen = new Set(prev.map((p) => p._id));
+          return [...prev, ...incoming.filter((p) => !seen.has(p._id))];
+        });
+        if (data.moodStats) setMoodStats(data.moodStats);
         setHasMore(Boolean(data.hasMore));
-        setPagination(data.pagination ?? null);
+        setNextBefore(data.pagination?.nextBefore ?? null);
       } catch {
-        setPageError("Erreur de connexion au serveur.");
+        setError("Connexion au serveur impossible.");
       } finally {
         setLoading(false);
+        setRefreshing(false);
         setLoadingMore(false);
-        setIsRefreshing(false);
       }
     },
-    []
+    [moodQuery, router]
   );
 
   useEffect(() => {
-    if (status === "authenticated") {
-      fetchPosts();
-    }
-  }, [status, fetchPosts]);
+    fetchFeed("initial");
+  }, [fetchFeed]);
 
-  const handleLoadMore = () => {
-    if (loadingMore || !pagination?.nextBefore) return;
-
-    fetchPosts({
-      before: pagination.nextBefore,
-    });
-  };
-
-  /**
-   * Publication d'une vibe.
-   */
-  const handleSubmit = async () => {
-    const cleanedContent = content.trim();
-
-    if (!selectedMood || !cleanedContent || submitting) return;
-
-    if (cleanedContent.length > MAX_CONTENT_LENGTH) {
-      setSubmitError(
-        `Votre vibe ne doit pas dépasser ${MAX_CONTENT_LENGTH} caractères.`
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    setSubmitError("");
-
+  const publish = async () => {
+    if (!mood) return setPostError("Choisissez d’abord une émotion.");
+    const text = content.trim();
+    if (!text) return setPostError("Écrivez quelques mots sur votre moment.");
+    setPosting(true);
+    setPostError("");
     try {
-      const moodData = getMoodData(selectedMood);
-
-      const response = await fetch("/api/vibesphere", {
+      const res = await fetch("/api/vibesphere", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: cleanedContent,
-          mood: selectedMood,
-          emoji: moodData?.emoji ?? "✨",
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text, mood, emoji: moodOf(mood).emoji }),
       });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.success) {
-        setSubmitError(data?.error ?? "Erreur lors de la publication.");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setPostError(data?.error || "Publication impossible pour le moment.");
         return;
       }
-
-      setPosts((previousPosts) => [data.post, ...previousPosts]);
-
       setContent("");
-      setSelectedMood(null);
-      setComposeOpen(false);
+      setMood(null);
+      if (data.post) setPosts((prev) => [data.post, ...prev.filter((p) => p._id !== data.post._id)]);
+      else fetchFeed("refresh");
+      setMoodStats((prev) => {
+        const next = [...prev];
+        const row = next.find((r) => r.mood === mood);
+        if (row) row.count += 1;
+        else next.push({ mood, count: 1 });
+        return next.sort((a, b) => b.count - a.count);
+      });
     } catch {
-      setSubmitError("Erreur réseau. Réessayez dans quelques instants.");
+      setPostError("Connexion au serveur impossible.");
     } finally {
-      setSubmitting(false);
+      setPosting(false);
     }
   };
 
-  /**
-   * Like / unlike optimiste.
-   */
-  const handleLike = async (postId: string) => {
-    const previousPosts = posts;
-
-    setPosts((currentPosts) =>
-      currentPosts.map((post) => {
-        if (post._id !== postId) return post;
-
-        const nextLiked = !post.likedByMe;
-
-        return {
-          ...post,
-          likedByMe: nextLiked,
-          likesCount: Math.max(
-            0,
-            nextLiked ? post.likesCount + 1 : post.likesCount - 1
-          ),
-        };
-      })
-    );
-
+  const toggleLike = async (post: VibePost) => {
+    const flip = (p: VibePost) => ({ ...p, likedByMe: !p.likedByMe, likesCount: Math.max(0, p.likesCount + (p.likedByMe ? -1 : 1)) });
+    setPosts((prev) => prev.map((p) => (p._id === post._id ? flip(p) : p)));
     try {
-      const response = await fetch(`/api/vibesphere/${postId}`, {
-        method: "POST",
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.success) {
-        setPosts(previousPosts);
+      const res = await fetch(`/api/vibesphere/${post._id}`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setPosts((prev) => prev.map((p) => (p._id === post._id ? post : p)));
         return;
       }
-
-      setPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post._id === postId
-            ? {
-                ...post,
-                likedByMe: Boolean(data.liked),
-                likesCount: Number(data.likesCount ?? post.likesCount),
-              }
-            : post
-        )
+      setPosts((prev) =>
+        prev.map((p) => (p._id === post._id ? { ...p, likedByMe: Boolean(data.liked), likesCount: Number(data.likesCount ?? p.likesCount) } : p))
       );
     } catch {
-      setPosts(previousPosts);
+      setPosts((prev) => prev.map((p) => (p._id === post._id ? post : p)));
     }
   };
 
-  /**
-   * Suppression d'un post personnel.
-   */
-  const handleDelete = async (postId: string) => {
-    const confirmed = window.confirm("Supprimer cette vibe ?");
-
-    if (!confirmed) return;
-
-    const previousPosts = posts;
-
-    setPosts((currentPosts) =>
-      currentPosts.filter((post) => post._id !== postId)
-    );
-
+  const remove = async (post: VibePost) => {
+    const previous = posts;
+    setPosts((prev) => prev.filter((p) => p._id !== post._id));
     try {
-      const response = await fetch(`/api/vibesphere/${postId}`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.success) {
-        setPosts(previousPosts);
-        setPageError(data?.error ?? "Impossible de supprimer cette vibe.");
+      const res = await fetch(`/api/vibesphere/${post._id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setPosts(previous);
+        setError(data?.error || "Suppression impossible.");
       }
     } catch {
-      setPosts(previousPosts);
-      setPageError("Erreur réseau pendant la suppression.");
+      setPosts(previous);
+      setError("Connexion au serveur impossible.");
     }
   };
 
-  const selectedMoodData = selectedMood ? getMoodData(selectedMood) : null;
-
-  if (status === "loading" || loading) {
-    return (
-      <>
-        <div className="min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
-          <Header />
-
-          <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-            <Loader2 className="h-9 w-9 animate-spin text-purple-300" />
-
-            <p className="text-sm text-white/60">
-              Chargement des vibes...
-            </p>
-          </div>
-        </div>
-
-        <div className="hidden sm:block">
-          <Footer />
-        </div>
-      </>
-    );
-  }
+  const totalMood = moodStats.reduce((s, m) => s + m.count, 0);
 
   return (
-    <>
-      <div className="relative overflow-hidden min-h-screen bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] text-white">
-        <Header />
-
-        <OrbitGlow className="right-[-10%] top-24 h-72 w-72 sm:h-96 sm:w-96" />
-        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-
-        <main className="relative z-10 mx-auto max-w-2xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
-          {/* Header page compact */}
-          <motion.section
-            initial={{ opacity: 0, y: -18 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 rounded-3xl border border-white/10 bg-white/8 p-4 text-center backdrop-blur-xl sm:mb-8 sm:p-6"
-          >
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-400/20 bg-white/5 px-3 py-1.5 text-[11px] text-purple-200 sm:text-xs">
-              <Sparkles className="h-3.5 w-3.5" />
-              Communauté émotionnelle
-            </div>
-
-            <h1 className="bg-gradient-to-r from-purple-300 via-pink-300 to-white bg-clip-text text-2xl font-black text-transparent sm:text-4xl">
-              VibeSphere 💜
-            </h1>
-
-            <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-white/55 sm:mt-2 sm:text-base">
-              Exprime ton mood, découvre les vibes de la communauté et garde une
-              trace de ton univers émotionnel.
-            </p>
-
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:justify-center">
-              <Link
-                href="/vibesphere/journal"
-                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:bg-white/10 hover:text-white sm:px-4 sm:text-sm"
-              >
-                <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Journal
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => fetchPosts({ refresh: true })}
-                disabled={isRefreshing}
-                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-50 sm:px-4 sm:text-sm"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
-                Actualiser
-              </button>
-            </div>
-          </motion.section>
-
-          {/* Erreur globale */}
-          <AnimatePresence>
-            {pageError && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="mb-4 flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-500/10 px-3 py-2.5 text-xs text-red-200 sm:text-sm"
-              >
-                <AlertCircle className="h-4 w-4 shrink-0" />
-
-                <span className="flex-1">{pageError}</span>
-
-                <button
-                  type="button"
-                  onClick={() => setPageError("")}
-                  className="text-red-300 transition hover:text-white"
-                  aria-label="Fermer l'erreur"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Compose accordion mobile */}
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="mb-4 overflow-hidden rounded-3xl border border-white/15 bg-white/10 backdrop-blur-sm sm:mb-8"
-          >
-            <button
-              type="button"
-              onClick={() => setComposeOpen((current) => !current)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left sm:hidden"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-purple-500/25 text-lg">
-                ✍️
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white">
-                  Partager une vibe
-                </p>
-
-                <p className="truncate text-[11px] text-white/45">
-                  Choisis un mood puis écris quelques mots.
-                </p>
-              </div>
-
-              {selectedMoodData && (
-                <span
-                  className={`rounded-full bg-gradient-to-r ${selectedMoodData.color} px-2 py-0.5 text-[10px] font-semibold text-white`}
-                >
-                  {selectedMoodData.emoji}
-                </span>
-              )}
-
-              <ChevronDown
-                className={`h-4 w-4 text-white/50 transition-transform ${
-                  composeOpen ? "rotate-180" : ""
-                }`}
-              />
+    <ExplorerShell>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <PageTitle
+          eyebrow={<Eyebrow icon={Sparkles}>Communauté émotionnelle</Eyebrow>}
+          title={
+            <>
+              <span className="bg-gradient-to-r from-violet-200 via-fuchsia-300 to-pink-300 bg-clip-text text-transparent">VibeSphere</span>{" "}
+              <span aria-hidden>💗</span>
+            </>
+          }
+          subtitle="Exprimez votre humeur, découvrez les vibes de la communauté et gardez une trace de votre univers émotionnel."
+        >
+          <div className="mt-5 flex justify-center gap-3">
+            <Link href="/vibesphere/journal" className={cn(BTN_GHOST, "h-11")}>
+              <BookOpen className="h-4 w-4" /> Mon journal
+            </Link>
+            <button type="button" onClick={() => fetchFeed("refresh")} disabled={refreshing} className={cn(BTN_GHOST, "h-11")}>
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} /> Actualiser
             </button>
-
-            {/* Desktop : toujours ouvert / Mobile : accordéon */}
-            <AnimatePresence initial={false}>
-              {(composeOpen || typeof window === "undefined") && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.23, ease: "easeOut" }}
-                  className="overflow-hidden sm:hidden"
-                >
-                  <ComposeBox
-                    content={content}
-                    selectedMood={selectedMood}
-                    selectedMoodData={selectedMoodData}
-                    submitError={submitError}
-                    submitting={submitting}
-                    setContent={setContent}
-                    setSelectedMood={setSelectedMood}
-                    handleSubmit={handleSubmit}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="hidden sm:block">
-              <ComposeBox
-                content={content}
-                selectedMood={selectedMood}
-                selectedMoodData={selectedMoodData}
-                submitError={submitError}
-                submitting={submitting}
-                setContent={setContent}
-                setSelectedMood={setSelectedMood}
-                handleSubmit={handleSubmit}
-              />
-            </div>
-          </motion.section>
-
-          {/* Feed — carrousel horizontal infini immersif */}
-          {posts.length > 0 && (
-          <div className="vibe-carousel group relative -mx-3 overflow-hidden py-2 sm:-mx-4">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-10 bg-gradient-to-r from-[#1a0b2e] via-[#1a0b2e]/70 to-transparent sm:w-24" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[#3a2a82] via-[#3a2a82]/70 to-transparent sm:w-24" />
-            <div
-              className="vibe-marquee flex w-max"
-              style={{ animationDuration: `${Math.max(posts.length * 7, 24)}s` }}
-            >
-              {[...posts, ...posts].map((post, index) => {
-                const moodData = getMoodData(post.mood);
-                const author = post.userId;
-
-                const isOwn = Boolean(
-                  currentUserId && author?._id === currentUserId
-                );
-
-                return (
-                  <motion.article
-                    key={post._id + "-" + index}
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(index * 0.02, 0.2) }}
-                    className="group/card relative mr-4 w-[280px] shrink-0 overflow-hidden rounded-3xl border border-white/12 bg-white/10 p-4 backdrop-blur-xl transition duration-300 hover:-translate-y-1.5 hover:border-white/25 hover:bg-white/[0.14] sm:w-[330px] sm:p-5"
-                  >
-                    {moodData && (
-                      <>
-                        <div
-                          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${moodData.color}`}
-                        />
-                        <div
-                          className={`pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${moodData.color} opacity-20 blur-3xl transition-opacity duration-300 group-hover/card:opacity-40`}
-                        />
-                      </>
-                    )}
-
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ${
-                          moodData?.color ?? "from-purple-500 to-pink-500"
-                        } text-xs font-bold sm:h-10 sm:w-10 sm:text-sm`}
-                      >
-                        {author?.image ? (
-                          <img
-                            src={author.image}
-                            alt={author.pseudonyme}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          getInitials(author?.pseudonyme)
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold text-white sm:text-base">
-                            {author?.pseudonyme ?? "Membre SferaLuna"}
-                          </span>
-
-                          {author?.identityVerified && (
-                            <span
-                              className="shrink-0 text-green-300"
-                              title="Profil vérifié"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </span>
-                          )}
-
-                          {moodData && (
-                            <span
-                              className={`shrink-0 rounded-full bg-gradient-to-r ${moodData.color} px-2 py-0.5 text-[10px] font-medium text-white sm:text-xs`}
-                            >
-                              {moodData.emoji}
-                              <span className="hidden sm:inline">
-                                {" "}
-                                {moodData.label}
-                              </span>
-                            </span>
-                          )}
-
-                          <span className="ml-auto shrink-0 text-[10px] text-white/35 sm:text-xs">
-                            {timeAgo(post.createdAt)}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-white/82 sm:text-base">
-                          {post.content}
-                        </p>
-
-                        {/* Actions compactes */}
-                        <div className="mt-3 flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleLike(post._id)}
-                            className={`flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors sm:text-sm ${
-                              post.likedByMe
-                                ? "bg-pink-500/10 text-pink-400"
-                                : "text-white/50 hover:bg-white/5 hover:text-pink-400"
-                            }`}
-                            aria-label={
-                              post.likedByMe
-                                ? "Retirer le like"
-                                : "Liker cette vibe"
-                            }
-                          >
-                            <Heart
-                              size={14}
-                              fill={post.likedByMe ? "currentColor" : "none"}
-                            />
-
-                            <span>{post.likesCount}</span>
-                          </button>
-
-                          {!isOwn && (
-                            <button
-                              type="button"
-                              onClick={() => setReportPostId(post._id)}
-                              className="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs text-white/35 transition hover:bg-white/5 hover:text-red-400 sm:text-sm"
-                              title="Signaler cette vibe"
-                            >
-                              <Flag size={13} />
-                              <span className="hidden sm:inline">
-                                Signaler
-                              </span>
-                            </button>
-                          )}
-
-                          {isOwn && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(post._id)}
-                              className="ml-auto flex items-center gap-1.5 rounded-full px-2 py-1 text-xs text-white/35 transition hover:bg-white/5 hover:text-red-400 sm:text-sm"
-                              title="Supprimer cette vibe"
-                            >
-                              <Trash2 size={13} />
-                              <span className="hidden sm:inline">
-                                Supprimer
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.article>
-                );
-              })}
-            </div>
           </div>
-          )}
+        </PageTitle>
 
-          {/* État vide */}
-          {posts.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-8 text-center text-white/50 sm:py-14"
-            >
-              <p className="mb-3 text-4xl">💭</p>
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0 space-y-4">
+            {/* ── Publier ── */}
+            <section className={cn(PANEL_FEATURED, "p-5")}>
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-1 h-6 w-6 shrink-0 text-fuchsia-300" />
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Partager une vibe</h2>
+                  <p className="text-sm text-white/65">Choisissez une émotion, puis écrivez quelques mots sur votre moment…</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {MOODS.map((m) => (
+                  <button
+                    key={m.mood}
+                    type="button"
+                    onClick={() => setMood(mood === m.mood ? null : m.mood)}
+                    aria-pressed={mood === m.mood}
+                    className={cn(
+                      "inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm transition",
+                      mood === m.mood
+                        ? "border-fuchsia-300/80 bg-fuchsia-500/25 text-white shadow-[0_0_20px_-6px_rgba(232,121,249,0.9)]"
+                        : "border-violet-300/25 text-white/85 hover:border-fuchsia-300/50"
+                    )}
+                  >
+                    <span aria-hidden>{m.emoji}</span> {m.label}
+                  </button>
+                ))}
+              </div>
+              <div className="relative mt-4">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value.slice(0, MAX))}
+                  rows={3}
+                  placeholder="Partagez la vibe du moment…"
+                  className="w-full resize-none rounded-2xl border border-violet-300/25 bg-[#12081f]/70 px-4 py-3 pb-7 text-sm text-white placeholder-white/40 focus:border-fuchsia-300/60 focus:outline-none"
+                />
+                <span className="absolute bottom-2.5 right-4 text-xs text-white/45">
+                  {content.length}/{MAX}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-white/55">Visible par les membres connectées de SferaLuna.</p>
+                <button type="button" onClick={publish} disabled={posting} className={cn(BTN_PRIMARY, "h-11")}>
+                  {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Publier ma vibe
+                </button>
+              </div>
+              {postError && <p className="mt-2 text-sm text-rose-300">{postError}</p>}
+            </section>
 
-              <p className="font-medium text-white/70">
-                Sois la première à partager une vibe !
+            {error && <ErrorBanner message={error} onClose={() => setError("")} onRetry={() => fetchFeed("initial")} />}
+
+            {/* ── Fil ── */}
+            {loading ? (
+              <LoadingBlock label="Chargement des vibes…" />
+            ) : posts.length === 0 ? (
+              <div className={cn(PANEL, "px-6 py-10 text-center")}>
+                <p className="font-semibold text-white">{group === "all" ? "Aucune vibe pour l’instant" : "Aucune vibe dans cette humeur"}</p>
+                <p className="mt-1 text-sm text-white/65">Partagez la première, la communauté vous lira avec bienveillance.</p>
+              </div>
+            ) : (
+              <>
+                {posts.map((post) => (
+                  <VibeCard
+                    key={post._id}
+                    post={post}
+                    mine={!!me && post.userId?._id === me}
+                    onLike={() => toggleLike(post)}
+                    onDelete={() => remove(post)}
+                    onReport={() => setReportId(post._id)}
+                  />
+                ))}
+                {hasMore && (
+                  <button type="button" onClick={() => fetchFeed("more", nextBefore)} disabled={loadingMore} className={cn(BTN_GHOST, "h-11 w-full")}>
+                    {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Voir plus de vibes
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── Colonne droite ── */}
+          <aside className="space-y-5">
+            {totalMood > 0 && (
+              <div className={cn(PANEL, "p-5")}>
+                <p className="flex items-center gap-2 font-semibold text-white">
+                  <BarChart3 className="h-5 w-5 text-fuchsia-300" /> Tendances émotionnelles
+                </p>
+                <p className="mt-0.5 text-xs text-white/55">Humeurs partagées ces 30 derniers jours</p>
+                <ul className="mt-4 space-y-3">
+                  {moodStats.slice(0, 5).map((s) => {
+                    const m = MOODS.find((x) => x.mood === s.mood);
+                    if (!m) return null;
+                    const pct = Math.round((s.count / totalMood) * 100);
+                    const width = Math.round((s.count / (moodStats[0]?.count || 1)) * 100);
+                    return (
+                      <li key={s.mood} className="grid grid-cols-[110px_1fr_36px] items-center gap-2 text-sm">
+                        <span className="truncate text-white/85">
+                          <span aria-hidden>{m.emoji}</span> {m.label}
+                        </span>
+                        <span className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <span className={cn("block h-full rounded-full bg-gradient-to-r", m.bar)} style={{ width: `${Math.max(4, width)}%` }} />
+                        </span>
+                        <span className="text-right text-xs text-white/70">{pct}%</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className={cn(PANEL, "p-5")}>
+              <p className="flex items-center gap-2 font-semibold text-white">
+                <SlidersHorizontal className="h-5 w-5 text-fuchsia-300" /> Filtres de mood
               </p>
-
-              <p className="mt-1 text-sm text-white/40">
-                Choisis ton mood et écris quelques mots.
-              </p>
-            </motion.div>
-          )}
-
-          {/* Voir plus */}
-          {hasMore && (
-            <div className="mt-6 text-center sm:mt-8">
-              <button
-                type="button"
-                onClick={handleLoadMore}
-                disabled={loadingMore || !pagination?.nextBefore}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm text-white/80 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50 sm:px-8 sm:py-3"
-              >
-                {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loadingMore ? "Chargement…" : "Voir plus"}
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {GROUPS.map((g) => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={() => setGroup(g.key)}
+                    aria-pressed={group === g.key}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm transition",
+                      group === g.key ? "border-fuchsia-300/70 bg-gradient-to-r from-fuchsia-500/90 to-pink-500/90 text-white" : "border-violet-300/25 text-white/85 hover:border-fuchsia-300/50"
+                    )}
+                  >
+                    <span aria-hidden>{g.emoji}</span> {g.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </main>
+
+            <div className={cn(PANEL, "overflow-hidden")}>
+              <div className="relative h-28">
+                <SceneArt variant="night" seed={5} className="absolute inset-0" />
+              </div>
+              <div className="p-5">
+                <p className="font-semibold text-white">Un espace bienveillant pour toutes vos émotions</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/65">
+                  Ici, chaque vibe compte. Partagez, échangez et gardez une trace intime de vos humeurs dans votre journal privé.
+                </p>
+                <Link href="/vibesphere/journal" className={cn(BTN_PRIMARY, "mt-4 h-10 text-sm")}>
+                  <BookOpen className="h-4 w-4" /> Ouvrir mon journal
+                </Link>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
 
-      <div className="hidden sm:block">
-        <Footer />
-      </div>
-
-      <ReportModal
-        isOpen={!!reportPostId}
-        onClose={() => setReportPostId(null)}
-        targetType="community_post"
-        targetId={reportPostId ?? ""}
-      />
-
-      <style jsx global>{`
-        .scrollbar-none::-webkit-scrollbar {
-          display: none;
-        }
-
-        .scrollbar-none {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-
-        @keyframes vibe-scroll {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-
-        .vibe-marquee {
-          animation-name: vibe-scroll;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
-          will-change: transform;
-        }
-
-        /* Pause au survol pour laisser lire / liker / signaler */
-        .vibe-carousel:hover .vibe-marquee {
-          animation-play-state: paused;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .vibe-marquee {
-            animation: none;
-          }
-        }
-      `}</style>
-    </>
+      <ReportModal isOpen={!!reportId} onClose={() => setReportId(null)} targetType="community_post" targetId={reportId ?? ""} />
+    </ExplorerShell>
   );
 }
 
-// ─────────────────────────────────────────────
-// Compose box réutilisable
-// ─────────────────────────────────────────────
-
-function ComposeBox({
-  content,
-  selectedMood,
-  selectedMoodData,
-  submitError,
-  submitting,
-  setContent,
-  setSelectedMood,
-  handleSubmit,
+function VibeCard({
+  post,
+  mine,
+  onLike,
+  onDelete,
+  onReport,
 }: {
-  content: string;
-  selectedMood: VibeMood | null;
-  selectedMoodData: MoodConfig | undefined | null;
-  submitError: string;
-  submitting: boolean;
-  setContent: React.Dispatch<React.SetStateAction<string>>;
-  setSelectedMood: React.Dispatch<React.SetStateAction<VibeMood | null>>;
-  handleSubmit: () => void;
+  post: VibePost;
+  mine: boolean;
+  onLike: () => void;
+  onDelete: () => void;
+  onReport: () => void;
 }) {
+  const m = moodOf(post.mood);
+  const name = post.userId?.pseudonyme ?? "Membre";
+  const [menu, setMenu] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setMenu(false);
+        setConfirm(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menu]);
+
   return (
-    <div className="border-t border-white/10 p-3 sm:border-t-0 sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-white sm:text-base">
-            Partager une vibe
-          </h2>
-
-          <p className="mt-0.5 text-[11px] text-white/45 sm:text-xs">
-            Choisis une émotion puis écris quelques mots.
-          </p>
-        </div>
-
-        {selectedMoodData && (
-          <span
-            className={`shrink-0 rounded-full bg-gradient-to-r ${selectedMoodData.color} px-2.5 py-1 text-[10px] font-semibold text-white sm:px-3 sm:text-xs`}
+    <motion.article initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn(PANEL, "p-4 sm:p-5")}>
+      <div className="flex gap-3.5">
+        <Avatar src={post.userId?.image} name={name} size={52} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="font-semibold text-white">
+                {name}
+                {post.userId?.age ? `, ${post.userId.age}` : ""}
+              </p>
+              <span className="text-xs text-white/55">{timeAgo(post.createdAt)}</span>
+              <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white", m.badge)}>
+                <span aria-hidden>{m.emoji}</span> {m.label}
+              </span>
+            </div>
+            <div ref={ref} className="relative">
+              <button type="button" onClick={() => setMenu((v) => !v)} className="rounded-full p-1.5 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Options" aria-expanded={menu}>
+                <MoreVertical className="h-5 w-5" />
+              </button>
+              <AnimatePresence>
+                {menu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="absolute right-0 top-9 z-20 w-52 rounded-2xl border border-violet-300/15 bg-[#1a0c38]/95 p-1.5 shadow-2xl backdrop-blur-2xl"
+                  >
+                    {mine ? (
+                      confirm ? (
+                        <div className="rounded-xl bg-rose-500/10 p-3 text-xs text-rose-100">
+                          Supprimer cette vibe ?
+                          <div className="mt-2 flex gap-2">
+                            <button type="button" onClick={onDelete} className="flex-1 rounded-lg bg-rose-500 px-2 py-1.5 font-semibold text-white">
+                              Supprimer
+                            </button>
+                            <button type="button" onClick={() => setConfirm(false)} className="flex-1 rounded-lg border border-white/20 px-2 py-1.5">
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setConfirm(true)} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-rose-200 hover:bg-white/5">
+                          <Trash2 className="h-4 w-4" /> Supprimer ma vibe
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenu(false);
+                          onReport();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-white/85 hover:bg-white/5"
+                      >
+                        <Flag className="h-4 w-4" /> Signaler
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+          <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-white/90">{post.content}</p>
+          <button
+            type="button"
+            onClick={onLike}
+            aria-pressed={post.likedByMe}
+            className={cn(
+              "mt-3 inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition",
+              post.likedByMe ? "bg-pink-500/25 text-pink-100" : "bg-white/[0.06] text-white/80 hover:bg-white/10"
+            )}
           >
-            {selectedMoodData.emoji} {selectedMoodData.label}
-          </span>
-        )}
-      </div>
-
-      {/* Sélecteur de mood compact */}
-      <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-none sm:flex-wrap sm:overflow-visible">
-        {MOODS.map((mood) => {
-          const isSelected = selectedMood === mood.mood;
-
-          return (
-            <button
-              key={mood.mood}
-              type="button"
-              onClick={() => setSelectedMood(isSelected ? null : mood.mood)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all sm:text-sm ${
-                isSelected
-                  ? "border-purple-400 bg-purple-500/30 text-white"
-                  : "border-white/20 bg-white/5 text-white/70 hover:bg-white/10"
-              }`}
-            >
-              <span>{mood.emoji}</span>
-              <span>{mood.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="relative">
-        <textarea
-          value={content}
-          onChange={(event) =>
-            setContent(event.target.value.slice(0, MAX_CONTENT_LENGTH))
-          }
-          placeholder="Partage ta vibe du moment…"
-          rows={3}
-          className="w-full resize-none rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 pr-14 text-sm text-white placeholder-white/40 transition-colors focus:border-purple-400 focus:outline-none sm:px-4 sm:py-3 sm:pr-16"
-        />
-
-        <span
-          className={`absolute bottom-3 right-3 text-[10px] sm:text-xs ${
-            content.length >= 280 ? "text-red-400" : "text-white/40"
-          }`}
-        >
-          {content.length}/{MAX_CONTENT_LENGTH}
-        </span>
-      </div>
-
-      {submitError && (
-        <div className="mt-2 flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200 sm:text-sm">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {submitError}
+            <Heart className={cn("h-4 w-4", post.likedByMe ? "fill-pink-400 text-pink-400" : "text-pink-300")} /> {post.likesCount}
+          </button>
         </div>
-      )}
-
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-white/45 sm:text-sm">
-          {selectedMoodData
-            ? `Mood : ${selectedMoodData.emoji} ${selectedMoodData.label}`
-            : "Sélectionne un mood"}
-        </p>
-
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!selectedMood || !content.trim() || submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-medium transition-all hover:from-purple-500 hover:to-pink-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-        >
-          {submitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-
-          {submitting ? "Publication…" : "Publier"}
-        </button>
       </div>
-    </div>
+    </motion.article>
+  );
+}
+
+export default function VibeSpherePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#12081f]" />}>
+      <VibeSphereContent />
+    </Suspense>
   );
 }

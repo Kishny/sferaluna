@@ -32,21 +32,61 @@ export async function GET(req: NextRequest) {
       .sort({ date: 1 })
       .lean();
 
+    /**
+     * Aperçu des participantes (avatars) et organisatrice.
+     * Les profils invisibles ou bannis n'apparaissent jamais dans l'aperçu.
+     */
+    const previewIds = new Set<string>();
+    events.forEach((event) => {
+      event.attendees.slice(0, 12).forEach((uid) => previewIds.add(uid.toString()));
+      if (event.createdBy) previewIds.add(event.createdBy.toString());
+    });
+
+    const people = await User.find({ _id: { $in: [...previewIds] } })
+      .select("_id pseudonyme image identityVerified visibilite banned role")
+      .lean();
+    const peopleById = new Map(people.map((p) => [p._id.toString(), p]));
+
     const enriched = events.map((event) => {
       const isRegistered = event.attendees.some((uid) => uid.equals(currentUserId));
       const isPast = event.date < now;
       const isFull = event.attendees.length >= event.maxAttendees;
 
+      const attendeePreview = event.attendees
+        .map((uid) => peopleById.get(uid.toString()))
+        .filter((p): p is NonNullable<typeof p> => !!p && p.visibilite !== "invisible" && !p.banned)
+        .slice(0, 4)
+        .map((p) => ({ _id: p._id.toString(), pseudonyme: p.pseudonyme, image: p.image || "" }));
+
+      const creator = event.createdBy ? peopleById.get(event.createdBy.toString()) : undefined;
+      const organizer = creator
+        ? creator.role === "admin"
+          ? { pseudonyme: "L’équipe SferaLuna", image: "", identityVerified: true, isTeam: true }
+          : { pseudonyme: creator.pseudonyme, image: creator.image || "", identityVerified: !!creator.identityVerified, isTeam: false }
+        : null;
+
       return {
         ...event,
         attendeeCount: event.attendees.length,
+        attendeePreview,
+        organizer,
         isRegistered,
         isPast,
         isFull,
       };
     });
 
-    return NextResponse.json({ success: true, events: enriched });
+    /** Chiffres réels affichés en tête de page. */
+    const pastAttendees = new Set<string>();
+    events.filter((e) => e.date < now).forEach((e) => e.attendees.forEach((uid) => pastAttendees.add(uid.toString())));
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const stats = {
+      participantsPast: pastAttendees.size,
+      eventsThisYear: events.filter((e) => e.date >= yearStart).length,
+      upcoming: events.filter((e) => e.date >= now).length,
+    };
+
+    return NextResponse.json({ success: true, events: enriched, stats });
   } catch (err) {
     console.error("GET /api/events :", err);
     return NextResponse.json({ success: false, error: "Erreur serveur." }, { status: 500 });

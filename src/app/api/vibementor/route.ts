@@ -27,6 +27,10 @@ export async function GET(req: NextRequest) {
     if (category && category !== "all") query.category = category;
     if (before) query.createdAt = { $lt: new Date(before) };
 
+    // Recherche plein texte simple dans les questions (caractères spéciaux échappés).
+    const q = (searchParams.get("q") || "").trim().slice(0, 80);
+    if (q) query.question = { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
+
     const posts = await MentorPost.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -44,7 +48,35 @@ export async function GET(req: NextRequest) {
       answersCount: p.answers.length,
     }));
 
-    return NextResponse.json({ success: true, posts: enriched, hasMore: posts.length === limit });
+    /**
+     * Première page uniquement : chiffres réels de la communauté et sujets
+     * les plus discutés des 30 derniers jours.
+     */
+    let stats: { questions: number; answers: number } | undefined;
+    let trending: { _id: string; question: string; category: string; answersCount: number }[] | undefined;
+
+    if (!before) {
+      const [questions, answersAgg, trendingDocs] = await Promise.all([
+        MentorPost.countDocuments({}),
+        MentorPost.aggregate([{ $project: { n: { $size: "$answers" } } }, { $group: { _id: null, total: { $sum: "$n" } } }]),
+        MentorPost.aggregate([
+          { $match: { createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+          { $project: { question: 1, category: 1, answersCount: { $size: "$answers" } } },
+          { $match: { answersCount: { $gt: 0 } } },
+          { $sort: { answersCount: -1, _id: -1 } },
+          { $limit: 5 },
+        ]),
+      ]);
+      stats = { questions, answers: answersAgg[0]?.total ?? 0 };
+      trending = trendingDocs.map((t) => ({
+        _id: String(t._id),
+        question: t.question,
+        category: t.category,
+        answersCount: t.answersCount,
+      }));
+    }
+
+    return NextResponse.json({ success: true, posts: enriched, hasMore: posts.length === limit, stats, trending });
   } catch (err) {
     console.error("GET /api/vibementor :", err);
     return NextResponse.json({ success: false, error: "Erreur serveur." }, { status: 500 });

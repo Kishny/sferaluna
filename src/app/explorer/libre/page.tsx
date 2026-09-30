@@ -311,7 +311,7 @@ function ExploreFreelyContent() {
         {/* Carrousel */}
         <div className="relative mt-8">
           {loading ? (
-            <div className="flex min-h-[520px] items-center justify-center">
+            <div className="flex min-h-[440px] items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-fuchsia-300" />
             </div>
           ) : error ? (
@@ -343,13 +343,13 @@ function ExploreFreelyContent() {
             <>
               {/* Cartes voisines floutées (desktop) */}
               {prev && (
-                <button type="button" onClick={() => go(-1)} className="absolute left-0 top-10 hidden h-[440px] w-[260px] -rotate-6 overflow-hidden rounded-[28px] opacity-60 transition hover:opacity-80 lg:block xl:left-6" aria-label="Profil précédent">
+                <button type="button" onClick={() => go(-1)} className="absolute left-0 top-8 hidden h-[374px] w-[240px] -rotate-6 overflow-hidden rounded-[28px] opacity-60 transition hover:opacity-80 lg:block xl:left-6" aria-label="Profil précédent">
                   <ProfilePhoto src={prev.gallery?.[0] || prev.image} name={prev.pseudonyme} className="h-full w-full" blur />
                   <span className="absolute inset-0 bg-[#12081f]/40" />
                 </button>
               )}
               {next && (
-                <button type="button" onClick={() => go(1)} className="absolute right-0 top-10 hidden h-[440px] w-[260px] rotate-6 overflow-hidden rounded-[28px] opacity-60 transition hover:opacity-80 lg:block xl:right-6" aria-label="Profil suivant">
+                <button type="button" onClick={() => go(1)} className="absolute right-0 top-8 hidden h-[374px] w-[240px] rotate-6 overflow-hidden rounded-[28px] opacity-60 transition hover:opacity-80 lg:block xl:right-6" aria-label="Profil suivant">
                   <ProfilePhoto src={next.gallery?.[0] || next.image} name={next.pseudonyme} className="h-full w-full" blur />
                   <span className="absolute inset-0 bg-[#12081f]/40" />
                 </button>
@@ -378,7 +378,7 @@ function ExploreFreelyContent() {
                   }}
                   className="relative z-[5] mx-auto w-full max-w-[460px] overflow-hidden rounded-[30px] border-2 border-fuchsia-300/60 bg-[#1b0d38] shadow-[0_0_0_1px_rgba(232,121,249,0.25),0_30px_90px_-25px_rgba(192,38,211,0.8)]"
                 >
-                  <button type="button" onClick={() => openProfile(current)} className="relative block aspect-[4/5] w-full text-left" aria-label={`Voir le profil de ${current.pseudonyme}`}>
+                  <button type="button" onClick={() => openProfile(current)} className="relative block aspect-[16/17] w-full text-left" aria-label={`Voir le profil de ${current.pseudonyme}`}>
                     <ProfilePhoto src={current.gallery?.[0] || current.image} name={current.pseudonyme} className="h-full w-full" />
                     <span className="absolute inset-0 bg-gradient-to-t from-[#1b0d38] via-[#1b0d38]/10 to-transparent" />
                     <span className="absolute inset-x-0 bottom-0 p-5">

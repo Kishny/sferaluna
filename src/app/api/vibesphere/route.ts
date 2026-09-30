@@ -197,6 +197,27 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Filtre par humeur (?mood=sereine ou ?mood=sereine,joyeuse).
+    const moodParam = (searchParams.get("mood") || "")
+      .split(",")
+      .map((m) => m.trim())
+      .filter((m): m is VibeMood => (VIBE_MOODS as string[]).includes(m));
+    if (moodParam.length) query.mood = { $in: moodParam };
+
+    /**
+     * Tendances émotionnelles (première page uniquement) :
+     * répartition réelle des humeurs publiées sur les 30 derniers jours.
+     */
+    let moodStats: { mood: string; count: number }[] | undefined;
+    if (!before) {
+      const agg = await VibePost.aggregate([
+        { $match: { createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+        { $group: { _id: "$mood", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]);
+      moodStats = agg.map((m) => ({ mood: String(m._id), count: m.count as number }));
+    }
+
     const posts = await VibePost.find(query)
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -211,6 +232,7 @@ export async function GET(req: NextRequest) {
       {
         success: true,
         posts: serializedPosts,
+        moodStats,
         hasMore: posts.length === limit,
         pagination: {
           limit,
