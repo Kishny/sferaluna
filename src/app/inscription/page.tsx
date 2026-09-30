@@ -440,6 +440,34 @@ function InscriptionPageContent() {
   }, [status, session]);
 
   /**
+   * Garde d'accès :
+   * - pas de session → page de connexion (au lieu d'un formulaire vide) ;
+   * - compte déjà complet ET identité vérifiée → directement l'espace membre.
+   *   (Sauf au retour de Stripe Identity : on laisse l'écran de confirmation.)
+   */
+  const alreadyOnboarded = (() => {
+    const u = session?.user as
+      | { hasCompletedProfile?: boolean; identityVerified?: boolean; role?: string }
+      | undefined;
+    return (
+      status === "authenticated" &&
+      u?.hasCompletedProfile === true &&
+      (u?.identityVerified === true || u?.role === "admin") &&
+      !searchParams?.get("verification")
+    );
+  })();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/auth?mode=login&callbackUrl=%2Finscription");
+      return;
+    }
+    if (alreadyOnboarded) {
+      router.replace("/mon-compte");
+    }
+  }, [status, alreadyOnboarded, router]);
+
+  /**
    * Vérifie le statut de vérification d'identité :
    * - au chargement de l'écran final ;
    * - au retour depuis Stripe Identity (?verification=success).
@@ -689,7 +717,7 @@ function InscriptionPageContent() {
   /**
    * Loader pendant le chargement de session NextAuth.
    */
-  if (status === "loading") {
+  if (status === "loading" || status === "unauthenticated" || alreadyOnboarded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] px-4 text-white">
         <div className="text-center">
