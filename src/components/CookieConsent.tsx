@@ -257,60 +257,46 @@ export default function CookieConsent() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.4 }}
-            className="fixed bottom-0 left-0 right-0 z-[1000] p-3 sm:p-4"
+            className="fixed inset-x-3 bottom-3 z-[1000] sm:inset-x-auto sm:bottom-4 sm:left-4 sm:w-[380px]"
             role="region"
             aria-label="Consentement cookies"
           >
-            <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#1a0b2e]/95 to-[#2d1b69]/95 p-4 shadow-2xl backdrop-blur-md sm:p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-                {/* Texte */}
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <Cookie className="mt-0.5 h-5 w-5 shrink-0 text-purple-300" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">
-                      SferaLuna utilise des cookies 🍪
-                    </p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-white/50">
-                      Nous utilisons des cookies essentiels au fonctionnement du site et, avec
-                      ton accord, des cookies optionnels pour améliorer ton expérience.{" "}
-                      <Link
-                        href="/cookies"
-                        className="underline hover:text-white/80"
-                        target="_blank"
-                      >
-                        En savoir plus
-                      </Link>
-                    </p>
-                  </div>
-                </div>
+            {/* Bandeau compact : ne doit jamais concurrencer l'action principale de la page */}
+            <div className="rounded-2xl border border-violet-300/15 bg-[#160a2e]/95 p-3.5 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <p className="flex items-start gap-2.5 text-xs leading-relaxed text-white/65">
+                <Cookie className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+                <span>
+                  Cookies essentiels au fonctionnement, et optionnels avec votre accord.{" "}
+                  <Link href="/cookies" className="text-white/80 underline hover:text-white" target="_blank">
+                    En savoir plus
+                  </Link>
+                </span>
+              </p>
 
-                {/* Boutons */}
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/15 px-3 py-2 text-xs text-white/60 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                    Personnaliser
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={rejectAll}
-                    className="rounded-xl border border-white/15 px-3 py-2 text-xs text-white/60 transition hover:bg-white/10 hover:text-white"
-                  >
-                    Refuser
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={acceptAll}
-                    className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-                  >
-                    Tout accepter
-                  </button>
-                </div>
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className="rounded-lg p-2 text-white/55 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Personnaliser les cookies"
+                  title="Personnaliser"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={rejectAll}
+                  className="flex-1 rounded-lg border border-white/15 px-3 py-2 text-xs text-white/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  Refuser
+                </button>
+                <button
+                  type="button"
+                  onClick={acceptAll}
+                  className="flex-1 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+                >
+                  Tout accepter
+                </button>
               </div>
             </div>
           </motion.div>

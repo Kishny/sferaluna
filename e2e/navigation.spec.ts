@@ -14,37 +14,27 @@ test.describe("Pages publiques — chargement", () => {
 
     await expect(page).toHaveTitle(/SferaLuna/i);
 
-    // Header présent avec accès à la connexion (bouton qui ouvre un menu
-    // déroulant ou redirige vers /auth — ce n'est pas un <a>/<Link>).
-    await expect(page.getByRole("button", { name: /connexion/i }).first()).toBeVisible();
-
-    // Au moins un appel à l'action vers l'inscription / la découverte
+    // Header présent avec accès direct à la connexion (lien vers /auth).
     await expect(
-      page.getByRole("link", { name: /rejoindre sferaluna|commencer|s'inscrire/i }).first()
+      page.locator("header").getByRole("link", { name: /^connexion$/i })
+    ).toBeVisible();
+
+    // Au moins un appel à l'action vers l'inscription
+    await expect(
+      page.getByRole("link", { name: /créer mon profil/i }).first()
     ).toBeVisible();
 
     // Footer présent (newsletter ou liens légaux)
     await expect(page.locator("footer")).toBeVisible();
   });
 
-  test("la page tarifs affiche les trois offres", async ({ page }) => {
+  test("la page tarifs affiche les quatre offres", async ({ page }) => {
     await page.goto("/tarifs");
 
-    // La page rend deux variantes du nom de chaque offre dans un <h3>
-    // (accordéons mobiles "sm:hidden" + cards desktop "hidden sm:grid").
-    // Sur le viewport desktop du projet "chromium", la version mobile
-    // reste dans le DOM mais cachée — getByText(...).first() peut donc
-    // tomber sur un élément invisible. On combine le sélecteur ciblé
-    // (h3 exact) avec le pseudo-sélecteur Playwright :visible.
-    await expect(
-      page.locator("h3:visible", { hasText: /^essentiel$/i }).first()
-    ).toBeVisible();
-    await expect(
-      page.locator("h3:visible", { hasText: /^premium$/i }).first()
-    ).toBeVisible();
-    await expect(
-      page.locator("h3:visible", { hasText: /^elite$/i }).first()
-    ).toBeVisible();
+    // Une carte par offre, avec le nom de l'offre en titre (h2).
+    for (const name of [/^gratuit$/i, /^essentiel$/i, /^premium$/i, /^elite$/i]) {
+      await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
+    }
   });
 
   test("la page FAQ affiche des questions/réponses", async ({ page }) => {
@@ -83,14 +73,12 @@ test.describe("Navigation globale", () => {
   }) => {
     await page.goto("/");
 
-    // Sur desktop, "Connexion" est un bouton qui ouvre un menu déroulant
-    // (pas un lien direct) ; le menu propose ensuite "Se connecter".
-    await page.getByRole("button", { name: /^connexion$/i }).first().click();
-    await page.getByRole("button", { name: /se connecter/i }).click();
+    // "Connexion" est un lien direct du header (visible à partir de 1024 px).
+    await page.locator("header").getByRole("link", { name: /^connexion$/i }).click();
 
     await expect(page).toHaveURL(/\/auth/);
     await expect(
-      page.getByRole("heading", { name: /bienvenue de retour|rejoignez l'aventure/i })
+      page.getByRole("heading", { name: /heureuse de vous revoir/i })
     ).toBeVisible();
   });
 

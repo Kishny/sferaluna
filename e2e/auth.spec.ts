@@ -21,7 +21,7 @@ test.describe("Page d'authentification — UI", () => {
 
   test("affiche le formulaire de connexion par défaut", async ({ page }) => {
     await expect(
-      page.getByRole("heading", { name: /bienvenue de retour/i })
+      page.getByRole("heading", { name: /heureuse de vous revoir/i })
     ).toBeVisible();
 
     await expect(page.locator('input[name="email"]')).toBeVisible();
@@ -33,11 +33,11 @@ test.describe("Page d'authentification — UI", () => {
     await page.getByRole("button", { name: /^inscription$/i }).click();
 
     await expect(
-      page.getByRole("heading", { name: /rejoignez l'aventure/i })
+      page.getByRole("heading", { name: /créez votre espace sferaluna/i })
     ).toBeVisible();
 
     await expect(page.locator('input[name="name"]')).toBeVisible();
-    await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
+    await expect(page.locator('input[name="terms"]')).toBeVisible();
     await expect(page.getByRole("button", { name: /créer mon compte/i })).toBeVisible();
   });
 
@@ -46,7 +46,7 @@ test.describe("Page d'authentification — UI", () => {
     await page.getByRole("button", { name: /^connexion$/i }).click();
 
     await expect(
-      page.getByRole("heading", { name: /bienvenue de retour/i })
+      page.getByRole("heading", { name: /heureuse de vous revoir/i })
     ).toBeVisible();
   });
 
@@ -74,7 +74,6 @@ test.describe("Page d'authentification — UI", () => {
     await page.locator('input[name="name"]').fill("Jeanne Dupont");
     await page.locator('input[name="email"]').fill("jeanne@example.com");
     await page.locator('input[name="password"]').fill("123");
-    await page.locator('input[name="confirmPassword"]').fill("123");
     // La case "conditions d'utilisation" est requise (HTML5 required) :
     // sans elle, le navigateur bloque la soumission avant que la
     // validation React ne s'exécute, et aucun message n'apparaît.
@@ -83,7 +82,7 @@ test.describe("Page d'authentification — UI", () => {
     await page.getByRole("button", { name: /créer mon compte/i }).click();
 
     await expect(
-      page.getByText(/le mot de passe doit contenir au moins 6 caractères/i)
+      page.getByText(/le mot de passe doit contenir au moins 8 caractères/i)
     ).toBeVisible();
   });
 
@@ -93,7 +92,6 @@ test.describe("Page d'authentification — UI", () => {
     await page.locator('input[name="name"]').fill("J");
     await page.locator('input[name="email"]').fill("jeanne@example.com");
     await page.locator('input[name="password"]').fill("motdepasse123");
-    await page.locator('input[name="confirmPassword"]').fill("motdepasse123");
     await page.locator('input[name="terms"]').check();
 
     await page.getByRole("button", { name: /créer mon compte/i }).click();
@@ -104,11 +102,7 @@ test.describe("Page d'authentification — UI", () => {
   });
 
   test("propose les connexions sociales Google et Apple", async ({ page }) => {
-    // Les boutons sociaux sont dans un accordéon fermé par défaut (mobile-first)
-    await page
-      .getByRole("button", { name: /autres méthodes de connexion/i })
-      .click();
-
+    // Les boutons sociaux sont désormais visibles directement sous le formulaire.
     // Le bouton d'accordéon contient déjà les mots "Google ou Apple" dans
     // sa description, donc getByRole('button', { name: /google/i }) matche
     // aussi ce bouton (violation strict mode). On cible plutôt les icônes

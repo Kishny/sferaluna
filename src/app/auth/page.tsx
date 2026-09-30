@@ -3,395 +3,517 @@
 "use client";
 
 /**
- * Page d'authentification SferaLuna.
+ * Connexion & Inscription SferaLuna.
  *
- * Version optimisée mobile :
- * - formulaire plus compact ;
- * - flèche retour corrigée pour ne plus toucher la carte ;
- * - accordéons pour les blocs secondaires ;
- * - padding mobile réduit ;
- * - inputs et boutons moins hauts sur téléphone ;
- * - meilleur confort sur iPhone/Safari mobile.
+ * - Connexion : directe (identifiant, mot de passe, Google / Apple).
+ * - Inscription : guidée — étape 1 « Vous » ici, puis « Vos préférences »
+ *   et « Votre profil » dans /inscription (onboarding existant).
+ * - Colonne gauche : scène lunaire, 3 bénéfices, témoignage RÉEL
+ *   (affiché uniquement si un témoignage approuvé existe).
+ *
+ * La logique d'authentification (NextAuth credentials + OAuth, redirections
+ * selon hasCompletedProfile / identityVerified) est inchangée.
  */
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, type ElementType, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  AtSign,
+  BadgeCheck,
+  CheckCircle2,
   Eye,
   EyeOff,
-  Mail,
-  Lock,
-  User,
-  AtSign,
-  Sparkles,
-  Star,
-  ArrowLeft,
-  CheckCircle,
-  AlertCircle,
-  Crown,
-  Shield,
-  Smartphone,
-  Gift,
-  Users,
   Heart,
+  Info,
+  Loader2,
+  Lock,
+  Mail,
   Moon,
-  ChevronDown,
-  ChevronUp,
+  Quote,
+  ShieldCheck,
+  Sparkles,
+  User,
+  UsersRound,
 } from "lucide-react";
+
+import { MoonHorizon } from "@/components/site/art";
+import { cn } from "@/components/site/ui";
 
 type LunaSessionUser = {
   id?: string;
-  email?: string | null;
-  name?: string | null;
-  image?: string | null;
-  pseudonyme?: string;
   role?: string;
   hasCompletedProfile?: boolean;
   identityVerified?: boolean;
-  plan?: "free" | "essential-monthly" | "premium-monthly" | "elite-monthly";
-  isPremium?: boolean;
-  subscriptionStatus?:
-    | "inactive"
-    | "active"
-    | "trialing"
-    | "past_due"
-    | "canceled";
 };
 
-/**
- * Fond étoilé léger.
- */
-const starsStyles = `
-.stars {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
+type Testimonial = {
+  _id: string;
+  authorName: string;
+  age?: number;
+  city?: string;
+  content: string;
+  rating: number;
+};
 
-.stars::before,
-.stars::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 40px 70px, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 50px 160px, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 90px 40px, rgba(255, 255, 255, 0.6), transparent);
-  background-repeat: repeat;
-  background-size: 200px 200px;
-}
+const OAUTH_ERRORS: Record<string, string> = {
+  OAuthSignin: "Erreur lors de l'initiation de la connexion.",
+  OAuthCallback: "Erreur lors du retour de connexion. Réessayez dans un instant.",
+  OAuthCreateAccount: "Impossible de créer le compte via ce service.",
+  EmailCreateAccount: "Impossible de créer le compte avec cet email.",
+  Callback: "Erreur de connexion.",
+  OAuthAccountNotLinked: "Cet email est déjà associé à une autre méthode de connexion.",
+  SessionRequired: "Vous devez être connectée pour accéder à cette page.",
+  Default: "Une erreur est survenue lors de la connexion.",
+};
 
-.stars::after {
-  background-image:
-    radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 160px 120px, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(1px 1px at 200px 60px, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 240px 90px, rgba(255, 255, 255, 0.6), transparent);
-  background-size: 300px 300px;
-  animation: twinkle 8s ease-in-out infinite alternate;
-}
+// ─────────────────────────────────────────────
+// Champs
+// ─────────────────────────────────────────────
 
-@keyframes twinkle {
-  0%, 100% {
-    opacity: 0.8;
-  }
+const INPUT =
+  "h-[52px] w-full rounded-2xl border bg-white/[0.04] pl-12 pr-4 text-[15px] text-white placeholder:text-white/40 outline-none transition focus:bg-white/[0.07] focus:ring-4";
 
-  50% {
-    opacity: 0.4;
-  }
-}
-`;
-
-/**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera".
- */
-function OrbitGlow({ className = "" }: { className?: string }) {
+function Field({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  icon: Icon,
+  error,
+  hint,
+  autoComplete,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  placeholder: string;
+  icon: ElementType;
+  error?: string;
+  hint?: string;
+  autoComplete?: string;
+}) {
   return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
-    >
-      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
-      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
-      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
-      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
-    </svg>
+    <div>
+      <label htmlFor={name} className="mb-2 block text-sm font-medium text-white/85">
+        {label}
+      </label>
+      <div className="relative">
+        <Icon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/45" />
+        <input
+          id={name}
+          name={name}
+          type={type}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          aria-invalid={Boolean(error)}
+          className={cn(
+            INPUT,
+            error
+              ? "border-rose-400/60 focus:border-rose-400/70 focus:ring-rose-500/15"
+              : "border-violet-300/20 focus:border-fuchsia-400/60 focus:ring-fuchsia-500/15"
+          )}
+        />
+      </div>
+      {hint && !error && <p className="mt-1.5 text-xs text-white/45">{hint}</p>}
+      {error && <p className="mt-1.5 text-xs text-rose-300 sm:text-sm">{error}</p>}
+    </div>
   );
 }
 
-function PremiumAuthContent() {
+function PasswordField({
+  label,
+  name,
+  placeholder,
+  autoComplete,
+  error,
+  onChange,
+  aside,
+}: {
+  label: string;
+  name: string;
+  placeholder: string;
+  autoComplete: string;
+  error?: string;
+  onChange?: (value: string) => void;
+  aside?: ReactNode;
+}) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <label htmlFor={name} className="text-sm font-medium text-white/85">
+          {label}
+        </label>
+        {aside}
+      </div>
+      <div className="relative">
+        <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/45" />
+        <input
+          id={name}
+          name={name}
+          type={show ? "text" : "password"}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          aria-invalid={Boolean(error)}
+          onChange={(e) => onChange?.(e.target.value)}
+          className={cn(
+            INPUT,
+            "pr-12",
+            error
+              ? "border-rose-400/60 focus:border-rose-400/70 focus:ring-rose-500/15"
+              : "border-violet-300/20 focus:border-fuchsia-400/60 focus:ring-fuchsia-500/15"
+          )}
+        />
+        <button
+          type="button"
+          onClick={() => setShow((v) => !v)}
+          className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/55 transition hover:bg-white/10 hover:text-white"
+          aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+        >
+          {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      </div>
+      {error && <p className="mt-1.5 text-xs text-rose-300 sm:text-sm">{error}</p>}
+    </div>
+  );
+}
+
+function SubmitButton({ loading, children }: { loading: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="group relative flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-500 text-base font-semibold text-white shadow-[0_14px_40px_-12px_rgba(217,70,239,0.8)] ring-1 ring-fuchsia-300/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+      <span>{children}</span>
+      {!loading && (
+        <ArrowRight className="absolute right-5 h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+      )}
+    </button>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="flex items-center gap-4 text-xs text-white/45">
+      <span className="h-px flex-1 bg-white/10" />
+      ou
+      <span className="h-px flex-1 bg-white/10" />
+    </div>
+  );
+}
+
+function SocialButtons({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (provider: "google" | "apple") => void;
+  disabled: boolean;
+}) {
+  const btn =
+    "flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-violet-300/20 bg-white/[0.05] text-[15px] font-medium text-white transition hover:border-violet-300/40 hover:bg-white/[0.09] disabled:opacity-60";
+
+  return (
+    <div className="grid gap-3">
+      <button type="button" disabled={disabled} onClick={() => onSelect("google")} className={btn}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/google-icon.svg" alt="Google" className="h-5 w-5" />
+        Continuer avec Google
+      </button>
+      <button type="button" disabled={disabled} onClick={() => onSelect("apple")} className={btn}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Apple-icon.svg" alt="Continuer avec Apple" className="h-5 w-5 invert" />
+        Continuer avec Apple
+      </button>
+    </div>
+  );
+}
+
+function SecureBadge({ label }: { label: string }) {
+  return (
+    <div className="flex justify-center">
+      <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/[0.08] px-3.5 py-1.5 text-xs text-emerald-200/90">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        {label}
+        <span className="h-3 w-px bg-white/15" />
+        <span className="flex items-center gap-1 text-white/55">
+          <Lock className="h-3 w-3" /> HTTPS
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function Stepper() {
+  const steps = ["Vous", "Vos préférences", "Votre profil"];
+  return (
+    <div className="mb-6">
+      <ol className="flex items-center">
+        {steps.map((step, i) => (
+          <li key={step} className={cn("flex items-center", i < steps.length - 1 && "flex-1")}>
+            <div className="flex flex-col items-center gap-1.5">
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                  i === 0
+                    ? "bg-gradient-to-br from-fuchsia-500 to-pink-500 text-white shadow-[0_0_16px_-2px_rgba(236,72,153,0.8)]"
+                    : "border border-violet-300/30 text-white/60"
+                )}
+              >
+                {i + 1}
+              </span>
+              <span className={cn("whitespace-nowrap text-[11px]", i === 0 ? "font-semibold text-white" : "text-white/50")}>
+                {step}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <span className="mx-2 mb-5 h-px flex-1 bg-gradient-to-r from-violet-300/40 to-violet-300/10" />
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Colonne "histoire"
+// ─────────────────────────────────────────────
+
+function Story({ isLogin, testimonial }: { isLogin: boolean; testimonial: Testimonial | null }) {
+  const benefits = [
+    { icon: BadgeCheck, title: "Profils vérifiés", text: "Chaque membre confirme son identité." },
+    {
+      icon: Heart,
+      title: isLogin ? "Une communauté bienveillante" : "Des rencontres sincères",
+      text: isLogin ? "Des femmes sincères, qui partagent vos valeurs." : "Des personnes qui cherchent la même chose que vous.",
+    },
+    {
+      icon: UsersRound,
+      title: isLogin ? "Des rencontres authentiques" : "Un espace qui vous ressemble",
+      text: isLogin ? "Plus que des matchs, de vraies connexions." : "Vous choisissez qui vous voit, à votre rythme.",
+    },
+  ];
+
+  return (
+    <div className="max-w-xl">
+      <p className="hidden items-center gap-3 text-4xl font-bold tracking-tight sm:text-5xl lg:flex">
+        <Moon className="h-10 w-10 fill-transparent text-white sm:h-12 sm:w-12" strokeWidth={2.2} />
+        <span className="bg-gradient-to-r from-violet-200 via-fuchsia-200 to-pink-200 bg-clip-text text-transparent">
+          SferaLuna
+        </span>
+      </p>
+
+      <h1 className="text-4xl lg:mt-6 font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[56px]">
+        {isLogin ? (
+          <>
+            Rencontrez l’amour{" "}
+            <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-pink-300 bg-clip-text text-transparent">
+              sous un nouvel angle
+            </span>
+          </>
+        ) : (
+          <>
+            Commencez une{" "}
+            <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-pink-300 bg-clip-text text-transparent">
+              belle histoire
+            </span>
+          </>
+        )}
+      </h1>
+
+      <p className="mt-5 text-base leading-relaxed text-white/75 sm:text-lg">
+        {isLogin
+          ? "Une expérience élégante, sûre et authentique, pour des rencontres entre femmes plus profondes et des connexions qui comptent vraiment."
+          : "Rejoignez une communauté bienveillante de femmes qui aiment les femmes, pour des rencontres authentiques et des connexions qui comptent vraiment."}
+      </p>
+
+      <ul className="mt-8 space-y-5">
+        {benefits.map((b) => (
+          <li key={b.title} className="flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-fuchsia-300/25 bg-fuchsia-500/15 shadow-[0_0_24px_-6px_rgba(217,70,239,0.6)]">
+              <b.icon className="h-6 w-6 text-fuchsia-100" />
+            </span>
+            <span>
+              <span className="block text-base font-semibold text-white">{b.title}</span>
+              <span className="block text-sm text-white/65">{b.text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {testimonial && (
+        <figure className="mt-8 flex gap-4 rounded-3xl border border-violet-300/20 bg-[#1b0d38]/70 p-5 backdrop-blur-xl">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-lg font-semibold">
+            {testimonial.authorName.charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm text-amber-300">{"★".repeat(Math.max(1, Math.min(5, testimonial.rating || 5)))}</p>
+            <blockquote className="mt-1 text-sm leading-relaxed text-white/90">“{testimonial.content}”</blockquote>
+            <figcaption className="mt-2 text-xs text-white/55">
+              {testimonial.authorName}
+              {testimonial.age ? `, ${testimonial.age} ans` : ""}
+              {testimonial.city ? ` · ${testimonial.city}` : ""}
+            </figcaption>
+          </div>
+          <Quote className="hidden h-6 w-6 shrink-0 text-white/30 sm:block" />
+        </figure>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────
+
+function AuthContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
 
   const mode = searchParams.get("mode");
-
-  // Erreurs OAuth renvoyées par NextAuth dans l'URL (?error=...)
   const oauthError = searchParams.get("error");
-  const oauthErrorMessages: Record<string, string> = {
-    OAuthSignin: "Erreur lors de l'initiation de la connexion OAuth.",
-    OAuthCallback: "Erreur lors du retour OAuth. Vérifiez la configuration du provider.",
-    OAuthCreateAccount: "Impossible de créer le compte via ce provider.",
-    EmailCreateAccount: "Impossible de créer le compte avec cet email.",
-    Callback: "Erreur de callback OAuth.",
-    OAuthAccountNotLinked: "Cet email est déjà associé à une autre méthode de connexion.",
-    SessionRequired: "Vous devez être connectée pour accéder à cette page.",
-    Default: "Une erreur est survenue lors de la connexion.",
-  };
-  const oauthErrorMessage = oauthError
-    ? (oauthErrorMessages[oauthError] ?? oauthErrorMessages.Default)
-    : null;
+  const oauthErrorMessage = oauthError ? OAUTH_ERRORS[oauthError] ?? OAUTH_ERRORS.Default : null;
 
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(mode !== "register");
   const [isLoading, setIsLoading] = useState(false);
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState("");
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [testimonial, setTestimonial] = useState<Testimonial | null>(null);
 
-  const [showFeatures, setShowFeatures] = useState(false);
-
-  /**
-   * Accordéons mobile.
-   * Fermés par défaut pour garder la page courte.
-   */
-  const [openMobileFeatures, setOpenMobileFeatures] = useState(false);
-  const [openMobileStats, setOpenMobileStats] = useState(false);
-  const [openSocialLogin, setOpenSocialLogin] = useState(false);
-
-  const containerVariants = useMemo(
-    () => ({
-      hidden: { opacity: 0 },
-      visible: {
-        opacity: 1,
-        transition: {
-          staggerChildren: 0.08,
-          delayChildren: 0.15,
-        },
-      },
-    }),
-    []
-  );
-
-  const itemVariants = useMemo(
-    () => ({
-      hidden: { y: 16, opacity: 0 },
-      visible: { y: 0, opacity: 1 },
-    }),
-    []
-  );
-
-  /**
-   * Injection du CSS étoilé côté client.
-   */
+  // URL → onglet
   useEffect(() => {
-    const styleId = "sferaluna-auth-stars-style";
-
-    if (document.getElementById(styleId)) return;
-
-    const styleSheet = document.createElement("style");
-    styleSheet.id = styleId;
-    styleSheet.textContent = starsStyles;
-    document.head.appendChild(styleSheet);
-
-    return () => {
-      const existingStyle = document.getElementById(styleId);
-      existingStyle?.remove();
-    };
-  }, []);
-
-  /**
-   * Synchronisation URL -> onglet actif.
-   */
-  useEffect(() => {
-    if (mode === "register") {
-      setIsLogin(false);
-      return;
-    }
-
-    if (mode === "login") {
-      setIsLogin(true);
-    }
+    if (mode === "register") setIsLogin(false);
+    if (mode === "login") setIsLogin(true);
   }, [mode]);
 
+  // Témoignage réel (aucun affichage s'il n'y en a pas)
   useEffect(() => {
-    const timer = setTimeout(() => setShowFeatures(true), 700);
-    return () => clearTimeout(timer);
+    fetch("/api/testimonials")
+      .then((res) => res.json())
+      .then((data) => data?.success && data.testimonials?.length && setTestimonial(data.testimonials[0]))
+      .catch(() => {});
   }, []);
 
-  /**
-   * Redirection si déjà connecté.
-   */
+  // Déjà connectée → bonne destination
   useEffect(() => {
     if (status !== "authenticated") return;
-
-    const currentUser = session?.user as LunaSessionUser | undefined;
-
-    /**
-     * La vérification d'identité est obligatoire pour accéder au compte.
-     * Exception : les comptes admin (compte interne, pas une vraie membre
-     * du site de rencontre) sont traités comme déjà vérifiés.
-     */
-    const isIdentityVerified =
-      currentUser?.identityVerified === true || currentUser?.role === "admin";
-
-    if (currentUser?.hasCompletedProfile === true && isIdentityVerified) {
-      router.replace("/mon-compte");
-      return;
-    }
-
-    if (currentUser?.hasCompletedProfile === true) {
-      router.replace("/inscription");
-      return;
-    }
-
-    if (currentUser?.hasCompletedProfile === false) {
-      router.replace("/inscription");
-    }
+    const user = session?.user as LunaSessionUser | undefined;
+    if (user?.id) router.replace(destinationFor(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session, router]);
 
+  /** Page demandée avant la connexion (ex : /messages/…), chemin interne uniquement. */
+  const callbackUrl = (() => {
+    const raw = searchParams.get("callbackUrl") || "";
+    return raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/auth") ? raw : null;
+  })();
+
+  /** Destination d'une membre connectée selon l'état de son compte. */
+  const destinationFor = (user: LunaSessionUser) => {
+    const verified = user.identityVerified === true || user.role === "admin";
+    if (user.hasCompletedProfile === true && verified) {
+      return callbackUrl && callbackUrl !== "/inscription" ? callbackUrl : "/mon-compte";
+    }
+    return "/inscription";
+  };
+
   const redirectAfterLogin = async () => {
-    const sessionRes = await fetch("/api/auth/session", {
-      cache: "no-store",
-    });
+    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    const fresh = await res.json().catch(() => null);
+    const user = fresh?.user as LunaSessionUser | undefined;
 
-    const freshSession = await sessionRes.json();
-    const currentUser = freshSession?.user as LunaSessionUser | undefined;
-
-    const isIdentityVerified =
-      currentUser?.identityVerified === true || currentUser?.role === "admin";
-
-    if (currentUser?.hasCompletedProfile === true && isIdentityVerified) {
-      router.push("/mon-compte");
+    // Sécurité : sans session réellement ouverte, on n'envoie JAMAIS vers
+    // /inscription (qui afficherait un parcours vide à une membre existante).
+    if (!user?.id) {
+      setSuccess("");
+      setErrors({
+        form: "La connexion n’a pas pu être finalisée (session non ouverte). Vérifiez que les cookies sont autorisés puis réessayez.",
+      });
       return;
     }
 
-    router.push("/inscription");
+    router.push(destinationFor(user));
   };
 
   const checkPasswordStrength = (password: string) => {
     let strength = 0;
-
     if (password.length >= 8) strength += 25;
     if (/[A-Z]/.test(password)) strength += 25;
     if (/[0-9]/.test(password)) strength += 25;
     if (/[^A-Za-z0-9]/.test(password)) strength += 25;
-
     setPasswordStrength(strength);
   };
 
-  const validateForm = (formData: FormData, loginMode: boolean) => {
-    const newErrors: Record<string, string> = {};
-
+  const validate = (formData: FormData, loginMode: boolean) => {
+    const next: Record<string, string> = {};
     const identifier = String(formData.get("email") || "").trim();
     const password = String(formData.get("password") || "");
-    const confirmPassword = String(formData.get("confirmPassword") || "");
     const name = String(formData.get("name") || "").trim();
     const pseudonyme = String(formData.get("pseudonyme") || "").trim();
 
     if (loginMode) {
-      // En connexion : email ou pseudonyme accepté
       if (!identifier || identifier.length < 2) {
-        newErrors.email = "Saisissez votre email ou votre pseudonyme";
+        next.email = "Saisissez votre email ou votre pseudonyme";
+      } else if (identifier.includes("@") && !/^\S+@\S+\.\S+$/.test(identifier)) {
+        next.email = "Adresse email invalide";
       }
+      if (!password) next.password = "Saisissez votre mot de passe";
     } else {
-      // En inscription
-      if (name.length < 2) {
-        newErrors.name = "Le nom doit contenir au moins 2 caractères";
-      }
-
-      // Pseudonyme optionnel — validé uniquement si renseigné
+      if (name.length < 2) next.name = "Le nom doit contenir au moins 2 caractères";
       if (pseudonyme.length > 0) {
         if (pseudonyme.length < 2 || pseudonyme.length > 50) {
-          newErrors.pseudonyme =
-            "Le pseudonyme doit contenir entre 2 et 50 caractères";
+          next.pseudonyme = "Le pseudonyme doit contenir entre 2 et 50 caractères";
         } else if (!/^[a-zA-ZÀ-ÿ0-9 _-]+$/.test(pseudonyme)) {
-          newErrors.pseudonyme =
-            "Lettres, chiffres, espaces, tirets ou underscores uniquement";
+          next.pseudonyme = "Lettres, chiffres, espaces, tirets ou underscores uniquement";
         }
       }
-
-      if (!identifier || !/^\S+@\S+\.\S+$/.test(identifier)) {
-        newErrors.email = "Adresse email invalide";
-      }
+      if (!identifier || !/^\S+@\S+\.\S+$/.test(identifier)) next.email = "Adresse email invalide";
+      // Aligné sur /api/auth/register (8 caractères minimum)
+      if (password.length < 8) next.password = "Le mot de passe doit contenir au moins 8 caractères";
+      if (!formData.get("terms")) next.terms = "Merci d’accepter les conditions pour continuer";
     }
 
-    if (!password || password.length < 6) {
-      newErrors.password =
-        "Le mot de passe doit contenir au moins 6 caractères";
-    }
-
-    if (!loginMode && password !== confirmPassword) {
-      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (isLoading) return;
-
-    setIsLoading(true);
     setErrors({});
     setSuccess("");
 
     const formData = new FormData(event.currentTarget);
+    if (!validate(formData, true)) return;
 
-    if (!validateForm(formData, true)) {
-      setIsLoading(false);
-      return;
-    }
-
-    const email = String(formData.get("email") || "").toLowerCase().trim();
-    const password = String(formData.get("password") || "");
-
+    setIsLoading(true);
     try {
       const result = await signIn("credentials", {
         redirect: false,
-        email,
-        password,
+        email: String(formData.get("email") || "").toLowerCase().trim(),
+        password: String(formData.get("password") || ""),
       });
 
       if (!result?.ok) {
-        setErrors({
-          form: "Email ou mot de passe incorrect",
-        });
+        setErrors({ form: "Identifiant ou mot de passe incorrect" });
         return;
       }
 
-      setTimeout(async () => {
-        await redirectAfterLogin();
-      }, 400);
-    } catch (error) {
-      console.error("Erreur login :", error);
-      setErrors({
-        form: "Une erreur est survenue lors de la connexion",
-      });
+      setSuccess("Connexion réussie, à tout de suite…");
+      await redirectAfterLogin();
+    } catch {
+      setErrors({ form: "Une erreur est survenue lors de la connexion" });
     } finally {
       setIsLoading(false);
     }
@@ -399,95 +521,62 @@ function PremiumAuthContent() {
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     if (isLoading) return;
-
-    setIsLoading(true);
     setErrors({});
     setSuccess("");
 
     const formData = new FormData(event.currentTarget);
+    if (!validate(formData, false)) return;
 
-    if (!validateForm(formData, false)) {
-      setIsLoading(false);
-      return;
-    }
-
-    const name = String(formData.get("name") || "").trim();
-    const pseudonyme = String(formData.get("pseudonyme") || "").trim();
     const email = String(formData.get("email") || "").toLowerCase().trim();
     const password = String(formData.get("password") || "");
 
+    setIsLoading(true);
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          pseudonyme,
+          name: String(formData.get("name") || "").trim(),
+          pseudonyme: String(formData.get("pseudonyme") || "").trim(),
           email,
           password,
         }),
       });
-
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        setErrors({
-          form: data?.error || "Erreur lors de l'inscription",
-        });
+        setErrors({ form: data?.error || "Erreur lors de l'inscription" });
         return;
       }
 
-      setSuccess("Compte créé avec succès ! Connexion en cours...");
+      setSuccess("Votre espace est créé ! Direction vos préférences…");
 
-      const loginResult = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (!loginResult?.ok) {
-        setErrors({
-          form: "Compte créé, mais connexion automatique impossible. Connectez-vous manuellement.",
-        });
+      const login = await signIn("credentials", { redirect: false, email, password });
+      if (!login?.ok) {
+        setErrors({ form: "Compte créé, mais connexion automatique impossible. Connectez-vous manuellement." });
         return;
       }
 
-      setTimeout(() => {
-        router.push("/inscription");
-      }, 600);
-    } catch (error) {
-      console.error("Erreur inscription :", error);
-      setErrors({
-        form: "Erreur de connexion au serveur",
-      });
+      router.push("/inscription");
+    } catch {
+      setErrors({ form: "Erreur de connexion au serveur" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSocialLogin = async (
-    provider: "google" | "apple"
-  ) => {
+  const handleSocial = async (provider: "google" | "apple") => {
     if (isLoading) return;
-
     setIsLoading(true);
     setErrors({});
-    setSuccess("");
-
     try {
       await signIn(provider, {
-        callbackUrl: "/auth",
+        callbackUrl: callbackUrl ? `/auth?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/auth",
         redirect: true,
       });
-    } catch (error) {
-      console.error(`Erreur connexion ${provider} :`, error);
-      setErrors({
-        form: `Erreur lors de la connexion avec ${provider}`,
-      });
+    } catch {
+      setErrors({ form: `Erreur lors de la connexion avec ${provider === "google" ? "Google" : "Apple"}` });
       setIsLoading(false);
     }
   };
@@ -496,929 +585,303 @@ function PremiumAuthContent() {
     setIsLogin(loginMode);
     setErrors({});
     setSuccess("");
-    setOpenSocialLogin(false);
-
-    const nextMode = loginMode ? "login" : "register";
-
-    router.replace(`/auth?mode=${nextMode}`, {
-      scroll: false,
-    });
+    setPasswordStrength(0);
+    router.replace(`/auth?mode=${loginMode ? "login" : "register"}`, { scroll: false });
   };
 
-  const premiumFeatures = [
-    {
-      icon: <Crown className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "Profils vérifiés",
-    },
-    {
-      icon: <Shield className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "Sécurité maximale",
-    },
-    {
-      icon: <Smartphone className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "App mobile exclusive",
-    },
-    {
-      icon: <Gift className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "Cadeaux premium",
-    },
-    {
-      icon: <Users className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "Événements VIP",
-    },
-    {
-      icon: <Heart className="h-4 w-4 sm:h-5 sm:w-5" />,
-      text: "Matchs compatibles",
-    },
-  ];
+  const strengthLabel = ["Trop court", "Faible", "Correct", "Bon", "Excellent"][passwordStrength / 25];
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] font-sans text-white">
-      {/* Décor de fond */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-16 left-1/4 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl sm:h-96 sm:w-96" />
-        <div className="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl sm:h-80 sm:w-80" />
-        <div className="absolute top-1/3 left-1/3 h-56 w-56 rounded-full bg-pink-500/10 blur-3xl sm:h-64 sm:w-64" />
-        <OrbitGlow className="right-[-10%] top-10 h-72 w-72 sm:h-96 sm:w-96" />
-        <OrbitGlow className="left-[-10%] bottom-[-5%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-      </div>
+    <main className="relative isolate min-h-screen overflow-hidden bg-[#12081f] text-white">
+      <MoonHorizon fixed />
+      {/* Voile à gauche : garde le texte lisible au-dessus de la scène */}
+      <div className="pointer-events-none fixed inset-y-0 left-0 -z-10 hidden w-[55%] bg-gradient-to-r from-[#12081f]/80 via-[#12081f]/40 to-transparent lg:block" />
 
-      <div className="stars" />
-
-      {/* 
-        Bouton retour corrigé :
-        - plus haut ;
-        - plus petit sur mobile ;
-        - ne touche plus la carte.
-      */}
-      <motion.div
-        initial={{ opacity: 0, x: -16 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="fixed left-4 top-4 z-40 sm:left-6 sm:top-6"
-      >
+      {/* Header minimal */}
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
+        <Link href="/" className="flex items-center gap-2.5" aria-label="SferaLuna — accueil">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-sferaluna.png" alt="" className="h-9 w-9 rounded-full object-cover shadow-[0_0_18px_rgba(217,70,239,0.5)]" />
+          <span className="text-lg font-semibold lg:hidden">SferaLuna</span>
+        </Link>
         <Link
           href="/"
-          aria-label="Retour à l'accueil"
-          className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-gray-200 shadow-lg shadow-black/20 backdrop-blur-xl transition-all hover:bg-white/15 hover:text-white sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-violet-300/25 bg-[#1b0d38]/60 px-4 text-sm text-white/85 backdrop-blur-xl transition hover:border-fuchsia-300/50 hover:text-white"
         >
-          <ArrowLeft className="h-5 w-5 sm:h-5 sm:w-5" />
-
-          <span className="hidden text-sm font-medium sm:inline">
-            Retour
-          </span>
+          <ArrowLeft className="h-4 w-4" />
+          Retour à l’accueil
         </Link>
-      </motion.div>
+      </header>
 
-      {/* 
-        Contenu principal :
-        - padding top augmenté pour éviter le conflit avec la flèche ;
-        - gap réduit ;
-        - meilleur rendu sur petit écran.
-      */}
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-start px-4 pb-10 pt-20 sm:px-6 sm:pb-16 sm:pt-24 lg:items-center lg:px-8 lg:py-20">
-        <div className="grid w-full grid-cols-1 items-start gap-5 lg:grid-cols-2 lg:items-center lg:gap-12">
-          {/* Colonne gauche : branding + arguments */}
-          <motion.div
-            initial={{ opacity: 0, x: -32 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-            className="order-2 px-0 text-white lg:order-1 lg:px-4"
-          >
-            <div className="mb-4 sm:mb-8">
-              <div className="mb-3 flex items-center justify-center gap-2.5 lg:justify-start">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-50 blur-lg" />
-                  <Moon className="relative h-7 w-7 text-white sm:h-12 sm:w-12" />
-                </div>
+      <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 sm:px-6 lg:min-h-[calc(100vh-96px)] lg:grid-cols-[1fr_minmax(0,500px)] lg:gap-16 lg:px-8">
+        {/* Histoire (sous le formulaire sur mobile) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="order-2 lg:order-1"
+        >
+          <Story isLogin={isLogin} testimonial={testimonial} />
+        </motion.div>
 
-                <h1 className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-2xl font-bold text-transparent sm:text-4xl md:text-5xl">
-                  SferaLuna
-                </h1>
-              </div>
-
-              <h2 className="text-center text-lg font-bold leading-tight sm:text-3xl md:text-4xl lg:text-left">
-                Rencontrez l'amour sous un{" "}
-                <span className="text-purple-300">nouvel angle</span>
-              </h2>
-
-              <p className="mx-auto mt-2 max-w-xl text-center text-xs leading-relaxed text-gray-300 sm:text-base md:text-lg lg:mx-0 lg:text-left">
-                Une expérience élégante, sûre et authentique pour créer des
-                rencontres plus profondes.
-              </p>
-            </div>
-
-            {/* Desktop : fonctionnalités visibles */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate={showFeatures ? "visible" : "hidden"}
-              className="mb-6 hidden grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid"
-            >
-              {premiumFeatures.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  variants={itemVariants}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm transition-all hover:border-purple-500/30"
+        {/* Carte formulaire */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="order-1 w-full rounded-[28px] border border-fuchsia-300/30 bg-[#1a0b35]/80 p-5 shadow-[0_30px_100px_-30px_rgba(192,38,211,0.6)] ring-1 ring-white/5 backdrop-blur-2xl sm:p-8 lg:order-2"
+          aria-label={isLogin ? "Connexion" : "Inscription"}
+        >
+          {/* Onglets */}
+          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-violet-300/15 bg-white/[0.03] p-1.5" role="tablist">
+            {[
+              { login: true, label: "Connexion", icon: User },
+              { login: false, label: "Inscription", icon: Sparkles },
+            ].map((tab) => {
+              const active = isLogin === tab.login;
+              return (
+                <button
+                  key={tab.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => switchMode(tab.login)}
+                  className={cn(
+                    "relative flex h-12 items-center justify-center gap-2 rounded-xl text-[15px] font-medium transition",
+                    active ? "text-white" : "text-white/60 hover:text-white"
+                  )}
                 >
-                  <div className="text-purple-400">{feature.icon}</div>
-                  <span className="text-sm font-medium">{feature.text}</span>
-                </motion.div>
-              ))}
-            </motion.div>
+                  {active && (
+                    <motion.span
+                      layoutId="auth-tab"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-500 shadow-[0_8px_24px_-8px_rgba(217,70,239,0.9)]"
+                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    />
+                  )}
+                  <tab.icon className="relative h-4 w-4" />
+                  <span className="relative">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Mobile : fonctionnalités en accordéon */}
-            <div className="mb-3 lg:hidden">
-              <button
-                type="button"
-                onClick={() => setOpenMobileFeatures(!openMobileFeatures)}
-                className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left backdrop-blur-sm transition-all hover:bg-white/10"
-                aria-expanded={openMobileFeatures}
+          <div className="mt-7">
+            {!isLogin && <Stepper />}
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isLogin ? "login-head" : "register-head"}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
               >
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Pourquoi SferaLuna ?
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Profils vérifiés, sécurité, matchs compatibles...
-                  </p>
-                </div>
+                {!isLogin && <p className="mb-1 text-sm font-semibold text-pink-300">Étape 1 sur 3</p>}
+                <h2 className="text-2xl font-bold tracking-tight text-white sm:text-[28px]">
+                  {isLogin ? "Heureuse de vous revoir" : "Créez votre espace SferaLuna"}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/65 sm:text-[15px]">
+                  {isLogin
+                    ? "Reconnectez-vous à votre univers SferaLuna et retrouvez vos rencontres."
+                    : "Quelques informations pour démarrer. Vos préférences et votre profil viendront juste après."}
+                </p>
+              </motion.div>
+            </AnimatePresence>
 
-                {openMobileFeatures ? (
-                  <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
-                )}
-              </button>
+            {/* Messages */}
+            {oauthErrorMessage && (
+              <p className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {oauthErrorMessage}
+              </p>
+            )}
+            {errors.form && (
+              <p role="alert" className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {errors.form}
+              </p>
+            )}
+            {success && (
+              <p className="mt-5 flex items-start gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> {success}
+              </p>
+            )}
 
-              <AnimatePresence>
-                {openMobileFeatures && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3 grid grid-cols-1 gap-3">
-                      {premiumFeatures.map((feature, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm"
-                        >
-                          <div className="text-purple-400">{feature.icon}</div>
-                          <span className="text-sm font-medium">
-                            {feature.text}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Desktop : statistiques visibles */}
-            <div className="hidden rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-900/40 to-pink-900/40 p-4 backdrop-blur-sm sm:p-6 lg:block">
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <div className="text-2xl font-bold sm:text-3xl">—</div>
-                  <div className="text-xs text-gray-300 sm:text-sm">
-                    Rencontres
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-2xl font-bold sm:text-3xl">—</div>
-                  <div className="text-xs text-gray-300 sm:text-sm">
-                    Satisfaction
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-2xl font-bold sm:text-3xl">24h</div>
-                  <div className="text-xs text-gray-300 sm:text-sm">
-                    Support
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                {[...Array(5)].map((_, index) => (
-                  <Star
-                    key={index}
-                    className="h-4 w-4 fill-current text-yellow-400"
+            <AnimatePresence mode="wait">
+              {isLogin ? (
+                <motion.form
+                  key="login"
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 12 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handleLogin}
+                  noValidate
+                  className="mt-6 space-y-5"
+                >
+                  <Field
+                    label="Email ou pseudonyme"
+                    name="email"
+                    placeholder="votre@email.com ou votre pseudo"
+                    icon={AtSign}
+                    autoComplete="username"
+                    error={errors.email}
                   />
-                ))}
+                  <PasswordField
+                    label="Mot de passe"
+                    name="password"
+                    placeholder="Votre mot de passe"
+                    autoComplete="current-password"
+                    error={errors.password}
+                    aside={
+                      <Link href="/auth/reset-password" className="text-sm text-pink-300 transition hover:text-pink-200">
+                        Mot de passe oublié ?
+                      </Link>
+                    }
+                  />
 
-                <span className="text-xs text-gray-300 sm:text-sm">
-                  Bientôt sur l'App Store
-                </span>
-              </div>
-            </div>
+                  <div className="pt-1">
+                    <SubmitButton loading={isLoading}>{isLoading ? "Connexion…" : "Se connecter"}</SubmitButton>
+                  </div>
 
-            {/* Mobile : statistiques en accordéon */}
-            <div className="lg:hidden">
-              <button
-                type="button"
-                onClick={() => setOpenMobileStats(!openMobileStats)}
-                className="flex w-full items-center justify-between rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-900/30 to-pink-900/30 px-4 py-3 text-left backdrop-blur-sm transition-all hover:from-purple-900/40 hover:to-pink-900/40"
-                aria-expanded={openMobileStats}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Chiffres et avantages
+                  <Divider />
+                  <SocialButtons onSelect={handleSocial} disabled={isLoading} />
+                  <SecureBadge label="Connexion sécurisée" />
+
+                  <p className="border-t border-white/10 pt-5 text-center text-sm text-white/65">
+                    Pas encore de compte ?{" "}
+                    <button type="button" onClick={() => switchMode(false)} className="inline-flex items-center gap-1 font-semibold text-pink-300 hover:text-pink-200">
+                      S’inscrire maintenant <ArrowRight className="h-4 w-4" />
+                    </button>
                   </p>
-                  <p className="text-xs text-gray-400">
-                    Support, satisfaction et expérience premium
-                  </p>
-                </div>
-
-                {openMobileStats ? (
-                  <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {openMobileStats && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3 rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-900/30 to-pink-900/30 p-4 backdrop-blur-sm">
-                      <div className="grid grid-cols-3 gap-3 text-center">
-                        <div>
-                          <div className="text-xl font-bold">—</div>
-                          <div className="text-[11px] text-gray-300">
-                            Rencontres
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-xl font-bold">—</div>
-                          <div className="text-[11px] text-gray-300">
-                            Satisfaction
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-xl font-bold">24h</div>
-                          <div className="text-[11px] text-gray-300">
-                            Support
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                        {[...Array(5)].map((_, index) => (
-                          <Star
-                            key={index}
-                            className="h-3.5 w-3.5 fill-current text-yellow-400"
+                </motion.form>
+              ) : (
+                <motion.form
+                  key="register"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.2 }}
+                  onSubmit={handleRegister}
+                  noValidate
+                  className="mt-6 space-y-5"
+                >
+                  <Field
+                    label="Prénom ou nom"
+                    name="name"
+                    placeholder="Votre prénom"
+                    icon={User}
+                    autoComplete="given-name"
+                    error={errors.name}
+                  />
+                  <Field
+                    label="Pseudo (optionnel)"
+                    name="pseudonyme"
+                    placeholder="Votre pseudo visible par les autres"
+                    icon={AtSign}
+                    autoComplete="nickname"
+                    hint="Modifiable ensuite depuis votre profil."
+                    error={errors.pseudonyme}
+                  />
+                  <Field
+                    label="Adresse email"
+                    name="email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    icon={Mail}
+                    autoComplete="email"
+                    error={errors.email}
+                  />
+                  <div>
+                    <PasswordField
+                      label="Mot de passe"
+                      name="password"
+                      placeholder="Minimum 8 caractères"
+                      autoComplete="new-password"
+                      error={errors.password}
+                      onChange={checkPasswordStrength}
+                    />
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="grid flex-1 grid-cols-4 gap-1.5">
+                        {[25, 50, 75, 100].map((step) => (
+                          <span
+                            key={step}
+                            className={cn(
+                              "h-1.5 rounded-full transition-colors",
+                              passwordStrength >= step
+                                ? passwordStrength >= 75
+                                  ? "bg-emerald-400"
+                                  : passwordStrength >= 50
+                                    ? "bg-amber-300"
+                                    : "bg-rose-400"
+                                : "bg-white/10"
+                            )}
                           />
                         ))}
-
-                        <span className="text-xs text-gray-300">
-                          Bientôt sur l'App Store
-                        </span>
                       </div>
+                      <span className="w-20 text-right text-xs text-white/50">{strengthLabel}</span>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-
-          {/* Colonne droite : formulaire */}
-          <motion.div
-            initial={{ opacity: 0, x: 32 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.55 }}
-            className="order-1 flex justify-center lg:order-2"
-          >
-            <div className="relative w-full max-w-[360px] sm:max-w-md">
-              <div className="overflow-hidden rounded-[1.35rem] border border-white/10 bg-gradient-to-br from-gray-900/90 to-gray-800/90 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
-                {/* Haut du formulaire */}
-                <div className="border-b border-white/10 p-3.5 sm:p-6">
-                  <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-6">
-                    <button
-                      type="button"
-                      onClick={() => switchMode(true)}
-                      className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base ${
-                        isLogin
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
-                          : "text-gray-400 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                      Connexion
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => switchMode(false)}
-                      className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base ${
-                        !isLogin
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25"
-                          : "text-gray-400 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
-                      Inscription
-                    </button>
                   </div>
 
-                  <AnimatePresence mode="wait">
-                    {isLogin ? (
-                      <motion.div
-                        key="login-title"
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -16 }}
-                        className="space-y-1"
-                      >
-                        <h2 className="text-lg font-bold text-white sm:text-2xl">
-                          Bienvenue de retour
-                        </h2>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm text-white/75">
+                    <input
+                      type="checkbox"
+                      name="terms"
+                      required
+                      className="mt-0.5 h-5 w-5 shrink-0 rounded-md border-violet-300/40 bg-white/5 text-fuchsia-500 focus:ring-fuchsia-500/30 focus:ring-offset-0"
+                    />
+                    <span>
+                      J’accepte les{" "}
+                      <Link href="/conditions" target="_blank" className="text-pink-300 underline-offset-2 hover:underline">
+                        conditions d’utilisation
+                      </Link>{" "}
+                      et la{" "}
+                      <Link href="/confidentialite" target="_blank" className="text-pink-300 underline-offset-2 hover:underline">
+                        politique de confidentialité
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  {errors.terms && <p className="-mt-3 text-xs text-rose-300 sm:text-sm">{errors.terms}</p>}
 
-                        <p className="text-xs text-gray-400 sm:text-base">
-                          Connectez-vous à votre espace SferaLuna
-                        </p>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="register-title"
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -16 }}
-                        className="space-y-1"
-                      >
-                        <h2 className="text-lg font-bold text-white sm:text-2xl">
-                          Rejoignez l'aventure
-                        </h2>
-
-                        <p className="text-xs text-gray-400 sm:text-base">
-                          Créez votre compte en quelques secondes
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="p-3.5 sm:p-6">
-                  <AnimatePresence>
-                    {/* Erreur OAuth (ex: redirect_uri_mismatch, app non configurée) */}
-                    {oauthErrorMessage && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mb-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-3 sm:p-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className="h-5 w-5 shrink-0 text-orange-400" />
-                          <span className="text-sm text-orange-300">
-                            {oauthErrorMessage}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {errors.form && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 sm:p-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
-                          <span className="text-sm text-red-300">
-                            {errors.form}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {success && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mb-3 rounded-xl border border-green-500/30 bg-green-500/10 p-3 sm:p-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 shrink-0 text-green-400" />
-                          <span className="text-sm text-green-300">
-                            {success}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <AnimatePresence mode="wait">
-                    {isLogin ? (
-                      <motion.form
-                        key="login-form"
-                        initial={{ opacity: 0, x: 16 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -16 }}
-                        onSubmit={handleLogin}
-                        className="space-y-2.5 sm:space-y-4"
-                      >
-                        <AuthInput
-                          label="Email ou pseudonyme"
-                          name="email"
-                          type="text"
-                          placeholder="votre@email.com ou votre pseudo"
-                          icon={<AtSign className="h-5 w-5 text-gray-500" />}
-                          error={errors.email}
-                        />
-
-                        <PasswordInput
-                          label="Mot de passe"
-                          name="password"
-                          placeholder="Votre mot de passe"
-                          showPassword={showPassword}
-                          setShowPassword={setShowPassword}
-                          error={errors.password}
-                        />
-
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <label className="flex cursor-pointer items-center gap-2">
-                            <input
-                              type="checkbox"
-                              name="remember"
-                              className="h-4 w-4 rounded border border-white/10 bg-white/5 checked:border-purple-500 checked:bg-purple-500 focus:ring-purple-500/20"
-                            />
-                            <span className="text-xs text-gray-400 sm:text-sm">
-                              Se souvenir de moi
-                            </span>
-                          </label>
-
-                          <Link
-                            href="/auth/reset-password"
-                            className="text-xs text-purple-400 transition-colors hover:text-purple-300 sm:text-sm"
-                          >
-                            Mot de passe oublié ?
-                          </Link>
-                        </div>
-
-                        <SubmitButton
-                          isLoading={isLoading}
-                          loadingText="Connexion..."
-                          text="Se connecter"
-                        />
-                      </motion.form>
-                    ) : (
-                      <motion.form
-                        key="register-form"
-                        initial={{ opacity: 0, x: 16 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -16 }}
-                        onSubmit={handleRegister}
-                        className="space-y-2.5 sm:space-y-4"
-                      >
-                        <AuthInput
-                          label="Nom complet"
-                          name="name"
-                          type="text"
-                          placeholder="Votre nom et prénom"
-                          icon={<User className="h-5 w-5 text-gray-500" />}
-                          error={errors.name}
-                        />
-
-                        <AuthInput
-                          label="Pseudonyme (optionnel)"
-                          name="pseudonyme"
-                          type="text"
-                          placeholder="Votre pseudonyme visible par les autres"
-                          icon={<AtSign className="h-5 w-5 text-gray-500" />}
-                          error={errors.pseudonyme}
-                          required={false}
-                          hint="Seul votre pseudonyme sera visible sur votre profil public. Vous pourrez le définir plus tard."
-                        />
-
-                        <AuthInput
-                          label="Adresse email"
-                          name="email"
-                          type="email"
-                          placeholder="votre@email.com"
-                          icon={<Mail className="h-5 w-5 text-gray-500" />}
-                          error={errors.email}
-                        />
-
-                        <PasswordInput
-                          label="Mot de passe"
-                          name="password"
-                          placeholder="Minimum 8 caractères"
-                          showPassword={showPassword}
-                          setShowPassword={setShowPassword}
-                          error={errors.password}
-                          onChange={(value) => checkPasswordStrength(value)}
-                        />
-
-                        {passwordStrength > 0 && (
-                          <div>
-                            <div className="h-1 overflow-hidden rounded-full bg-gray-700">
-                              <div
-                                className={`h-full transition-all duration-300 ${
-                                  passwordStrength < 50
-                                    ? "bg-red-500"
-                                    : passwordStrength < 75
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                }`}
-                                style={{ width: `${passwordStrength}%` }}
-                              />
-                            </div>
-
-                            <p className="mt-1 text-xs text-gray-400">
-                              {passwordStrength < 50
-                                ? "Faible"
-                                : passwordStrength < 75
-                                  ? "Moyen"
-                                  : "Fort"}
-                            </p>
-                          </div>
-                        )}
-
-                        <PasswordInput
-                          label="Confirmer le mot de passe"
-                          name="confirmPassword"
-                          placeholder="Retapez votre mot de passe"
-                          showPassword={showConfirmPassword}
-                          setShowPassword={setShowConfirmPassword}
-                          error={errors.confirmPassword}
-                        />
-
-                        <label className="flex cursor-pointer items-start gap-2.5">
-                          <input
-                            type="checkbox"
-                            name="terms"
-                            required
-                            className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/10 bg-white/5 checked:border-purple-500 checked:bg-purple-500 focus:ring-purple-500/20 sm:h-5 sm:w-5"
-                          />
-
-                          <span className="text-xs leading-relaxed text-gray-400 sm:text-sm">
-                            J'accepte les{" "}
-                            <Link
-                              href="/conditions"
-                              className="text-purple-400 hover:text-purple-300"
-                            >
-                              conditions d'utilisation
-                            </Link>{" "}
-                            et la{" "}
-                            <Link
-                              href="/confidentialite"
-                              className="text-purple-400 hover:text-purple-300"
-                            >
-                              politique de confidentialité
-                            </Link>
-                          </span>
-                        </label>
-
-                        <SubmitButton
-                          isLoading={isLoading}
-                          loadingText="Création..."
-                          text="Créer mon compte"
-                        />
-                      </motion.form>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Connexions sociales en accordéon */}
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setOpenSocialLogin(!openSocialLogin)}
-                      className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-left transition-all hover:bg-white/10 sm:px-4 sm:py-3"
-                      aria-expanded={openSocialLogin}
-                    >
-                      <div>
-                        <p className="text-xs font-medium text-white sm:text-sm">
-                          Autres méthodes de connexion
-                        </p>
-                        <p className="text-[11px] text-gray-400 sm:text-xs">
-                          Google ou Apple
-                        </p>
-                      </div>
-
-                      {openSocialLogin ? (
-                        <ChevronUp className="h-5 w-5 shrink-0 text-purple-300" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 shrink-0 text-purple-300" />
-                      )}
-                    </button>
-
-                    <AnimatePresence>
-                      {openSocialLogin && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="pt-4">
-                            <div className="relative mb-4">
-                              <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-white/10" />
-                              </div>
-
-                              <div className="relative flex justify-center text-sm">
-                                <span className="bg-gray-900 px-3 text-gray-500">
-                                  Ou continuer avec
-                                </span>
-                              </div>
-                            </div>
-
-                            <SocialButton
-                              label="Google"
-                              imageSrc="/google-icon.svg"
-                              onClick={() => handleSocialLogin("google")}
-                              disabled={isLoading}
-                              fullWidth
-                            />
-
-                            <SocialButton
-                              label="Continuer avec Apple"
-                              imageSrc="/Apple-icon.svg"
-                              onClick={() => handleSocialLogin("apple")}
-                              disabled={isLoading}
-                              fullWidth
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {/* Footer du formulaire */}
-                <div className="border-t border-white/10 p-3.5 pt-3 sm:p-6 sm:pt-4">
-                  <p className="text-center text-xs text-gray-400 sm:text-sm">
-                    {isLogin ? (
-                      <>
-                        Pas encore de compte ?{" "}
-                        <button
-                          type="button"
-                          onClick={() => switchMode(false)}
-                          className="font-medium text-purple-400 transition-colors hover:text-purple-300"
-                        >
-                          S'inscrire maintenant
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        Vous avez déjà un compte ?{" "}
-                        <button
-                          type="button"
-                          onClick={() => switchMode(true)}
-                          className="font-medium text-purple-400 transition-colors hover:text-purple-300"
-                        >
-                          Se connecter
-                        </button>
-                      </>
-                    )}
+                  <p className="flex items-start gap-3 rounded-2xl border border-violet-300/15 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-white/65">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-violet-200" />
+                    <span>
+                      <span className="block text-sm text-white/85">Vos préférences et intentions seront définies ensuite.</span>
+                      Une vérification d’identité vous sera demandée pour garantir des profils authentiques.
+                    </span>
                   </p>
-                </div>
-              </div>
 
-              {/* 
-                Badge sécurité :
-                - caché sur très petit mobile pour éviter de gêner ;
-                - visible à partir de sm.
-              */}
-              <div className="pointer-events-none absolute -bottom-6 left-1/2 hidden w-max -translate-x-1/2 sm:block">
-                <div className="flex items-center gap-2 rounded-full border border-green-500/30 bg-gradient-to-r from-green-500/20 to-emerald-500/20 px-4 py-2 backdrop-blur-sm">
-                  <Shield className="h-4 w-4 text-green-400" />
-                  <span className="text-xs text-green-300 sm:text-sm">
-                    Sécurité SSL 256-bit
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+                  <SubmitButton loading={isLoading}>{isLoading ? "Création…" : "Créer mon compte"}</SubmitButton>
+
+                  <Divider />
+                  <SocialButtons onSelect={handleSocial} disabled={isLoading} />
+                  <SecureBadge label="Inscription sécurisée" />
+
+                  <p className="border-t border-white/10 pt-5 text-center text-sm text-white/65">
+                    Vous avez déjà un compte ?{" "}
+                    <button type="button" onClick={() => switchMode(true)} className="inline-flex items-center gap-1 font-semibold text-pink-300 hover:text-pink-200">
+                      Se connecter <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </p>
+                </motion.form>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.section>
+      </div>
     </main>
   );
 }
 
-/**
- * Export principal.
- *
- * Suspense est utile avec useSearchParams dans l'App Router.
- */
-export default function PremiumAuthPage() {
+export default function AuthPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#1a0b2e] text-white">
-          <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            <span>Chargement...</span>
-          </div>
-        </main>
+        <div className="flex min-h-screen items-center justify-center bg-[#12081f]">
+          <Loader2 className="h-8 w-8 animate-spin text-fuchsia-300" />
+        </div>
       }
     >
-      <PremiumAuthContent />
+      <AuthContent />
     </Suspense>
-  );
-}
-
-/**
- * Input classique réutilisable.
- *
- * Version mobile compacte :
- * - label plus petit ;
- * - padding vertical réduit ;
- * - meilleure hauteur sur mobile.
- */
-function AuthInput({
-  label,
-  name,
-  type,
-  placeholder,
-  icon,
-  error,
-  required = true,
-  hint,
-}: {
-  label: string;
-  name: string;
-  type: string;
-  placeholder: string;
-  icon: React.ReactNode;
-  error?: string;
-  required?: boolean;
-  hint?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-medium text-gray-400 sm:mb-2 sm:text-sm">
-        {label}
-      </label>
-
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</div>
-
-        <input
-          name={name}
-          type={type}
-          placeholder={placeholder}
-          required={required}
-          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:py-3 sm:pl-12 sm:text-base"
-        />
-      </div>
-
-      {hint && !error && (
-        <p className="mt-1 text-[11px] text-gray-500 sm:text-xs">{hint}</p>
-      )}
-      {error && <p className="mt-1 text-xs text-red-400 sm:text-sm">{error}</p>}
-    </div>
-  );
-}
-
-/**
- * Input mot de passe réutilisable.
- *
- * Version mobile compacte :
- * - hauteur réduite ;
- * - texte plus petit ;
- * - icône alignée proprement.
- */
-function PasswordInput({
-  label,
-  name,
-  placeholder,
-  showPassword,
-  setShowPassword,
-  error,
-  onChange,
-}: {
-  label: string;
-  name: string;
-  placeholder: string;
-  showPassword: boolean;
-  setShowPassword: (value: boolean) => void;
-  error?: string;
-  onChange?: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-medium text-gray-400 sm:mb-2 sm:text-sm">
-        {label}
-      </label>
-
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-gray-500 sm:h-5 sm:w-5" />
-
-        <input
-          name={name}
-          type={showPassword ? "text" : "password"}
-          placeholder={placeholder}
-          required
-          onChange={(event) => onChange?.(event.target.value)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-11 text-sm text-white outline-none transition-all placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:py-3 sm:pl-12 sm:pr-12 sm:text-base"
-        />
-
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-white"
-          aria-label={
-            showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"
-          }
-        >
-          {showPassword ? (
-            <EyeOff className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-          ) : (
-            <Eye className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
-          )}
-        </button>
-      </div>
-
-      {error && <p className="mt-1 text-xs text-red-400 sm:text-sm">{error}</p>}
-    </div>
-  );
-}
-
-/**
- * Bouton principal compact.
- */
-function SubmitButton({
-  isLoading,
-  loadingText,
-  text,
-}: {
-  isLoading: boolean;
-  loadingText: string;
-  text: string;
-}) {
-  return (
-    <motion.button
-      type="submit"
-      disabled={isLoading}
-      whileHover={{ scale: isLoading ? 1 : 1.02 }}
-      whileTap={{ scale: isLoading ? 1 : 0.98 }}
-      className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
-    >
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent sm:h-5 sm:w-5" />
-          {loadingText}
-        </div>
-      ) : (
-        text
-      )}
-    </motion.button>
-  );
-}
-
-/**
- * Bouton de connexion sociale.
- *
- * Les fichiers doivent exister dans /public :
- * - public/google-icon.svg
- * - public/Apple-icon.svg
- */
-function SocialButton({
-  label,
-  imageSrc,
-  onClick,
-  disabled,
-  fullWidth = false,
-}: {
-  label: string;
-  imageSrc: string;
-  onClick: () => void;
-  disabled?: boolean;
-  fullWidth?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`group flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm transition-all hover:border-white/20 hover:bg-white/10 disabled:opacity-50 sm:p-3 ${
-        fullWidth ? "mt-3 w-full" : ""
-      }`}
-    >
-      <Image
-        src={imageSrc}
-        alt={label}
-        width={20}
-        height={20}
-        className="transition-transform group-hover:scale-110"
-      />
-
-      <span className="font-medium">{label}</span>
-    </button>
   );
 }
