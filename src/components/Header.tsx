@@ -257,7 +257,7 @@ export default function Header() {
                   className="hidden h-11 items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-[0_8px_28px_-8px_rgba(217,70,239,0.8)] ring-1 ring-fuchsia-300/40 transition hover:brightness-110 xl:inline-flex"
                 >
                   <Compass className="h-4 w-4" />
-                  Explorer librement
+                  Explorer
                 </Link>
 
                 <div ref={userMenuRef} className="relative hidden md:block">
@@ -396,7 +396,7 @@ export default function Header() {
                       href="/explorer"
                       className="flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-600 to-violet-600 text-sm font-semibold text-white"
                     >
-                      <Compass className="h-4 w-4" /> Explorer librement
+                      <Compass className="h-4 w-4" /> Explorer
                     </Link>
                     <Link
                       href="/mon-compte"

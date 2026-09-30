@@ -94,6 +94,10 @@ export interface IUser extends Document {
 
   // Informations de profil
   bio?: string;
+  profession?: string;
+  valeurs: string[];
+  modeDeVie?: string;
+  langues: string[];
   age?: number;
   orientation?: string;
   intentions: string[];
@@ -284,6 +288,33 @@ const UserSchema = new Schema<IUser>(
       default: "",
       maxlength: [500, "La bio ne peut pas dépasser 500 caractères."],
       trim: true,
+    },
+
+    /**
+     * Profil enrichi (optionnel) — affiché sur le profil détaillé d'Explorer.
+     */
+    profession: {
+      type: String,
+      default: "",
+      maxlength: [80, "La profession ne peut pas dépasser 80 caractères."],
+      trim: true,
+    },
+
+    valeurs: {
+      type: [{ type: String, trim: true, maxlength: 40 }],
+      default: [],
+    },
+
+    modeDeVie: {
+      type: String,
+      default: "",
+      maxlength: [60, "Le mode de vie ne peut pas dépasser 60 caractères."],
+      trim: true,
+    },
+
+    langues: {
+      type: [{ type: String, trim: true, maxlength: 30 }],
+      default: [],
     },
 
     /**

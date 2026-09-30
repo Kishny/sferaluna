@@ -68,6 +68,7 @@ import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
 import TestimonialForm from "@/components/testimonials/TestimonialForm";
 import { DEPARTEMENTS, getDepartementLabel } from "@/lib/locations";
+import { LANGUAGE_OPTIONS, LIFESTYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/compatibility";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
 import DashboardHome from "@/components/dashboard/DashboardHome";
@@ -133,6 +134,10 @@ interface LunaUser {
   localisation?: string;
   departement?: string;
   rayon?: string;
+  profession?: string;
+  valeurs?: string[];
+  modeDeVie?: string;
+  langues?: string[];
   question?: string;
   reponse?: string;       // champ local uniquement : jamais retourné par l'API
   hasReponse?: boolean;   // true si réponse secrète déjà enregistrée en BDD
@@ -513,6 +518,10 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     localisation: rawUser?.localisation || "",
     departement: rawUser?.departement || "",
     rayon: rawUser?.rayon || "departement",
+    profession: rawUser?.profession || "",
+    valeurs: Array.isArray(rawUser?.valeurs) ? rawUser.valeurs : [],
+    modeDeVie: rawUser?.modeDeVie || "",
+    langues: Array.isArray(rawUser?.langues) ? rawUser.langues : [],
     question: rawUser?.question || "",
     reponse: "",          // toujours vide au chargement (jamais renvoyée par l'API)
     hasReponse: Boolean(rawUser?.hasReponse), // true si déjà renseignée en BDD
@@ -897,6 +906,10 @@ function MonCompteContent() {
           hasCompletedProfile: true,
           bio: draftUser.bio,
           image: draftUser.image,
+          profession: draftUser.profession || "",
+          valeurs: draftUser.valeurs || [],
+          modeDeVie: draftUser.modeDeVie || "",
+          langues: draftUser.langues || [],
         }),
       });
 
@@ -1698,6 +1711,65 @@ function ProfilTab({
           />
         </Field>
 
+        <Field label="Profession 💼">
+          <input
+            disabled={!isEditing}
+            value={user.profession || ""}
+            onChange={(event) => updateDraft("profession", event.target.value)}
+            className="input-luna"
+            maxLength={80}
+            placeholder="Architecte, infirmière, étudiante…"
+          />
+        </Field>
+
+        <Field label="Mode de vie 🌿">
+          <select
+            disabled={!isEditing}
+            value={user.modeDeVie || ""}
+            onChange={(event) => updateDraft("modeDeVie", event.target.value)}
+            className="input-luna"
+          >
+            <option value="">Non renseigné</option>
+            {LIFESTYLE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Valeurs importantes 💎 (5 max)" className="sm:col-span-2">
+          <OptionPills
+            options={VALUE_OPTIONS}
+            selected={user.valeurs || []}
+            max={5}
+            disabled={!isEditing}
+            onChange={(next) => updateDraft("valeurs", next)}
+          />
+        </Field>
+
+        <Field label="Langues parlées 🗣️" className="sm:col-span-2">
+          <OptionPills
+            options={LANGUAGE_OPTIONS}
+            selected={user.langues || []}
+            max={6}
+            disabled={!isEditing}
+            onChange={(next) => updateDraft("langues", next)}
+          />
+        </Field>
+
+        {(user._id || user.id) && (
+          <p className="text-sm text-white/55 sm:col-span-2">
+            Ces informations apparaissent sur votre profil détaillé.{" "}
+            <Link
+              href={`/explorer/profil/${user._id || user.id}`}
+              className="font-semibold text-pink-300 underline-offset-2 hover:underline"
+            >
+              Voir mon profil comme les autres membres
+            </Link>
+          </p>
+        )}
+
         <Field label="Question de sécurité 🔑" className="sm:col-span-2">
           <input
             disabled={!isEditing}
@@ -1733,6 +1805,49 @@ function ProfilTab({
           )}
         </Field>
       </div>
+    </div>
+  );
+}
+
+function OptionPills({
+  options,
+  selected,
+  max,
+  disabled,
+  onChange,
+}: {
+  options: readonly string[];
+  selected: string[];
+  max: number;
+  disabled: boolean;
+  onChange: (next: string[]) => void;
+}) {
+  const toggle = (option: string) => {
+    if (selected.includes(option)) onChange(selected.filter((item) => item !== option));
+    else if (selected.length < max) onChange([...selected, option]);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const active = selected.includes(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            disabled={disabled || (!active && selected.length >= max)}
+            onClick={() => toggle(option)}
+            aria-pressed={active}
+            className={`rounded-full border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed ${
+              active
+                ? "border-pink-300/60 bg-pink-500/20 text-pink-100"
+                : "border-white/15 bg-white/[0.04] text-white/70 hover:border-violet-300/40"
+            } ${disabled && !active ? "opacity-50" : ""}`}
+          >
+            {option}
+          </button>
+        );
+      })}
     </div>
   );
 }

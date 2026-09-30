@@ -69,6 +69,14 @@ const profileUpdateSchema = z.object({
 
   orientation: z.string().trim().max(100).optional(),
 
+  profession: z.string().trim().max(80, "La profession ne peut pas dépasser 80 caractères").optional(),
+
+  valeurs: z.array(z.string().trim().max(40)).max(5, "5 valeurs maximum").optional(),
+
+  modeDeVie: z.string().trim().max(60).optional(),
+
+  langues: z.array(z.string().trim().max(30)).max(6, "6 langues maximum").optional(),
+
   intentions: z.array(z.string().trim()).max(10).optional(),
 
   localisation: z.string().trim().max(120).optional(),
@@ -556,6 +564,11 @@ export async function PUT(req: NextRequest) {
     if (data.bio !== undefined) {
       updateData.bio = data.bio;
     }
+
+    if (data.profession !== undefined) updateData.profession = data.profession;
+    if (data.valeurs !== undefined) updateData.valeurs = data.valeurs;
+    if (data.modeDeVie !== undefined) updateData.modeDeVie = data.modeDeVie;
+    if (data.langues !== undefined) updateData.langues = data.langues;
 
     if (data.orientation !== undefined) {
       updateData.orientation = data.orientation;

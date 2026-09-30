@@ -64,7 +64,7 @@ export default function DashboardSidebar({
     { key: "dashboard", label: "Tableau de bord", icon: Home, tab: "dashboard" },
     {
       key: "explorer",
-      label: "Explorer librement",
+      label: "Explorer",
       icon: Compass,
       href: "/explorer",
       highlight: true,

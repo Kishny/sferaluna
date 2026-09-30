@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     const sessionEmail = session.user.email.toLowerCase().trim();
 
     const currentUser = await User.findOne({ email: sessionEmail }).select(
-      "_id isPremium plan subscriptionStatus departement rayon"
+      "_id isPremium plan subscriptionStatus departement rayon blockedUsers"
     );
 
     if (!currentUser) {
@@ -83,6 +83,15 @@ export async function GET(req: NextRequest) {
     }).select("toUserId");
 
     const likedIds = alreadyLiked.map((like) => like.toUserId);
+
+    /**
+     * Blocages dans les deux sens : ces profils n'apparaissent jamais.
+     */
+    const blockedByMe = ((currentUser as { blockedUsers?: string[] }).blockedUsers || [])
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const blockedMe = await User.find({ blockedUsers: currentUserId.toString() }).distinct("_id");
+    const hiddenIds = [...blockedByMe, ...blockedMe];
 
     const { searchParams } = new URL(req.url);
 
@@ -116,7 +125,7 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = {
       _id: {
         $ne: currentUserId,
-        ...(likedIds.length > 0 ? { $nin: likedIds } : {}),
+        ...(likedIds.length + hiddenIds.length > 0 ? { $nin: [...likedIds, ...hiddenIds] } : {}),
       },
 
       hasCompletedProfile: true,
@@ -193,6 +202,13 @@ export async function GET(req: NextRequest) {
       query.departement = effectiveDepartement;
     }
 
+    /**
+     * Uniquement les profils à l'identité vérifiée (filtre ouvert à toutes).
+     */
+    if (searchParams.get("verified") === "true") {
+      query.identityVerified = true;
+    }
+
     if (orientation && orientation.trim().length > 0) {
       query.orientation = orientation.trim();
     }
@@ -205,7 +221,7 @@ export async function GET(req: NextRequest) {
     const [profiles, total] = await Promise.all([
       User.find(query)
         .select(
-          "pseudonyme age localisation departement interets intentions visibilite image photos identityVerified createdAt updatedAt"
+          "pseudonyme age localisation departement interets intentions visibilite image photos identityVerified bio createdAt updatedAt"
         )
         .sort({ updatedAt: -1, createdAt: -1 })
         .skip(skip)

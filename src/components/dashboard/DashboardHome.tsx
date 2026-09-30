@@ -254,8 +254,8 @@ function QuickActions({
   }[] = [
     {
       key: "explorer",
-      title: "Explorer librement",
-      text: "Découvre des profils inspirants près de toi et au-delà",
+      title: "Explorer",
+      text: "Tes 6 découvertes de la semaine, puis tous les profils à ton rythme",
       icon: Compass,
       iconClass: "text-white",
       onClick: () => router.push("/explorer"),
