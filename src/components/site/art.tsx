@@ -350,3 +350,95 @@ export function SceneArt({
     </svg>
   );
 }
+
+// ─────────────────────────────────────────────
+// Grand horizon lunaire (pages d'authentification)
+// ─────────────────────────────────────────────
+
+/**
+ * Scène plein écran : grande lune rose-lavande qui se lève derrière des
+ * collines, lumières de ville au loin, lanternes et fleurs au premier plan.
+ */
+export function MoonHorizon({ className = "", fixed = false }: { className?: string; fixed?: boolean }) {
+  const rand = rng(77);
+  const blooms = Array.from({ length: 70 }).map(() => ({
+    x: rand() * 1600,
+    y: 880 + rand() * 120,
+    r: 2 + rand() * 4,
+    o: 0.35 + rand() * 0.5,
+  }));
+
+  return (
+    <div className={cn("pointer-events-none inset-0 -z-10 overflow-hidden", fixed ? "fixed" : "absolute", className)} aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_52%_62%,#6d28d9_0%,#3b1275_30%,#1c0a3d_62%,#12081f_100%)]" />
+      <svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
+        <defs>
+          <radialGradient id="mh-moon" cx="42%" cy="38%" r="68%">
+            <stop offset="0%" stopColor="#ffe4f6" />
+            <stop offset="40%" stopColor="#f5b3e6" />
+            <stop offset="75%" stopColor="#c77dea" />
+            <stop offset="100%" stopColor="#8b46d6" />
+          </radialGradient>
+          <radialGradient id="mh-halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#f0abfc" stopOpacity="0.5" />
+            <stop offset="45%" stopColor="#c026d3" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="mh-hill1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#5b2a9a" />
+            <stop offset="100%" stopColor="#2a1158" />
+          </linearGradient>
+          <linearGradient id="mh-hill2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2c0f57" />
+            <stop offset="100%" stopColor="#170733" />
+          </linearGradient>
+          <radialGradient id="mh-lantern" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffbf73" stopOpacity="0.75" />
+            <stop offset="100%" stopColor="#ff8a3d" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="mh-shoot" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0" />
+            <stop offset="100%" stopColor="#fff" stopOpacity="0.9" />
+          </linearGradient>
+        </defs>
+
+        <Stars seed={91} count={170} height={620} />
+        {/* Étoile filante */}
+        <path d="M760 90 L860 150" stroke="url(#mh-shoot)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="860" cy="150" r="3" fill="#fff" />
+
+        {/* Lune */}
+        <circle cx="820" cy="560" r="400" fill="url(#mh-halo)" />
+        <circle cx="820" cy="560" r="190" fill="url(#mh-moon)" />
+        <g fill="#b25ad6" opacity="0.22">
+          <circle cx="770" cy="490" r="30" />
+          <circle cx="880" cy="530" r="40" />
+          <circle cx="815" cy="615" r="21" />
+          <circle cx="920" cy="450" r="16" />
+          <circle cx="720" cy="585" r="18" />
+        </g>
+
+        {/* Collines lointaines + lumières */}
+        <path d="M0 640 C 180 560 320 600 470 590 C 640 575 760 640 900 650 C 1080 660 1220 580 1380 600 C 1480 612 1560 590 1600 600 L1600 1000 L0 1000 Z" fill="url(#mh-hill1)" opacity="0.9" />
+        <g transform="translate(250 650) scale(0.7 0.35)" opacity="0.9">
+          <SkylineShapes seed={5} height={180} fill="#3a1670" windowColor="#ffcf8a" windowDensity={0.35} />
+        </g>
+        <path d="M0 712 C 220 690 380 725 560 708 C 760 690 900 740 1080 730 C 1260 720 1420 690 1600 705 L1600 1000 L0 1000 Z" fill="url(#mh-hill2)" />
+
+        {/* Fleurs du premier plan */}
+        {blooms.map((b, i) => (
+          <circle key={i} cx={b.x} cy={b.y} r={b.r} fill={i % 3 ? "#f472b6" : "#e879f9"} opacity={b.o} />
+        ))}
+
+        {/* Lanternes */}
+        {[[70, 900], [150, 820], [1520, 880], [1440, 800]].map(([x, y], i) => (
+          <g key={i}>
+            <circle cx={x} cy={y} r={70} fill="url(#mh-lantern)" />
+            <rect x={x - 9} y={y - 14} width={18} height={26} rx={4} fill="#ffcf8a" opacity={0.9} />
+          </g>
+        ))}
+      </svg>
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#12081f] to-transparent" />
+    </div>
+  );
+}
