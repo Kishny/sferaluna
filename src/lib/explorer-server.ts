@@ -21,7 +21,7 @@ import { Match } from "@/models/Match";
 type Oid = mongoose.Types.ObjectId;
 
 export const PUBLIC_PROFILE_FIELDS =
-  "_id pseudonyme age localisation departement interets intentions orientation bio image photos identityVerified photoVerified emailVerified lastLoginAt createdAt profession valeurs modeDeVie langues visibilite";
+  "_id pseudonyme age localisation departement interets intentions orientation bio image photos identityVerified photoVerified emailVerified lastLoginAt createdAt profession valeurs modeDeVie langues visibilite videos";
 
 export function toOid(value: unknown): Oid | null {
   const str = String(value ?? "");
@@ -125,10 +125,16 @@ export function publicProfile(doc: any) {
     (url: string | undefined, index: number, all: (string | undefined)[]) => url && all.indexOf(url) === index
   ) as string[];
 
+  // Vidéos : on n'expose que l'adresse de lecture, l'affiche et la durée.
+  const videos = (Array.isArray(doc.videos) ? doc.videos : [])
+    .filter((v: any) => v?.url)
+    .map((v: any) => ({ url: v.url, posterUrl: v.posterUrl || "", duration: v.duration || 0 }));
+
   return {
     ...rest,
     _id: String(doc._id),
     gallery,
+    videos,
     recentlyActive: lastLoginAt ? Date.now() - new Date(lastLoginAt).getTime() < 7 * 24 * 60 * 60 * 1000 : false,
   };
 }

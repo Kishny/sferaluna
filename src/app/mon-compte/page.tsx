@@ -75,6 +75,8 @@ import DashboardHome from "@/components/dashboard/DashboardHome";
 import { useDashboardData } from "@/components/dashboard/useDashboardData";
 import type { MissingField, NotificationCounts } from "@/components/dashboard/types";
 import { useSelfieGate } from "@/components/photo-verification/SelfieGate";
+import VideosSection, { type ProfileVideo } from "@/components/profile/VideosSection";
+import { MAX_PROFILE_PHOTOS } from "@/lib/media-limits";
 
 // ─────────────────────────────────────────────
 // Types
@@ -141,6 +143,7 @@ interface LunaUser {
   langues?: string[];
   photoVerified?: boolean;
   photoVerificationStatus?: "none" | "verified" | "needs_review";
+  videos?: ProfileVideo[];
   question?: string;
   reponse?: string;       // champ local uniquement : jamais retourné par l'API
   hasReponse?: boolean;   // true si réponse secrète déjà enregistrée en BDD
@@ -527,6 +530,7 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     langues: Array.isArray(rawUser?.langues) ? rawUser.langues : [],
     photoVerified: rawUser?.photoVerified === true,
     photoVerificationStatus: rawUser?.photoVerificationStatus || "none",
+    videos: Array.isArray(rawUser?.videos) ? rawUser.videos : [],
     question: rawUser?.question || "",
     reponse: "",          // toujours vide au chargement (jamais renvoyée par l'API)
     hasReponse: Boolean(rawUser?.hasReponse), // true si déjà renseignée en BDD
@@ -1648,10 +1652,18 @@ function ProfilTab({
         <span className="shrink-0 text-sm font-semibold text-pink-300">{user.photoVerified ? "Gérer" : "Commencer"} →</span>
       </Link>
 
-      <PhotosSection
-        photos={user.photos ?? []}
-        onPhotosSaved={onPhotosSaved}
-      />
+      {/* Photos + vidéos sur une seule ligne en grand écran (grille 8 colonnes : 6 photos + 2 vidéos) */}
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-8 lg:gap-2">
+        <div className="min-w-0 lg:col-span-6">
+          <PhotosSection
+            photos={user.photos ?? []}
+            onPhotosSaved={onPhotosSaved}
+          />
+        </div>
+        <div className="min-w-0 lg:col-span-2">
+          <VideosSection videos={user.videos ?? []} onSaved={onPhotosSaved} />
+        </div>
+      </div>
 
       <Field label="Bio ✨" className="mb-4">
         <textarea
@@ -3131,7 +3143,7 @@ function PhotosSection({
     }
   };
 
-  const slots = [0, 1, 2];
+  const slots = Array.from({ length: MAX_PROFILE_PHOTOS }, (_, i) => i);
 
   return (
     <div className="space-y-3">
@@ -3140,7 +3152,7 @@ function PhotosSection({
           Mes photos 📸
         </p>
         <p className="text-xs text-white/30">
-          Jusqu&apos;à 3 photos · JPG, PNG, WebP · recadrées 4:5
+          {MAX_PROFILE_PHOTOS} max · JPG, PNG, WebP · format 4:5
         </p>
       </div>
 
@@ -3164,7 +3176,7 @@ function PhotosSection({
         </motion.div>
       )}
 
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {slots.map((slotIndex) => {
           const photoUrl = photos[slotIndex];
           const isLoading = slotLoading[slotIndex] ?? false;
@@ -3172,7 +3184,7 @@ function PhotosSection({
           return (
             <div
               key={slotIndex}
-              className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur"
+              className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur"
             >
               {photoUrl ? (
                 <>

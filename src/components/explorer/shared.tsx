@@ -50,6 +50,7 @@ export interface ExplorerProfile {
   image?: string;
   photos?: string[];
   gallery?: string[];
+  videos?: { url: string; posterUrl?: string; duration?: number }[];
   identityVerified?: boolean;
   photoVerified?: boolean;
   recentlyActive?: boolean;

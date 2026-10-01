@@ -84,6 +84,9 @@ export interface IUser extends Document {
   image?: string;
   photos: string[];
 
+  // Courtes vidéos de profil (≤ 15 s, max 2), hébergées sur Cloudinary
+  videos: { url: string; publicId: string; posterUrl: string; duration: number; createdAt: Date }[];
+
   // Circle of Six — contacts de confiance du réseau de sécurité personnel
   // (max 6). Stockés côté serveur pour synchro multi-appareils (app mobile).
   trustedContacts: { name: string; phone: string; addedAt: Date }[];
@@ -239,8 +242,33 @@ const UserSchema = new Schema<IUser>(
       type: [String],
       default: [],
       validate: {
-        validator: (arr: string[]) => arr.length <= 3,
-        message: "Maximum 3 photos supplémentaires autorisées.",
+        validator: (arr: string[]) => arr.length <= 6,
+        message: "Maximum 6 photos supplémentaires autorisées.",
+      },
+    },
+
+    /**
+     * Courtes vidéos de profil (≤ 15 secondes, max 2).
+     * Envoyées directement du navigateur vers Cloudinary (upload signé),
+     * puis contrôlées et enregistrées via /api/upload/video.
+     */
+    videos: {
+      type: [
+        new Schema(
+          {
+            url: { type: String, required: true },
+            publicId: { type: String, required: true },
+            posterUrl: { type: String, default: "" },
+            duration: { type: Number, default: 0 },
+            createdAt: { type: Date, default: Date.now },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+      validate: {
+        validator: (arr: unknown[]) => arr.length <= 2,
+        message: "Maximum 2 vidéos autorisées.",
       },
     },
 

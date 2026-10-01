@@ -29,6 +29,7 @@ import {
   Gem,
   Heart,
   Image as ImageIcon,
+  Play,
   Languages,
   Loader2,
   Mail,
@@ -68,6 +69,8 @@ import {
   type ReasonKey,
 } from "@/lib/compatibility";
 import { getDepartementNom } from "@/lib/locations";
+
+type MediaItem = { kind: "photo"; url: string } | { kind: "video"; url: string; poster?: string; duration?: number };
 
 type Detail = {
   isSelf: boolean;
@@ -237,7 +240,14 @@ function ProfileDetailContent() {
   };
 
   const p = detail?.profile;
-  const gallery = p?.gallery?.length ? p.gallery : [""];
+  const media: MediaItem[] = [
+    ...(p?.gallery ?? []).map((url) => ({ kind: "photo" as const, url })),
+    ...(p?.videos ?? []).map((v) => ({ kind: "video" as const, url: v.url, poster: v.posterUrl, duration: v.duration })),
+  ];
+  const gallery: MediaItem[] = media.length ? media : [{ kind: "photo", url: "" }];
+  const current = gallery[Math.min(photoIndex, gallery.length - 1)];
+  const photoCount = p?.gallery?.length || 0;
+  const videoCount = p?.videos?.length || 0;
   const memberSince = detail?.memberSince
     ? new Date(detail.memberSince).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
     : null;
@@ -290,14 +300,15 @@ function ProfileDetailContent() {
                     <ImageIcon className="h-5 w-5 text-fuchsia-300" /> Galerie photos
                   </p>
                   <span className="text-xs text-white/50">
-                    {p.gallery?.length || 0} photo{(p.gallery?.length || 0) > 1 ? "s" : ""}
+                    {photoCount} photo{photoCount > 1 ? "s" : ""}
+                    {videoCount > 0 && ` · ${videoCount} vidéo${videoCount > 1 ? "s" : ""}`}
                   </span>
                 </div>
-                {p.gallery?.length ? (
+                {media.length ? (
                   <div className="mt-4 grid grid-cols-3 gap-2">
-                    {p.gallery.slice(0, 9).map((url, i) => (
+                    {media.slice(0, 9).map((item, i) => (
                       <button
-                        key={url}
+                        key={item.url}
                         type="button"
                         onClick={() => setPhotoIndex(i)}
                         className={cn(
@@ -305,9 +316,21 @@ function ProfileDetailContent() {
                           i === photoIndex ? "ring-fuchsia-400" : "ring-transparent opacity-80 hover:opacity-100",
                           i === 0 && "col-span-2 row-span-2"
                         )}
-                        aria-label={`Photo ${i + 1}`}
+                        aria-label={item.kind === "video" ? `Vidéo ${i + 1}` : `Photo ${i + 1}`}
                       >
-                        <ProfilePhoto src={url} name={p.pseudonyme} className="h-full w-full" />
+                        {item.kind === "video" ? (
+                          <span className="relative block h-full w-full bg-black">
+                            {item.poster && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.poster} alt="" className="h-full w-full object-cover" />
+                            )}
+                            <span className="absolute inset-0 m-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur">
+                              <Play className="h-3.5 w-3.5 fill-white text-white" />
+                            </span>
+                          </span>
+                        ) : (
+                          <ProfilePhoto src={item.url} name={p.pseudonyme} className="h-full w-full" />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -370,10 +393,25 @@ function ProfileDetailContent() {
                 <div className="relative aspect-[4/5] w-full sm:aspect-[4/3]">
                   <AnimatePresence mode="wait">
                     <motion.div key={photoIndex} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} exit={{ opacity: 0.4 }} transition={{ duration: 0.2 }} className="absolute inset-0">
-                      <ProfilePhoto src={gallery[photoIndex]} name={p.pseudonyme} className="h-full w-full" />
+                      {current.kind === "video" ? (
+                        // eslint-disable-next-line jsx-a11y/media-has-caption
+                        <video
+                          key={current.url}
+                          src={current.url}
+                          poster={current.poster}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full bg-black object-contain"
+                        />
+                      ) : (
+                        <ProfilePhoto src={current.url} name={p.pseudonyme} className="h-full w-full" />
+                      )}
                     </motion.div>
                   </AnimatePresence>
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1b0d38] via-transparent to-transparent" />
+                  {current.kind !== "video" && (
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1b0d38] via-transparent to-transparent" />
+                  )}
 
                   {(from === "decouvertes" || from === "circle") && (
                     <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500/90 to-pink-500/90 px-3 py-1.5 text-xs font-semibold text-white">
@@ -393,16 +431,16 @@ function ProfileDetailContent() {
 
                   {gallery.length > 1 && (
                     <>
-                      <button type="button" onClick={() => setPhotoIndex((i) => (i - 1 + gallery.length) % gallery.length)} className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/35 backdrop-blur hover:bg-black/55" aria-label="Photo précédente">
+                      <button type="button" onClick={() => setPhotoIndex((i) => (i - 1 + gallery.length) % gallery.length)} className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/35 backdrop-blur hover:bg-black/55" aria-label="Média précédent">
                         <ChevronLeft className="h-5 w-5" />
                       </button>
-                      <button type="button" onClick={() => setPhotoIndex((i) => (i + 1) % gallery.length)} className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/35 backdrop-blur hover:bg-black/55" aria-label="Photo suivante">
+                      <button type="button" onClick={() => setPhotoIndex((i) => (i + 1) % gallery.length)} className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/35 backdrop-blur hover:bg-black/55" aria-label="Média suivant">
                         <ChevronRight className="h-5 w-5" />
                       </button>
                     </>
                   )}
 
-                  {!detail.isSelf && (
+                  {!detail.isSelf && current.kind !== "video" && (
                     <div className="absolute bottom-5 right-5 rounded-2xl border border-fuchsia-300/40 bg-[#2a0f4f]/85 px-4 py-2.5 text-center backdrop-blur">
                       <p className="flex items-center justify-center gap-1.5 text-2xl font-bold text-white">
                         <Heart className="h-5 w-5 fill-pink-400 text-pink-400" /> {detail.compatibility.score}%

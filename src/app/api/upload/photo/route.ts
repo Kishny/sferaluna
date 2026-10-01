@@ -17,6 +17,7 @@ import { User } from "@/models/User";
 import { ModerationLog } from "@/models/ModerationLog";
 import cloudinary from "@/lib/cloudinary";
 import { screenUpload } from "@/lib/photo-verification";
+import { MAX_PROFILE_PHOTOS } from "@/lib/media-limits";
 import {
   getModerationUploadOption,
   evaluateModeration,
@@ -25,7 +26,7 @@ import {
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
-const MAX_PHOTOS = 3;
+const MAX_PHOTOS = MAX_PROFILE_PHOTOS;
 
 // ── POST — ajouter une photo ───────────────────────────────────────────────
 
