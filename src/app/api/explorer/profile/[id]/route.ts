@@ -74,6 +74,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
         matchId,
         verifications: {
           identity: Boolean(doc.identityVerified),
+          photo: Boolean(doc.photoVerified),
           email: Boolean(doc.emailVerified),
         },
         memberSince: doc.createdAt ?? null,

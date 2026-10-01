@@ -147,6 +147,12 @@ export interface IUser extends Document {
   identityVerificationStatus: IdentityVerificationStatus;
   stripeVerificationSessionId?: string | null;
 
+  // Vérification des photos (selfie vivant ↔ photos du profil)
+  photoVerified: boolean;
+  photoVerificationStatus: "none" | "verified" | "needs_review";
+  photoVerifiedAt?: Date | null;
+  photoMismatches?: string[];
+
   // Verrouillage changements annuels
   pseudonymeChangedAt?: Date | null;
   orientationChangedAt?: Date | null;
@@ -638,6 +644,34 @@ const UserSchema = new Schema<IUser>(
       enum: ["unverified", "pending", "verified", "failed"],
       default: "unverified",
       index: true,
+    },
+
+    /**
+     * Vérification des photos : un selfie vivant (contrôle de vivacité AWS)
+     * sert de référence ; chaque photo du profil est comparée à ce visage.
+     * Le selfie lui-même est stocké chiffré dans PhotoVerification.
+     */
+    photoVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    photoVerificationStatus: {
+      type: String,
+      enum: ["none", "verified", "needs_review"],
+      default: "none",
+    },
+
+    photoVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    /** URLs des photos où le visage ne correspond pas (à retirer). */
+    photoMismatches: {
+      type: [String],
+      default: [],
     },
 
     stripeVerificationSessionId: {

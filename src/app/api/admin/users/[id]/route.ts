@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
+import { PhotoVerification } from "@/models/PhotoVerification";
 import { User } from "@/models/User";
 import { Like } from "@/models/Like";
 import { Match } from "@/models/Match";
@@ -144,6 +145,7 @@ export async function DELETE(
       CommunityPost.deleteMany({ userId }),
       MentorPost.deleteMany({ userId }),
       JournalEntry.deleteMany({ userId }),
+      PhotoVerification.deleteMany({ userId }),
       Boost.deleteMany({ userId }),
       Testimonial.deleteMany({ userId }),
       LunaEvent.updateMany({ attendees: userId }, { $pull: { attendees: userId } }),

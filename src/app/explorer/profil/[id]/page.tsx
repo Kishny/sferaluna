@@ -21,6 +21,7 @@ import {
   BadgeCheck,
   Briefcase,
   CalendarDays,
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -53,6 +54,7 @@ import {
   ProfileMenu,
   ProfilePhoto,
   VerifiedBadge,
+  PhotoVerifiedBadge,
   readList,
   useLike,
   type ExplorerProfile,
@@ -73,7 +75,7 @@ type Detail = {
   compatibility: Compatibility;
   likedByMe: boolean;
   matchId: string | null;
-  verifications: { identity: boolean; email: boolean };
+  verifications: { identity: boolean; email: boolean; photo?: boolean };
   memberSince: string | null;
 };
 
@@ -343,6 +345,7 @@ function ProfileDetailContent() {
                 <ul className="mt-3 space-y-2.5">
                   {[
                     { icon: BadgeCheck, label: "Identité vérifiée", ok: detail.verifications.identity },
+                    { icon: Camera, label: "Photos vérifiées par selfie", ok: !!detail.verifications.photo },
                     { icon: Mail, label: "Adresse email confirmée", ok: detail.verifications.email },
                   ].map((v) => (
                     <li key={v.label} className="flex items-center gap-3 text-sm">
@@ -415,6 +418,7 @@ function ProfileDetailContent() {
                         {p.age ? `, ${p.age}` : ""}
                       </h2>
                       {p.identityVerified && <VerifiedBadge />}
+                      {p.photoVerified && <PhotoVerifiedBadge />}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/85">
                       {city && (

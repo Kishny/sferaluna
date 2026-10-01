@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
@@ -33,7 +33,8 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
-              "connect-src 'self' https://api.stripe.com wss://ws-eu.pusher.com https://sockjs-eu.pusher.com",
+              "connect-src 'self' https://api.stripe.com wss://ws-eu.pusher.com https://sockjs-eu.pusher.com https://cdn.liveness.rekognition.amazonaws.com wss://streaming-rekognition.eu-west-1.amazonaws.com https://streaming-rekognition.eu-west-1.amazonaws.com",
+              "worker-src 'self' blob:",
               "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube.com https://www.youtube-nocookie.com",
             ].join("; "),
           },

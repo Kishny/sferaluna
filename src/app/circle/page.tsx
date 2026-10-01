@@ -35,6 +35,7 @@ import {
   MatchModal,
   ProfilePhoto,
   VerifiedBadge,
+  PhotoVerifiedBadge,
   rememberList,
   useLike,
   type ExplorerProfile,
@@ -268,6 +269,7 @@ function CircleContent() {
                       {featured.age ? `, ${featured.age}` : ""}
                     </h2>
                     {featured.identityVerified && <VerifiedBadge small />}
+                    {featured.photoVerified && <PhotoVerifiedBadge small />}
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
                     {featured.localisation && (
@@ -384,6 +386,7 @@ function SmallCard({
               {p.age ? `, ${p.age}` : ""}
             </h3>
             {p.identityVerified && <VerifiedBadge small />}
+            {p.photoVerified && <PhotoVerifiedBadge small />}
           </div>
           {p.localisation && (
             <p className="mt-1 flex items-center gap-1.5 text-sm text-white/70">

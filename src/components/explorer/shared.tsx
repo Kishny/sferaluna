@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Ban,
   BadgeCheck,
+  Camera,
   Flag,
   Heart,
   Loader2,
@@ -50,6 +51,7 @@ export interface ExplorerProfile {
   photos?: string[];
   gallery?: string[];
   identityVerified?: boolean;
+  photoVerified?: boolean;
   recentlyActive?: boolean;
   profession?: string;
   valeurs?: string[];
@@ -97,6 +99,21 @@ export function VerifiedBadge({ small = false }: { small?: boolean }) {
       )}
     >
       <BadgeCheck className={small ? "h-3 w-3" : "h-3.5 w-3.5"} /> Vérifiée
+    </span>
+  );
+}
+
+/** Photos du profil comparées au selfie vivant de la membre. */
+export function PhotoVerifiedBadge({ small = false }: { small?: boolean }) {
+  return (
+    <span
+      title="Les photos de ce profil ont été comparées à un selfie pris en direct"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full bg-sky-500/90 font-semibold text-white shadow-md shadow-sky-900/40",
+        small ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs"
+      )}
+    >
+      <Camera className={small ? "h-3 w-3" : "h-3.5 w-3.5"} /> Photo vérifiée
     </span>
   );
 }

@@ -26,7 +26,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { ExplorerShell, ProfileMenu, ProfilePhoto, VerifiedBadge } from "@/components/explorer/shared";
+import { ExplorerShell, PhotoVerifiedBadge, ProfileMenu, ProfilePhoto, VerifiedBadge } from "@/components/explorer/shared";
 import {
   ActiveBadge,
   BTN_GHOST,
@@ -61,6 +61,7 @@ interface MatchUser {
   image?: string;
   bio?: string;
   identityVerified?: boolean;
+  photoVerified?: boolean;
   recentlyActive?: boolean;
 }
 
@@ -333,6 +334,7 @@ function MatchCard({ match, index, onBlocked }: { match: MatchItem; index: numbe
                 {u.age ? <span className="font-medium">, {u.age}</span> : null}
               </h2>
               {u.identityVerified && <VerifiedBadge small />}
+              {u.photoVerified && <PhotoVerifiedBadge small />}
               <ActiveBadge active={u.recentlyActive} />
             </div>
             {u.localisation && (

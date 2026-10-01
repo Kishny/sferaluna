@@ -16,6 +16,7 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { ModerationLog } from "@/models/ModerationLog";
 import cloudinary from "@/lib/cloudinary";
+import { screenUpload } from "@/lib/photo-verification";
 import {
   getModerationUploadOption,
   evaluateModeration,
@@ -101,6 +102,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Vérification des photos : si un visage apparaît, ce doit être celui
+    // du selfie de référence (si la membre a fait sa vérification).
+    const screening = await screenUpload(user._id, result.secure_url, "photo");
+    if (!screening.allowed) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      return NextResponse.json(
+        { success: false, code: screening.code, error: screening.error },
+        { status: screening.status }
+      );
+    }
+
     const updatedUser = await User.findOneAndUpdate(
       { email },
       { $push: { photos: result.secure_url } },
@@ -137,7 +149,7 @@ export async function DELETE(req: NextRequest) {
 
     const updatedUser = await User.findOneAndUpdate(
       { email },
-      { $pull: { photos: url } },
+      { $pull: { photos: url, photoMismatches: url } },
       { new: true }
     ).select("photos");
 

@@ -21,7 +21,7 @@ import { Match } from "@/models/Match";
 type Oid = mongoose.Types.ObjectId;
 
 export const PUBLIC_PROFILE_FIELDS =
-  "_id pseudonyme age localisation departement interets intentions orientation bio image photos identityVerified emailVerified lastLoginAt createdAt profession valeurs modeDeVie langues visibilite";
+  "_id pseudonyme age localisation departement interets intentions orientation bio image photos identityVerified photoVerified emailVerified lastLoginAt createdAt profession valeurs modeDeVie langues visibilite";
 
 export function toOid(value: unknown): Oid | null {
   const str = String(value ?? "");

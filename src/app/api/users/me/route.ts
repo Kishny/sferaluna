@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectDB } from '@/lib/db';
+import { PhotoVerification } from "@/models/PhotoVerification";
 import { User } from '@/models/User';
 import { Like } from '@/models/Like';
 import { Match } from '@/models/Match';
@@ -87,6 +88,7 @@ export async function DELETE() {
     CommunityPost.deleteMany({ userId }),
     MentorPost.deleteMany({ userId }),
     JournalEntry.deleteMany({ userId }),
+    PhotoVerification.deleteMany({ userId }),
   ]);
 
   // ── 4. Supprimer le document User ─────────────────────────────────────────

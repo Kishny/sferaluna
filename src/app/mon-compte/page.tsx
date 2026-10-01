@@ -138,6 +138,8 @@ interface LunaUser {
   valeurs?: string[];
   modeDeVie?: string;
   langues?: string[];
+  photoVerified?: boolean;
+  photoVerificationStatus?: "none" | "verified" | "needs_review";
   question?: string;
   reponse?: string;       // champ local uniquement : jamais retourné par l'API
   hasReponse?: boolean;   // true si réponse secrète déjà enregistrée en BDD
@@ -522,6 +524,8 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     valeurs: Array.isArray(rawUser?.valeurs) ? rawUser.valeurs : [],
     modeDeVie: rawUser?.modeDeVie || "",
     langues: Array.isArray(rawUser?.langues) ? rawUser.langues : [],
+    photoVerified: rawUser?.photoVerified === true,
+    photoVerificationStatus: rawUser?.photoVerificationStatus || "none",
     question: rawUser?.question || "",
     reponse: "",          // toujours vide au chargement (jamais renvoyée par l'API)
     hasReponse: Boolean(rawUser?.hasReponse), // true si déjà renseignée en BDD
@@ -1603,6 +1607,34 @@ function ProfilTab({
           />
         </div>
       </div>
+
+      <Link
+        href="/verification-photo"
+        className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition hover:brightness-110 ${
+          user.photoVerified
+            ? "border-sky-300/30 bg-sky-500/10"
+            : "border-fuchsia-300/40 bg-gradient-to-r from-fuchsia-500/15 to-violet-500/10"
+        }`}
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl" aria-hidden>
+          {user.photoVerified ? "✅" : "📸"}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-white">
+            {user.photoVerified
+              ? "Photos vérifiées par selfie"
+              : user.photoVerificationStatus === "needs_review"
+                ? "Certaines photos sont à revoir"
+                : "Vérifiez vos photos"}
+          </span>
+          <span className="block text-xs text-white/60">
+            {user.photoVerified
+              ? "Le badge « Photo vérifiée » est visible sur votre profil."
+              : "Un selfie en direct prouve que vos photos sont bien les vôtres et rassure les autres membres."}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm font-semibold text-pink-300">{user.photoVerified ? "Gérer" : "Commencer"} →</span>
+      </Link>
 
       <PhotosSection
         photos={user.photos ?? []}

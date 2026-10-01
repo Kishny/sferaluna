@@ -46,6 +46,7 @@ import {
   ProfileMenu,
   ProfilePhoto,
   VerifiedBadge,
+  PhotoVerifiedBadge,
   rememberList,
   useLike,
   type ExplorerProfile,
@@ -336,6 +337,7 @@ function DiscoveriesContent() {
                           {current.age ? `, ${current.age}` : ""}
                         </h2>
                         {current.identityVerified && <VerifiedBadge />}
+                        {current.photoVerified && <PhotoVerifiedBadge />}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/85">
                         <span className="inline-flex items-center gap-1.5">
@@ -386,7 +388,7 @@ function DiscoveriesContent() {
 
               <div className="sticky bottom-3 z-10 mt-4 grid grid-cols-3 gap-3 rounded-3xl bg-[#12081f]/70 p-1 backdrop-blur-xl lg:static lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
                 <ActionButton variant="pass" onClick={() => select(index + 1)}>
-                  <X className="h-5 w-5" /> <span className="hidden sm:inline">Passer</span>
+                  <X className="h-5 w-5" /> <span>Passer</span>
                 </ActionButton>
                 <ActionButton variant="info" onClick={() => openProfile(current)}>
                   <UserRound className="h-5 w-5" /> <span className="sm:hidden">Profil</span><span className="hidden sm:inline">Voir le profil</span>

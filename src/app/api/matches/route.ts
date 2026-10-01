@@ -147,7 +147,7 @@ export async function GET() {
       banned: { $ne: true },
     })
       .select(
-        "_id pseudonyme age localisation departement interets intentions image identityVerified visibilite hasCompletedProfile updatedAt bio lastLoginAt"
+        "_id pseudonyme age localisation departement interets intentions image identityVerified photoVerified visibilite hasCompletedProfile updatedAt bio lastLoginAt"
       )
       .lean();
 

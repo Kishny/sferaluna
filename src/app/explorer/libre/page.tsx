@@ -42,6 +42,7 @@ import {
   ProfileMenu,
   ProfilePhoto,
   VerifiedBadge,
+  PhotoVerifiedBadge,
   rememberList,
   useLike,
   type ExplorerProfile,
@@ -388,6 +389,7 @@ function ExploreFreelyContent() {
                           {current.age ? `, ${current.age}` : ""}
                         </span>
                         {current.identityVerified && <VerifiedBadge />}
+                        {current.photoVerified && <PhotoVerifiedBadge />}
                       </span>
                       <span className="mt-1.5 flex items-center gap-1.5 text-sm text-white/85">
                         <MapPin className="h-4 w-4" /> {current.localisation || getDepartementNom(current.departement) || "France"}

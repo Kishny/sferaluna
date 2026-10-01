@@ -12,6 +12,7 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { ModerationLog } from "@/models/ModerationLog";
 import cloudinary from "@/lib/cloudinary";
+import { screenUpload } from "@/lib/photo-verification";
 import {
   getModerationUploadOption,
   evaluateModeration,
@@ -106,11 +107,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sauvegarder l'URL dans MongoDB
     const email = session.user.email.toLowerCase().trim();
-    await User.findOneAndUpdate(
-      { email },
-      { $set: { image: result.secure_url } }
+    const owner = await User.findOne({ email }).select("_id image photoMismatches photoVerificationStatus");
+    if (!owner) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      return NextResponse.json({ success: false, error: "Utilisateur introuvable." }, { status: 404 });
+    }
+
+    // Vérification des photos : la photo principale doit montrer le visage
+    // du selfie de référence (si la membre a fait sa vérification).
+    const screening = await screenUpload(owner._id, result.secure_url, "avatar");
+    if (!screening.allowed) {
+      await cloudinary.uploader.destroy(result.public_id).catch(() => {});
+      return NextResponse.json(
+        { success: false, code: screening.code, error: screening.error },
+        { status: screening.status }
+      );
+    }
+
+    // Sauvegarder l'URL dans MongoDB
+    const remainingMismatches = (owner.photoMismatches ?? []).filter((url) => url !== owner.image);
+    await User.updateOne(
+      { _id: owner._id },
+      {
+        $set: {
+          image: result.secure_url,
+          photoMismatches: remainingMismatches,
+          ...(screening.verifiedMatch && remainingMismatches.length === 0
+            ? { photoVerified: true, photoVerificationStatus: "verified", photoVerifiedAt: new Date() }
+            : {}),
+        },
+      }
     );
 
     return NextResponse.json(
