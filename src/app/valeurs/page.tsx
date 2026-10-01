@@ -766,7 +766,7 @@ export default function ValeursPage() {
                   icon: "💜",
                 },
                 {
-                  value: "24/7",
+                  value: "Active",
                   label: "Modération",
                   icon: "🛡️",
                 },

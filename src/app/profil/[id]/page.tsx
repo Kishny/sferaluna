@@ -25,7 +25,6 @@ import {
   ChevronRight,
   Eye,
   FileText,
-  Flag,
   Heart,
   HeartHandshake,
   Image as ImageIcon,
@@ -44,12 +43,12 @@ import {
 } from "lucide-react";
 
 import Footer from "@/components/Footer";
-import ReportModal from "@/components/ReportModal";
 import MoonScene from "@/components/dashboard/MoonScene";
 import {
   ExplorerShell,
   MatchModal,
   PANEL,
+  ProfileMenu,
   ProfilePhoto,
   useLike,
   type ExplorerProfile,
@@ -93,7 +92,6 @@ function ProfilContent() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reportOpen, setReportOpen] = useState(false);
   const [viewer, setViewer] = useState<number | null>(null);
   const [liked, setLiked] = useState(false);
   const [match, setMatch] = useState<string | null>(null);
@@ -191,14 +189,11 @@ function ProfilContent() {
                 Retour
               </button>
               {detail && (
-                <button
-                  type="button"
-                  onClick={() => setReportOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-200 transition hover:bg-red-500/20"
-                >
-                  <Flag className="h-3.5 w-3.5" />
-                  Signaler
-                </button>
+                <ProfileMenu
+                  profileId={detail.profile._id}
+                  profileName={detail.profile.pseudonyme || "cette membre"}
+                  onBlocked={() => router.push("/explorer")}
+                />
               )}
             </div>
           )}
@@ -403,7 +398,6 @@ function ProfilContent() {
 
       <MatchModal profile={match ? p ?? null : null} matchId={match} onClose={() => setMatch(null)} />
 
-      <ReportModal isOpen={reportOpen} targetId={detail?.profile._id ?? ""} targetType="user" onClose={() => setReportOpen(false)} />
     </>
   );
 }

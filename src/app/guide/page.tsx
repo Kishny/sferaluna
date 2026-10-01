@@ -192,7 +192,7 @@ export default function GuidePage() {
     {
       question: 'Comment fonctionne la modération sur SferaLuna ?',
       answer:
-        'Notre équipe de modération travaille 24h/24 pour garantir la sécurité de toutes. Nous vérifions les profils, surveillons les interactions et agissons rapidement en cas de signalement.',
+        'Un filtre bloque automatiquement les messages abusifs dans la messagerie, et notre équipe de modération examine chaque signalement en journée. Selon la situation, le signalement est classé ou le compte en cause est suspendu.',
     },
     {
       question: 'Puis-je utiliser SferaLuna si je suis en couple ?',

@@ -215,7 +215,7 @@ export default function CommencerPage() {
     {
       icon: <Shield className="h-5 w-5 sm:h-6 sm:w-6" />,
       title: 'Sécurité maximale',
-      description: 'Modération 24/7 et données protégées.',
+      description: 'Modération active et données protégées.',
       color: 'text-[#8E7AB5]',
       emoji: '🛡️',
     },
@@ -935,7 +935,7 @@ export default function CommencerPage() {
 
               <div className="flex items-center justify-center gap-2">
                 <CheckCircle size={15} />
-                <span>Modération 24h/24</span>
+                <span>Modération active</span>
               </div>
 
               <div className="flex items-center justify-center gap-2">

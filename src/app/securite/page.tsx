@@ -48,6 +48,7 @@ import {
   cn,
 } from '@/components/site/ui';
 import { useIsLoggedIn } from '@/components/site/sections';
+import { ModerationSection, ReportBlockSection } from '@/components/site/SafetyGuide';
 
 // ─────────────────────────────────────────────
 // Visuel du hero : bouclier + cartes flottantes
@@ -297,7 +298,7 @@ export default function SecuritePage() {
               icon={Users}
               title="Modération active"
               text="Un filtre bloque automatiquement les messages abusifs et crée un signalement. Chaque signalement est examiné par notre équipe de modération."
-              href="/valeurs"
+              href="#moderation"
             >
               <div className={cn(GLASS_INNER, 'p-3')}>
                 <CheckRow>Messages abusifs bloqués</CheckRow>
@@ -311,7 +312,7 @@ export default function SecuritePage() {
               icon={Ban}
               title="Signalement & blocage"
               text="Vous gardez le contrôle : signalez un comportement inapproprié ou bloquez une membre en un geste. Son profil disparaît de votre expérience."
-              href="/faq"
+              href="#signalement"
             >
               <div className={cn(GLASS_INNER, 'p-3')}>
                 <div className="mb-1 flex items-center gap-2.5 border-b border-white/10 pb-2">
@@ -325,6 +326,10 @@ export default function SecuritePage() {
           </div>
         </Container>
       </section>
+
+      {/* Modération + Signaler / bloquer (cibles des cartes ci-dessus) */}
+      <ModerationSection />
+      <ReportBlockSection />
 
       {/* Comment nous protégeons */}
       <section className="relative py-10 lg:py-12">
