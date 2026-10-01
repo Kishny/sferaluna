@@ -52,7 +52,7 @@ export async function DELETE() {
   await connectDB();
 
   const user = await User.findById(userId).select(
-    'stripeSubscriptionId stripeCustomerId image photos'
+    'stripeSubscriptionId stripeCustomerId image photos videos'
   );
   if (!user) {
     return NextResponse.json({ error: 'Compte introuvable' }, { status: 404 });
@@ -76,6 +76,14 @@ export async function DELETE() {
       const publicId = extractPublicId(url);
       return publicId ? cloudinary.uploader.destroy(publicId) : Promise.resolve();
     })
+  );
+
+  // Vidéos de profil (ressources « video » sur Cloudinary)
+  await Promise.allSettled(
+    (user.videos ?? [])
+      .map((v: { publicId?: string }) => v?.publicId)
+      .filter((id: string | undefined): id is string => Boolean(id))
+      .map((publicId: string) => cloudinary.uploader.destroy(publicId, { resource_type: 'video' }))
   );
 
   // ── 3. Supprimer toutes les données liées ─────────────────────────────────

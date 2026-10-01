@@ -16,7 +16,7 @@
  * brouillon envoyé par « Enregistrer les modifications ».
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -31,9 +31,7 @@ import {
   FileText,
   Gem,
   Heart,
-  Home,
   Image as ImageIcon,
-  Info,
   KeyRound,
   Languages,
   Leaf,
@@ -53,6 +51,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { AccountHeader, BTN_GRADIENT, BTN_OUTLINE, CARD, CardHead, SaveBar, useUnsavedWarning } from "@/components/account/kit";
 import ChipEditor from "@/components/profile/ChipEditor";
 import VideosSection, { type ProfileVideo } from "@/components/profile/VideosSection";
 import { useSelfieGate } from "@/components/photo-verification/SelfieGate";
@@ -125,13 +124,6 @@ const RAYON_LABELS: Record<string, string> = {
   france: "Toute la France",
 };
 
-const CARD =
-  "rounded-3xl border border-violet-300/[0.14] bg-[#1b0d38]/75 p-4 shadow-[0_18px_50px_-24px_rgba(8,0,24,0.9)] backdrop-blur-xl sm:p-5";
-const BTN_GRADIENT =
-  "inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-pink-500 font-semibold text-white shadow-[0_12px_32px_-12px_rgba(236,72,153,0.9)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50";
-const BTN_OUTLINE =
-  "inline-flex items-center justify-center gap-2 rounded-2xl border border-violet-200/30 bg-[#140828]/60 font-medium text-white transition hover:border-fuchsia-300/60 hover:bg-white/5";
-
 // ─────────────────────────────────────────────
 // Composant principal
 // ─────────────────────────────────────────────
@@ -170,16 +162,7 @@ export default function ProfileEditor({
     [user, savedUser]
   );
 
-  // Avertit avant de quitter la page avec des modifications non enregistrées.
-  useEffect(() => {
-    if (!dirty) return;
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty]);
+  useUnsavedWarning(dirty);
 
   const userId = user._id || user.id;
   const previewHref = userId ? `/profil/${userId}?preview=1` : null;
@@ -212,23 +195,7 @@ export default function ProfileEditor({
 
   return (
     <div className="pb-4">
-      {/* En-tête */}
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <Sparkles className="mt-1 h-7 w-7 shrink-0 text-amber-200" />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mon profil</h1>
-            <p className="mt-1 text-sm text-white/60 sm:text-base">Photos, bio et informations visibles par les autres membres.</p>
-          </div>
-        </div>
-        <nav aria-label="Fil d’Ariane" className="hidden items-center gap-2 pt-2 text-sm text-white/60 sm:flex">
-          <button type="button" onClick={onHome} className="rounded-md p-1 hover:bg-white/10 hover:text-white" aria-label="Tableau de bord">
-            <Home className="h-4 w-4" />
-          </button>
-          <ChevronRight className="h-3.5 w-3.5 text-white/35" />
-          <span className="text-white/80">Mon profil</span>
-        </nav>
-      </div>
+      <AccountHeader icon={Sparkles} title="Mon profil" subtitle="Photos, bio et informations visibles par les autres membres." onHome={onHome} />
 
       <div className="space-y-4">
         <SummaryCard user={user} completion={completion} previewHref={previewHref} onEdit={startEditing} onAvatarUploaded={onAvatarUploaded} />
@@ -313,42 +280,22 @@ export default function ProfileEditor({
           </div>
         </div>
 
-        {/* Barre d'enregistrement */}
-        <div className="sticky bottom-3 z-30">
-          <div className="flex flex-col gap-3 rounded-2xl border border-violet-300/20 bg-[#1a0b38]/90 p-3 shadow-[0_18px_50px_-18px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-4 lg:flex-row lg:items-center">
-            <div className="min-w-0 flex-1 text-sm">
-              {error ? (
-                <p className="flex items-center gap-2 text-red-300">
-                  <AlertCircle className="h-4 w-4 shrink-0" /> {error}
-                </p>
-              ) : dirty ? (
-                <p className="flex items-center gap-2 text-amber-200">
-                  <Pencil className="h-4 w-4 shrink-0" /> Modifications non enregistrées.
-                  <button type="button" onClick={cancel} disabled={isSaving} className="font-semibold text-white/70 underline-offset-2 hover:text-white hover:underline">
-                    Annuler
-                  </button>
-                </p>
-              ) : (
-                <p className="hidden items-center gap-2 text-white/60 sm:flex">
-                  <Info className="h-4 w-4 shrink-0" />
-                  Ces informations apparaissent sur votre profil détaillé.
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              {previewHref && (
-                <Link href={previewHref} target="_blank" className={cn(BTN_OUTLINE, "h-11 px-3.5 text-sm sm:px-4")} aria-label="Voir mon profil comme les autres membres">
-                  <Eye className="h-4 w-4" />
-                  <span className="hidden sm:inline">Voir mon profil public</span>
-                </Link>
-              )}
-              <button type="button" onClick={save} disabled={!dirty || isSaving} className={cn(BTN_GRADIENT, "h-11 flex-1 px-5 text-sm lg:flex-none")}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                {isSaving ? "Enregistrement…" : "Enregistrer les modifications"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SaveBar
+          dirty={dirty}
+          saving={isSaving}
+          error={error}
+          idleText="Ces informations apparaissent sur votre profil détaillé."
+          onSave={save}
+          onCancel={cancel}
+          extra={
+            previewHref ? (
+              <Link href={previewHref} target="_blank" className={cn(BTN_OUTLINE, "h-11 px-3.5 text-sm sm:px-4")} aria-label="Voir mon profil comme les autres membres">
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Voir mon profil public</span>
+              </Link>
+            ) : null
+          }
+        />
       </div>
     </div>
   );
@@ -779,7 +726,7 @@ function InfosCard({
       label: "Mode de vie",
       value: user.modeDeVie,
       input: (
-        <select value={user.modeDeVie || ""} onChange={(e) => updateDraft("modeDeVie", e.target.value)} className="input-luna py-2 text-sm">
+        <select value={user.modeDeVie || ""} onChange={(e) => updateDraft("modeDeVie", e.target.value)} className="input-luna h-10 py-0 text-sm">
           <option value="">Non renseigné</option>
           {LIFESTYLE_OPTIONS.map((o) => (
             <option key={o} value={o}>
@@ -798,7 +745,7 @@ function InfosCard({
       label: "Département",
       value: user.departement ? getDepartementNom(user.departement) || user.departement : "",
       input: (
-        <select value={user.departement || ""} onChange={(e) => updateDraft("departement", e.target.value)} className="input-luna py-2 text-sm">
+        <select value={user.departement || ""} onChange={(e) => updateDraft("departement", e.target.value)} className="input-luna h-10 py-0 text-sm">
           <option value="">Non renseigné</option>
           <optgroup label="France métropolitaine">
             {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
@@ -822,7 +769,7 @@ function InfosCard({
       label: "Zone de recherche",
       value: user.rayon ? RAYON_LABELS[user.rayon] || user.rayon : "",
       input: (
-        <select value={user.rayon || "departement"} onChange={(e) => updateDraft("rayon", e.target.value)} className="input-luna py-2 text-sm">
+        <select value={user.rayon || "departement"} onChange={(e) => updateDraft("rayon", e.target.value)} className="input-luna h-10 py-0 text-sm">
           <option value="departement">Mon département</option>
           <option value="region">Ma région</option>
           <option value="france">Toute la France</option>
@@ -941,18 +888,6 @@ function SecurityCard({
 // ─────────────────────────────────────────────
 // Petites briques
 // ─────────────────────────────────────────────
-
-function CardHead({ icon: Icon, title, aside, iconClass = "text-violet-300" }: { icon: LucideIcon; title: string; aside?: ReactNode; iconClass?: string }) {
-  return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <h3 className="flex items-center gap-2.5 font-semibold text-white">
-        <Icon className={cn("h-5 w-5", iconClass)} />
-        {title}
-      </h3>
-      {aside}
-    </div>
-  );
-}
 
 function Counter({ n, max }: { n: number; max: number }) {
   return <span className={cn("text-xs", n >= max ? "text-amber-200" : "text-white/45")}>{n}/{max}</span>;
