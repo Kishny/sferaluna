@@ -218,7 +218,7 @@ export default function TarifsPage() {
   const loggedIn = useIsLoggedIn();
 
   return (
-    <SiteShell>
+    <SiteShell back>
       {/* Hero */}
       <section className="relative pb-10 pt-28 sm:pt-32 lg:pt-40">
         <Container className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

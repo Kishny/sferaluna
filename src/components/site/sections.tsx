@@ -8,6 +8,7 @@
  * bandeau de confiance, CTA final, coquille de page.
  */
 
+import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useState, type ElementType, type ReactNode } from "react";
@@ -43,13 +44,31 @@ import {
 // Coquille de page
 // ─────────────────────────────────────────────
 
-export function SiteShell({ children, moon = true }: { children: ReactNode; moon?: boolean }) {
+export function SiteShell({
+  children,
+  moon = true,
+  back = false,
+}: {
+  children: ReactNode;
+  moon?: boolean;
+  /** Affiche un bouton Retour sous l'en-tête (la 1re section perd alors sa marge haute). */
+  back?: boolean;
+}) {
   return (
     <>
       <Header />
       <main className="relative isolate overflow-hidden bg-[#12081f] text-white">
         <NightBackdrop moon={moon} />
-        {children}
+        {back ? (
+          <>
+            <Container className="relative z-20 pt-24 sm:pt-28">
+              <BackButton fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+            </Container>
+            <div className="[&>section:first-child]:!pt-8 lg:[&>section:first-child]:!pt-12">{children}</div>
+          </>
+        ) : (
+          children
+        )}
       </main>
       <Footer />
     </>

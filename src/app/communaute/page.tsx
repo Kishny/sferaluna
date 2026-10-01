@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import BackButton from "@/components/BackButton";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -420,6 +421,9 @@ export default function CommunautePage() {
       <Header />
 
       <main className="relative z-10 mx-auto max-w-5xl px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         {/* Header compact */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}

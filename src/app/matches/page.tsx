@@ -12,6 +12,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -172,6 +173,7 @@ function MatchesContent() {
   return (
     <ExplorerShell>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <BackButton fallbackHref="/mon-compte" fallbackLabel="Retour au tableau de bord" />
         <PageTitle
           title={
             <>

@@ -763,6 +763,12 @@ const UserSchema = new Schema<IUser>(
       default: [],
     },
 
+    /** Conversations / matchs mis en favoris (ids de Match). */
+    favoriteMatches: {
+      type: [{ type: String }],
+      default: [],
+    },
+
     /**
      * Garde temporelle — changement de pseudonyme.
      * Une seule modification autorisée par an.

@@ -82,7 +82,7 @@ export default function DashboardSidebar({
       icon: MessageSquareText,
       href: data?.counts.firstUnreadMatchId
         ? `/messages/${data.counts.firstUnreadMatchId}`
-        : "/matches",
+        : "/messages",
       badge: data?.counts.unreadMessages ?? 0,
     },
     { key: "evenements", label: "Événements", icon: CalendarDays, href: "/evenements" },

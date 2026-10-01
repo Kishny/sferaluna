@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import BackButton from "@/components/BackButton";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -254,6 +255,9 @@ export default function FAQPage() {
       <Header />
 
       <main className="min-h-screen overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white text-[#1C1C1C]">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 pt-20 sm:pt-24 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         {/* Hero compact mobile */}
         <section className="relative overflow-hidden px-4 pb-6 pt-20 sm:px-5 sm:pb-12 sm:pt-28">
           <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />

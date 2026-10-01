@@ -75,7 +75,7 @@ export async function GET() {
     const sessionEmail = session.user.email.toLowerCase().trim();
 
     const currentUser = await User.findOne({ email: sessionEmail }).select(
-      "_id"
+      "_id favoriteMatches"
     );
 
     if (!currentUser) {
@@ -188,6 +188,25 @@ export async function GET() {
       unreadByMatch.map((entry) => [entry._id.toString(), entry.count])
     );
 
+    // Dernier message de chaque conversation (aperçu dans la messagerie).
+    const lastMessages = await Message.aggregate([
+      { $match: { matchId: { $in: matchIds } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$matchId",
+          content: { $first: "$content" },
+          senderId: { $first: "$senderId" },
+          createdAt: { $first: "$createdAt" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const lastByMatch = new Map<string, { content: string; senderId: unknown; createdAt: Date; count: number }>(
+      lastMessages.map((entry) => [entry._id.toString(), entry])
+    );
+    const favorites = new Set(((currentUser as { favoriteMatches?: string[] }).favoriteMatches ?? []).map(String));
+
     /**
      * Assemblage de la réponse.
      */
@@ -211,6 +230,7 @@ export async function GET() {
       }
 
       const unreadCount = unreadCountByMatch.get(match._id.toString()) ?? 0;
+      const last = lastByMatch.get(match._id.toString());
 
       return {
         matchId: toObjectIdString(match._id),
@@ -220,6 +240,15 @@ export async function GET() {
         isActive: match.isActive,
         unreadCount,
         hasUnreadMessage: unreadCount > 0,
+        isFavorite: favorites.has(match._id.toString()),
+        messageCount: last?.count ?? 0,
+        lastMessage: last
+          ? {
+              content: String(last.content ?? "").slice(0, 140),
+              fromMe: String(last.senderId) === currentUserId.toString(),
+              createdAt: last.createdAt,
+            }
+          : null,
 
         /**
          * L'autre utilisateur peut être null si :

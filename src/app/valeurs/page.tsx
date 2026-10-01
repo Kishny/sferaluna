@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useState } from "react";
+import BackButton from "@/components/BackButton";
 import {
   AnimatePresence,
   motion,
@@ -406,6 +407,9 @@ export default function ValeursPage() {
       <Header />
 
       <main className="min-h-screen overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white pt-16 text-[#1C1C1C] sm:pt-20">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         {/* ─────────────────────────────
             Hero compact mobile
         ───────────────────────────── */}

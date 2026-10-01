@@ -12,6 +12,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import BackButton from "@/components/BackButton";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -248,6 +249,7 @@ function MentorContent() {
   return (
     <ExplorerShell>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <BackButton fallbackHref="/mon-compte" fallbackLabel="Retour au tableau de bord" />
         {/* ── Bandeau ── */}
         <section className={cn(PANEL_FEATURED, "relative mt-2 overflow-hidden")}>
           <div className="absolute inset-y-0 right-0 hidden w-[45%] lg:block">

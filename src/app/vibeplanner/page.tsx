@@ -11,6 +11,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -273,6 +274,7 @@ function PlannerContent() {
   return (
     <ExplorerShell>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <BackButton fallbackHref="/mon-compte" fallbackLabel="Retour au tableau de bord" />
         {/* ── En-tête ── */}
         <div className="grid grid-cols-[minmax(0,1fr)] gap-8 pt-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] lg:items-center">
           <div>

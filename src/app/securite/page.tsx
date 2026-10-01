@@ -188,7 +188,7 @@ export default function SecuritePage() {
   }, []);
 
   return (
-    <SiteShell>
+    <SiteShell back>
       {/* Hero */}
       <section className="relative pb-12 pt-28 sm:pt-32 lg:pb-16 lg:pt-40">
         <Container className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">

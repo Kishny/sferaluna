@@ -128,7 +128,7 @@ function MiniTile({ icon, title, text }: { icon: ElementType; title: string; tex
 
 export default function FonctionnalitesPage() {
   return (
-    <SiteShell>
+    <SiteShell back>
       {/* Hero */}
       <section className="relative pb-10 pt-28 sm:pt-32 lg:pb-14 lg:pt-40">
         <Container className="grid items-center gap-10 lg:grid-cols-[1.1fr_1fr]">

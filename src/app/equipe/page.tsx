@@ -22,6 +22,7 @@
  */
 
 import { useState } from "react";
+import BackButton from "@/components/BackButton";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronDown,
@@ -200,6 +201,9 @@ export default function EquipePage() {
       <Header />
 
       <main className="relative overflow-hidden pt-16 sm:pt-20">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         <OrbitGlow className="right-[-10%] top-32 h-72 w-72 sm:h-96 sm:w-96" />
         <OrbitGlow className="left-[-12%] top-[55%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
 

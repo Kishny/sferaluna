@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -133,6 +134,9 @@ export default function ContactPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 text-[#1C1C1C] sm:px-4 sm:pb-16 sm:pt-24">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
       <div className="mx-auto max-w-2xl">
         {/* Header / Hero compact */}
         <motion.header

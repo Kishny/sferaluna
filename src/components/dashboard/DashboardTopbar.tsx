@@ -77,7 +77,7 @@ type PageShortcut = {
 const PAGE_SHORTCUTS: PageShortcut[] = [
   { label: "Vos découvertes du jour", keywords: "explorer decouvrir decouvertes selection profils", icon: Compass, href: "/explorer" },
   { label: "Explorer librement", keywords: "explorer librement parcourir profils", icon: Compass, href: "/explorer/libre" },
-  { label: "Mes matchs & messages", keywords: "matchs messages conversations discussion", icon: MessageSquareText, href: "/matches" },
+  { label: "Mes messages", keywords: "matchs messages conversations discussion", icon: MessageSquareText, href: "/messages" },
   { label: "Circle of Six", keywords: "circle six cercle affinites", icon: Sparkles, href: "/circle" },
   { label: "Événements", keywords: "evenements sorties apero rencontres lieux", icon: CalendarDays, href: "/evenements" },
   { label: "VibePlanner", keywords: "vibeplanner rendez-vous date idee", icon: Sparkles, href: "/vibeplanner" },

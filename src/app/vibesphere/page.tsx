@@ -12,6 +12,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import BackButton from "@/components/BackButton";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -226,6 +227,7 @@ function VibeSphereContent() {
   return (
     <ExplorerShell>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <BackButton fallbackHref="/mon-compte" fallbackLabel="Retour au tableau de bord" />
         <PageTitle
           eyebrow={<Eyebrow icon={Sparkles}>Communauté émotionnelle</Eyebrow>}
           title={

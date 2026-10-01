@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import BackButton from "@/components/BackButton";
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronDown,
@@ -324,6 +325,9 @@ export default function HistoirePage() {
       <Header />
 
       <main className="min-h-screen overflow-hidden bg-[#faf9ff] pt-14 text-[#1C1C1C] sm:pt-16 lg:pt-20">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         {/* ─────────────────────────────
             HERO COMPACT MOBILE
         ───────────────────────────── */}

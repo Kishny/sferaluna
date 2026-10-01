@@ -1,6 +1,7 @@
 // src/app/temoignages/page.tsx
 
 import Link from "next/link";
+import BackButton from "@/components/BackButton";
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -112,6 +113,9 @@ export default async function TemoignagesPage() {
       <JsonLd data={jsonLd} />
 
       <main className="overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white pt-16 text-[#1C1C1C] sm:pt-20">
+        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
+          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
+        </div>
         {/* Hero */}
         <section className="relative px-4 py-8 text-center sm:px-6 sm:py-14">
           <div className="absolute inset-0 bg-gradient-to-b from-[#FDF7FA] via-[#F5F0FF] to-transparent" />

@@ -9,7 +9,7 @@
  */
 
 import { useEffect, type ReactNode } from "react";
-import { AlertCircle, Check, ChevronRight, Home, Info, Loader2, Pencil, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, Info, Loader2, Pencil, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/components/site/ui";
 
@@ -25,34 +25,39 @@ export const BTN_OUTLINE =
 export const BTN_DANGER =
   "inline-flex items-center justify-center gap-2 rounded-2xl border border-red-400/30 bg-red-500/10 font-medium text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50";
 
-/** Titre de page + fil d'Ariane (retour au tableau de bord). */
+/** Titre de page avec lien de retour au tableau de bord. */
 export function AccountHeader({
   icon: Icon,
   title,
   subtitle,
   onHome,
+  aside,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   subtitle: string;
   onHome: () => void;
+  aside?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex items-start justify-between gap-4">
-      <div className="flex items-start gap-3">
-        <Icon className="mt-1 h-7 w-7 shrink-0 text-amber-200" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
-          <p className="mt-1 text-sm text-white/60 sm:text-base">{subtitle}</p>
+    <div className="mb-5">
+      <button
+        type="button"
+        onClick={onHome}
+        className="mb-3 inline-flex items-center gap-1.5 rounded-full py-1 text-sm text-white/65 transition hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" /> Tableau de bord
+      </button>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          {Icon && <Icon className="mt-1 h-7 w-7 shrink-0 text-amber-200" />}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+            <p className="mt-1.5 text-sm text-white/65 sm:text-base">{subtitle}</p>
+          </div>
         </div>
+        {aside}
       </div>
-      <nav aria-label="Fil d’Ariane" className="hidden items-center gap-2 pt-2 text-sm text-white/60 sm:flex">
-        <button type="button" onClick={onHome} className="rounded-md p-1 hover:bg-white/10 hover:text-white" aria-label="Tableau de bord">
-          <Home className="h-4 w-4" />
-        </button>
-        <ChevronRight className="h-3.5 w-3.5 text-white/35" />
-        <span className="text-white/80">{title}</span>
-      </nav>
     </div>
   );
 }
