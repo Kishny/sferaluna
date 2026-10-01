@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Compass,
   Crown,
+  Globe2,
   Heart,
   Home,
   Lock,
@@ -216,6 +217,17 @@ export default function DashboardSidebar({
           </Link>
         )}
       </nav>
+
+      <div className="mx-3 h-px bg-gradient-to-r from-transparent via-violet-300/25 to-transparent" />
+
+      <Link
+        href="/"
+        onClick={onClose}
+        className="flex items-center gap-3.5 rounded-xl px-4 py-3 text-[15px] font-medium text-white/75 transition hover:bg-white/[0.06] hover:text-white"
+      >
+        <Globe2 className="h-[22px] w-[22px] text-violet-300/80" />
+        Retour au site
+      </Link>
 
       {/* Carte énergie / upsell */}
       <div className="mt-auto rounded-2xl border border-violet-300/15 bg-gradient-to-br from-[#2b1462] to-[#1b0c3c] p-4">

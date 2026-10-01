@@ -818,7 +818,7 @@ export default function Messenger({ matchId }: { matchId?: string }) {
           </section>
 
           {/* ── 3. Profil ── */}
-          <aside className="hidden min-h-0 flex-col gap-3 overflow-y-auto xl:flex">
+          <aside className="hidden min-h-0 flex-col gap-3 overflow-y-auto pr-1 xl:flex [&>*]:shrink-0">
             {other && current ? (
               <>
                 <section className={cn(PANEL, "overflow-hidden p-2")}>

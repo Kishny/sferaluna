@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ElementType, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   BarChart3,
@@ -190,6 +191,13 @@ function Hero({ user }: { user: DashboardUser }) {
   return (
     <Section className="relative isolate px-1 pb-2 pt-2 sm:pt-3">
       <MoonScene className="pointer-events-none absolute -right-6 -top-[110px] -z-10 h-[230px] w-[420px] opacity-50 sm:-top-[120px] sm:h-[290px] sm:w-[720px] sm:opacity-80 lg:-right-10 lg:w-[900px] lg:opacity-100" />
+
+      <Link
+        href="/"
+        className="mb-3 inline-flex items-center gap-1.5 rounded-full py-1 text-sm text-white/65 transition hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" /> Retour au site
+      </Link>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
