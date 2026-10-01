@@ -46,7 +46,6 @@ import {
   Crown,
   Eye,
   Heart,
-  ImagePlus,
   Info,
   Loader2,
   Lock,
@@ -67,16 +66,14 @@ import {
 import Link from "next/link";
 import ReportModal from "@/components/ReportModal";
 import TestimonialForm from "@/components/testimonials/TestimonialForm";
-import { DEPARTEMENTS, getDepartementLabel } from "@/lib/locations";
-import { LANGUAGE_OPTIONS, LIFESTYLE_OPTIONS, VALUE_OPTIONS } from "@/lib/compatibility";
+import { getDepartementLabel } from "@/lib/locations";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import { useDashboardData } from "@/components/dashboard/useDashboardData";
 import type { MissingField, NotificationCounts } from "@/components/dashboard/types";
-import { useSelfieGate } from "@/components/photo-verification/SelfieGate";
-import VideosSection, { type ProfileVideo } from "@/components/profile/VideosSection";
-import { MAX_PROFILE_PHOTOS } from "@/lib/media-limits";
+import type { ProfileVideo } from "@/components/profile/VideosSection";
+import ProfileEditor from "@/components/profile/ProfileEditor";
 
 // ─────────────────────────────────────────────
 // Types
@@ -866,7 +863,7 @@ function MonCompteContent() {
   const premiumLabel = getPremiumLabel(user);
   const premiumActive = isPremiumActive(user);
 
-  const isTabEditable = activeTab === "profil" || activeTab === "preferences";
+  const isTabEditable = activeTab === "preferences";
 
   const updateDraft = <K extends keyof LunaUser>(key: K, value: LunaUser[K]) => {
     setDraftUser((prev) => ({
@@ -887,7 +884,7 @@ function MonCompteContent() {
    * Important :
    * cette route ne doit pas modifier le plan, isPremium ou subscriptionStatus.
    */
-  const handleSave = async () => {
+  const handleSave = async (): Promise<boolean> => {
     setIsSaving(true);
     setPageError("");
 
@@ -926,7 +923,7 @@ function MonCompteContent() {
 
       if (!res.ok || !data?.success) {
         setPageError(data?.error || "Impossible de sauvegarder.");
-        return;
+        return false;
       }
 
       const updated = normalizeUser(
@@ -941,8 +938,10 @@ function MonCompteContent() {
       setUser(updated);
       setDraftUser(updated);
       setIsEditing(false);
+      return true;
     } catch {
       setPageError("Erreur de connexion au serveur.");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -952,6 +951,30 @@ function MonCompteContent() {
     setDraftUser(user);
     setIsEditing(false);
   };
+
+  /**
+   * Après un envoi ou une suppression de photo / vidéo : on recharge le
+   * profil sans écraser les modifications en cours du brouillon.
+   */
+  const refreshMedia = useCallback(async () => {
+    try {
+      const res = await fetch("/api/users/profile", { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) return;
+      const fresh = normalizeUser({ ...data.user, ...(data.premium || {}) }, session?.user);
+      setUser(fresh);
+      setDraftUser((prev) => ({
+        ...prev,
+        image: fresh.image,
+        photos: fresh.photos,
+        videos: fresh.videos,
+        photoVerified: fresh.photoVerified,
+        photoVerificationStatus: fresh.photoVerificationStatus,
+      }));
+    } catch {
+      /* le prochain chargement corrigera l'affichage */
+    }
+  }, [session?.user]);
 
   /**
    * Changement rapide de visibilité.
@@ -1194,6 +1217,19 @@ function MonCompteContent() {
                     onRefresh={refreshDashboard}
                     onNavigateTab={navigateTab}
                   />
+                ) : activeTab === "profil" ? (
+                  <ProfileEditor
+                    user={draftUser}
+                    savedUser={user}
+                    updateDraft={(key, value) => updateDraft(key as keyof LunaUser, value as never)}
+                    onMediaChange={refreshMedia}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    onHome={() => navigateTab("dashboard")}
+                    isSaving={isSaving}
+                    error={pageError}
+                    completion={profileCompletion}
+                  />
                 ) : (
                   <div className="mx-auto max-w-4xl">
                     <div className="mb-5">
@@ -1216,16 +1252,6 @@ function MonCompteContent() {
                     </div>
 
                     <div className="rounded-3xl border border-violet-300/[0.12] bg-[#1d0f3d]/70 p-4 shadow-[0_8px_32px_-12px_rgba(10,0,30,0.6)] backdrop-blur-xl sm:p-6 md:p-8">
-                      {activeTab === "profil" && (
-                        <ProfilTab
-                          user={draftUser}
-                          isEditing={isEditing}
-                          updateDraft={updateDraft}
-                          splitToArray={splitToArray}
-                          onPhotosSaved={fetchProfile}
-                        />
-                      )}
-
                       {activeTab === "preferences" && (
                         <PreferencesTab
                           user={draftUser}
@@ -1446,464 +1472,6 @@ function ProgressRing({
       <div className="absolute" style={{ inset: strokeWidth + 2 }}>
         {children}
       </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Onglet Profil
-// ─────────────────────────────────────────────
-
-function ProfilTab({
-  user,
-  isEditing,
-  updateDraft,
-  splitToArray,
-  onPhotosSaved,
-}: {
-  user: LunaUser;
-  isEditing: boolean;
-  updateDraft: <K extends keyof LunaUser>(key: K, value: LunaUser[K]) => void;
-  splitToArray: (value: string) => string[];
-  onPhotosSaved: () => void;
-}) {
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const avatarGate = useSelfieGate("avatar");
-  const profileSearchParams = useSearchParams();
-  const backFromSelfie = profileSearchParams?.get("photo") === "avatar" || profileSearchParams?.get("photo") === "photo";
-  const [uploadMsg, setUploadMsg] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    const preview = URL.createObjectURL(file);
-
-    setAvatarPreview(preview);
-    setUploadMsg(null);
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload/avatar", {
-        method: "POST",
-        headers: { "X-SferaLuna-Client": "web" },
-        body: formData,
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        setUploadMsg({
-          type: "error",
-          text: data?.error ?? "Erreur lors de l'upload.",
-        });
-
-        setAvatarPreview(null);
-        return;
-      }
-
-      updateDraft("image", data.imageUrl);
-      setUploadMsg({
-        type: "success",
-        text: "Photo mise à jour avec succès !",
-      });
-    } catch {
-      setUploadMsg({
-        type: "error",
-        text: "Erreur de connexion au serveur.",
-      });
-
-      setAvatarPreview(null);
-    } finally {
-      setIsUploading(false);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  const displayImage = avatarPreview || user.image || null;
-
-  return (
-    <div className="space-y-5 sm:space-y-6">
-      <div>
-        <h2 className="mb-1 text-lg font-bold sm:text-xl">✨ Mon profil</h2>
-
-        <p className="text-sm text-white/50">
-          {isEditing
-            ? "Mode édition — modifiez vos informations ci-dessous."
-            : 'Cliquez sur "Modifier" pour éditer votre profil.'}
-        </p>
-      </div>
-
-      {isEditing && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="flex items-start gap-2 rounded-xl border border-purple-400/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-200"
-        >
-          <Pencil className="mt-0.5 h-4 w-4 shrink-0" />
-          Mode édition activé — vos modifications ne seront pas enregistrées
-          avant la sauvegarde.
-        </motion.div>
-      )}
-
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-white/10 bg-white/5 p-4 text-center sm:flex-row sm:items-center sm:gap-5 sm:text-left">
-        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-3xl font-bold">
-          {displayImage ? (
-            <img
-              src={displayImage}
-              alt={user.pseudonyme}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            user.pseudonyme.charAt(0).toUpperCase()
-          )}
-
-          {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-              <Loader2 className="h-6 w-6 animate-spin text-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="mb-1 text-sm font-medium text-white">
-            Photo de profil
-          </p>
-
-          <p className="mb-3 text-xs text-white/40">
-            JPG, PNG ou WebP · max 5 Mo · recadrée en 400×400
-          </p>
-
-          {uploadMsg && (
-            <p
-              className={`mb-2 text-xs ${
-                uploadMsg.type === "success" ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {uploadMsg.text}
-            </p>
-          )}
-
-          {backFromSelfie && !avatarGate.needsSelfie && !user.image && (
-            <p className="mb-2 text-xs text-emerald-300">
-              ✓ Selfie validé. Ajoutez maintenant votre photo de profil : elle sera vérifiée automatiquement.
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={() => avatarGate.guard(() => fileInputRef.current?.click())}
-            disabled={isUploading}
-            className="rounded-lg border border-purple-400/30 bg-purple-500/30 px-4 py-1.5 text-xs font-medium text-purple-200 transition hover:bg-purple-500/40 disabled:opacity-50"
-          >
-            {isUploading ? "Upload en cours…" : "Changer la photo"}
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="sr-only"
-          />
-          {avatarGate.modal}
-        </div>
-      </div>
-
-      <Link
-        href="/verification-photo"
-        className={`mb-5 flex items-center gap-3 rounded-2xl border p-4 transition hover:brightness-110 ${
-          user.photoVerified
-            ? "border-sky-300/30 bg-sky-500/10"
-            : "border-fuchsia-300/40 bg-gradient-to-r from-fuchsia-500/15 to-violet-500/10"
-        }`}
-      >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl" aria-hidden>
-          {user.photoVerified ? "✅" : "📸"}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-white">
-            {user.photoVerified
-              ? "Photos vérifiées par selfie"
-              : user.photoVerificationStatus === "needs_review"
-                ? "Certaines photos sont à revoir"
-                : "Vérifiez vos photos"}
-          </span>
-          <span className="block text-xs text-white/60">
-            {user.photoVerified
-              ? "Le badge « Photo vérifiée » est visible sur votre profil."
-              : "Un selfie en direct prouve que vos photos sont bien les vôtres et rassure les autres membres."}
-          </span>
-        </span>
-        <span className="shrink-0 text-sm font-semibold text-pink-300">{user.photoVerified ? "Gérer" : "Commencer"} →</span>
-      </Link>
-
-      {/* Photos + vidéos sur une seule ligne en grand écran (grille 8 colonnes : 6 photos + 2 vidéos) */}
-      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-8 lg:gap-2">
-        <div className="min-w-0 lg:col-span-6">
-          <PhotosSection
-            photos={user.photos ?? []}
-            onPhotosSaved={onPhotosSaved}
-          />
-        </div>
-        <div className="min-w-0 lg:col-span-2">
-          <VideosSection videos={user.videos ?? []} onSaved={onPhotosSaved} />
-        </div>
-      </div>
-
-      <Field label="Bio ✨" className="mb-4">
-        <textarea
-          disabled={!isEditing}
-          value={user.bio || ""}
-          onChange={(event) => updateDraft("bio", event.target.value)}
-          className="input-luna h-24 resize-none"
-          placeholder="Décrivez-vous en quelques mots… vos passions, ce que vous recherchez…"
-          maxLength={500}
-        />
-
-        <p className="mt-1 text-right text-xs text-white/30">
-          {(user.bio || "").length}/500
-        </p>
-      </Field>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Pseudonyme 🌸">
-          <input
-            disabled={!isEditing}
-            value={user.pseudonyme || ""}
-            onChange={(event) => updateDraft("pseudonyme", event.target.value)}
-            className="input-luna"
-          />
-          <CooldownInfo changedAt={user.pseudonymeChangedAt} />
-        </Field>
-
-        <Field label="Email 📧">
-          <input disabled value={user.email || ""} className="input-luna" />
-        </Field>
-
-        <Field label="Âge 🎂">
-          <input
-            disabled={!isEditing}
-            type="number"
-            min={18}
-            max={99}
-            value={user.age || 28}
-            onChange={(event) => updateDraft("age", Number(event.target.value))}
-            className="input-luna"
-          />
-        </Field>
-
-        <Field label="Département 🗺️">
-          <select
-            disabled={!isEditing}
-            value={user.departement || ""}
-            onChange={(event) => updateDraft("departement", event.target.value)}
-            className="input-luna"
-          >
-            <option value="">Non renseigné</option>
-            <optgroup label="France métropolitaine">
-              {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.code} — {d.nom}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Outre-mer">
-              {DEPARTEMENTS.filter((d) => d.outreMer).map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.code} — {d.nom}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-        </Field>
-
-        <Field label="Ville 📍">
-          <input
-            disabled={!isEditing}
-            value={user.localisation || ""}
-            onChange={(event) => updateDraft("localisation", event.target.value)}
-            className="input-luna"
-            placeholder="Paris, Fort-de-France, Saint-Denis…"
-          />
-        </Field>
-
-        <Field label="Portée de recherche 🔎">
-          <select
-            disabled={!isEditing}
-            value={user.rayon || "departement"}
-            onChange={(event) => updateDraft("rayon", event.target.value)}
-            className="input-luna"
-          >
-            <option value="departement">Mon département</option>
-            <option value="region">Ma région</option>
-            <option value="france">Toute la France</option>
-          </select>
-        </Field>
-
-        <Field label="Centres d'intérêt 🎯">
-          <input
-            disabled={!isEditing}
-            value={(user.interets || []).join(", ")}
-            onChange={(event) =>
-              updateDraft("interets", splitToArray(event.target.value))
-            }
-            className="input-luna"
-            placeholder="voyage, musique, sport…"
-          />
-        </Field>
-
-        <Field label="Profession 💼">
-          <input
-            disabled={!isEditing}
-            value={user.profession || ""}
-            onChange={(event) => updateDraft("profession", event.target.value)}
-            className="input-luna"
-            maxLength={80}
-            placeholder="Architecte, infirmière, étudiante…"
-          />
-        </Field>
-
-        <Field label="Mode de vie 🌿">
-          <select
-            disabled={!isEditing}
-            value={user.modeDeVie || ""}
-            onChange={(event) => updateDraft("modeDeVie", event.target.value)}
-            className="input-luna"
-          >
-            <option value="">Non renseigné</option>
-            {LIFESTYLE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Valeurs importantes 💎 (5 max)" className="sm:col-span-2">
-          <OptionPills
-            options={VALUE_OPTIONS}
-            selected={user.valeurs || []}
-            max={5}
-            disabled={!isEditing}
-            onChange={(next) => updateDraft("valeurs", next)}
-          />
-        </Field>
-
-        <Field label="Langues parlées 🗣️" className="sm:col-span-2">
-          <OptionPills
-            options={LANGUAGE_OPTIONS}
-            selected={user.langues || []}
-            max={6}
-            disabled={!isEditing}
-            onChange={(next) => updateDraft("langues", next)}
-          />
-        </Field>
-
-        {(user._id || user.id) && (
-          <p className="text-sm text-white/55 sm:col-span-2">
-            Ces informations apparaissent sur votre profil détaillé.{" "}
-            <Link
-              href={`/explorer/profil/${user._id || user.id}`}
-              className="font-semibold text-pink-300 underline-offset-2 hover:underline"
-            >
-              Voir mon profil comme les autres membres
-            </Link>
-          </p>
-        )}
-
-        <Field label="Question de sécurité 🔑" className="sm:col-span-2">
-          <input
-            disabled={!isEditing}
-            value={user.question || ""}
-            onChange={(event) => updateDraft("question", event.target.value)}
-            className="input-luna"
-            placeholder="Votre question secrète"
-          />
-        </Field>
-
-        <Field label="Réponse secrète 🤫" className="sm:col-span-2">
-          <input
-            disabled={!isEditing}
-            type={isEditing ? "text" : "password"}
-            value={user.reponse || ""}
-            onChange={(event) => updateDraft("reponse", event.target.value)}
-            className="input-luna"
-            placeholder={
-              user.hasReponse && !isEditing
-                ? "••••••••"
-                : user.hasReponse
-                ? "Laisser vide pour conserver la réponse actuelle"
-                : "Votre réponse secrète"
-            }
-          />
-          {user.hasReponse && !isEditing && (
-            <p className="mt-1 text-xs text-green-400">✓ Réponse secrète renseignée</p>
-          )}
-          {user.hasReponse && isEditing && (
-            <p className="mt-1 text-xs text-white/40">
-              Laissez vide pour conserver votre réponse actuelle.
-            </p>
-          )}
-        </Field>
-      </div>
-    </div>
-  );
-}
-
-function OptionPills({
-  options,
-  selected,
-  max,
-  disabled,
-  onChange,
-}: {
-  options: readonly string[];
-  selected: string[];
-  max: number;
-  disabled: boolean;
-  onChange: (next: string[]) => void;
-}) {
-  const toggle = (option: string) => {
-    if (selected.includes(option)) onChange(selected.filter((item) => item !== option));
-    else if (selected.length < max) onChange([...selected, option]);
-  };
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const active = selected.includes(option);
-        return (
-          <button
-            key={option}
-            type="button"
-            disabled={disabled || (!active && selected.length >= max)}
-            onClick={() => toggle(option)}
-            aria-pressed={active}
-            className={`rounded-full border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed ${
-              active
-                ? "border-pink-300/60 bg-pink-500/20 text-pink-100"
-                : "border-white/15 bg-white/[0.04] text-white/70 hover:border-violet-300/40"
-            } ${disabled && !active ? "opacity-50" : ""}`}
-          >
-            {option}
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -3066,185 +2634,6 @@ function ConnexionsTab({ user }: { user: LunaUser }) {
 // ─────────────────────────────────────────────
 // Composant : section galerie photos
 // ─────────────────────────────────────────────
-
-function PhotosSection({
-  photos,
-  onPhotosSaved,
-}: {
-  photos: string[];
-  onPhotosSaved: () => void;
-}) {
-  const [slotLoading, setSlotLoading] = useState<Record<number, boolean>>({});
-  const [pendingSlot, setPendingSlot] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoGate = useSelfieGate("photo");
-
-  const handleClickAdd = (slotIndex: number) => {
-    photoGate.guard(() => {
-      setPendingSlot(slotIndex);
-      fileInputRef.current?.click();
-    });
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || pendingSlot === null) return;
-    const slot = pendingSlot;
-    event.target.value = "";
-    setPendingSlot(null);
-
-    setSlotLoading((prev) => ({ ...prev, [slot]: true }));
-    setError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/upload/photo", {
-        method: "POST",
-        headers: { "X-SferaLuna-Client": "web" },
-        body: formData,
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        setError(data?.error ?? "Erreur lors de l'upload.");
-        return;
-      }
-
-      onPhotosSaved();
-    } catch {
-      setError("Erreur de connexion au serveur.");
-    } finally {
-      setSlotLoading((prev) => ({ ...prev, [slot]: false }));
-    }
-  };
-
-  const handleDelete = async (photoUrl: string, slotIndex: number) => {
-    setSlotLoading((prev) => ({ ...prev, [slotIndex]: true }));
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/upload/photo?url=${encodeURIComponent(photoUrl)}`, {
-        method: "DELETE",
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        setError(data?.error ?? "Erreur lors de la suppression.");
-        return;
-      }
-
-      onPhotosSaved();
-    } catch {
-      setError("Erreur de connexion au serveur.");
-    } finally {
-      setSlotLoading((prev) => ({ ...prev, [slotIndex]: false }));
-    }
-  };
-
-  const slots = Array.from({ length: MAX_PROFILE_PHOTOS }, (_, i) => i);
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-white/50">
-          Mes photos 📸
-        </p>
-        <p className="text-xs text-white/30">
-          {MAX_PROFILE_PHOTOS} max · JPG, PNG, WebP · format 4:5
-        </p>
-      </div>
-
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="flex items-center gap-2 overflow-hidden rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300"
-        >
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          {error}
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-auto"
-            aria-label="Fermer"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </motion.div>
-      )}
-
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {slots.map((slotIndex) => {
-          const photoUrl = photos[slotIndex];
-          const isLoading = slotLoading[slotIndex] ?? false;
-
-          return (
-            <div
-              key={slotIndex}
-              className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur"
-            >
-              {photoUrl ? (
-                <>
-                  <img
-                    src={photoUrl}
-                    alt={`Photo ${slotIndex + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-
-                  {isLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                      <Loader2 className="h-6 w-6 animate-spin text-white" />
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(photoUrl, slotIndex)}
-                      className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/80 backdrop-blur-sm transition hover:border-red-400/60 hover:bg-red-500/70 hover:text-white"
-                      aria-label="Supprimer la photo"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleClickAdd(slotIndex)}
-                  disabled={isLoading}
-                  className="flex h-full w-full flex-col items-center justify-center gap-2 text-white/25 transition hover:bg-white/5 hover:text-white/50 disabled:opacity-40"
-                  aria-label="Ajouter une photo"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-7 w-7 animate-spin" />
-                  ) : (
-                    <>
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5">
-                        <ImagePlus className="h-4 w-4" />
-                      </span>
-                      <span className="text-[11px]">Ajouter</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={handleFileChange}
-        className="sr-only"
-      />
-      {photoGate.modal}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────
 // CooldownInfo — message de cooldown annuel

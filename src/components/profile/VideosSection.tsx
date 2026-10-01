@@ -13,7 +13,9 @@
  */
 
 import { useRef, useState } from "react";
-import { AlertCircle, Clapperboard, Loader2, Play, Video, X } from "lucide-react";
+import { AlertCircle, Loader2, Play, Video, X } from "lucide-react";
+
+import { cn } from "@/components/site/ui";
 
 import { useSelfieGate } from "@/components/photo-verification/SelfieGate";
 import { ALLOWED_VIDEO_TYPES, MAX_PROFILE_VIDEOS, MAX_VIDEO_BYTES, MAX_VIDEO_SECONDS } from "@/lib/media-limits";
@@ -64,7 +66,18 @@ function uploadToCloudinary(file: File, sign: Record<string, string | number>, o
   });
 }
 
-export default function VideosSection({ videos, onSaved }: { videos: ProfileVideo[]; onSaved: () => void }) {
+const CARD =
+  "rounded-3xl border border-violet-300/[0.14] bg-[#1b0d38]/75 p-4 shadow-[0_18px_50px_-24px_rgba(8,0,24,0.9)] backdrop-blur-xl sm:p-5";
+
+export default function VideosSection({
+  videos,
+  onSaved,
+  className = "",
+}: {
+  videos: ProfileVideo[];
+  onSaved: () => void;
+  className?: string;
+}) {
   const gate = useSelfieGate("photo");
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -135,16 +148,21 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
   const nextFree = videos.length;
 
   return (
-    <div className="space-y-3">
-      <div>
-        <p className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-white/50">Mes vidéos 🎬</p>
-        <p className="text-xs text-white/30">
+    <section className={cn(CARD, className)}>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 className="flex items-center gap-2 font-semibold text-white">
+          <Video className="h-5 w-5 text-fuchsia-300" /> Mes vidéos
+        </h3>
+        <span className="text-xs text-white/45">
           {MAX_PROFILE_VIDEOS} max · {MAX_VIDEO_SECONDS} s · avec vous dedans
-        </p>
+        </span>
+        <span className="ml-auto text-xs text-white/50">
+          {videos.length}/{MAX_PROFILE_VIDEOS}
+        </span>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1">{error}</span>
           <button type="button" onClick={() => setError(null)} aria-label="Fermer">
@@ -153,13 +171,13 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[repeat(2,minmax(0,128px))] gap-3">
         {slots.map((i) => {
           const video = videos[i];
           if (video) {
             const isPlaying = playing === video.publicId;
             return (
-              <div key={video.publicId} className="relative aspect-[4/5] w-full overflow-hidden rounded-xl border border-white/10 bg-black">
+              <div key={video.publicId} className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-white/10 bg-black">
                 {isPlaying ? (
                   // eslint-disable-next-line jsx-a11y/media-has-caption
                   <video src={video.url} poster={video.posterUrl} controls autoPlay playsInline className="h-full w-full object-cover" onEnded={() => setPlaying(null)} />
@@ -170,14 +188,14 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
                       <img src={video.posterUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center bg-white/5">
-                        <Video className="h-8 w-8 text-white/40" />
+                        <Video className="h-6 w-6 text-white/40" />
                       </span>
                     )}
                     <span className="absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition group-hover:scale-105">
                       <Play className="h-4 w-4 fill-white" />
                     </span>
                     {!!video.duration && (
-                      <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">{Math.round(video.duration)} s</span>
+                      <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">{Math.round(video.duration)} s</span>
                     )}
                   </button>
                 )}
@@ -185,10 +203,10 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
                   type="button"
                   onClick={() => remove(video.publicId)}
                   disabled={deleting === video.publicId}
-                  className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/85 backdrop-blur-sm transition hover:bg-red-500/70"
+                  className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/85 backdrop-blur-sm transition hover:bg-red-500/70"
                   aria-label="Supprimer la vidéo"
                 >
-                  {deleting === video.publicId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                  {deleting === video.publicId ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                 </button>
               </div>
             );
@@ -201,14 +219,14 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
               type="button"
               disabled={busy || i !== nextFree}
               onClick={() => gate.guard(() => inputRef.current?.click())}
-              className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 backdrop-blur text-white/30 transition hover:bg-white/10 hover:text-white/60 disabled:opacity-40"
+              className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-violet-300/30 bg-white/[0.03] text-white/60 transition hover:border-fuchsia-300/60 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
               aria-label="Ajouter une vidéo"
             >
               {isActive ? (
                 <>
-                  <Loader2 className="h-7 w-7 animate-spin text-fuchsia-200" />
-                  <span className="px-3 text-center text-[11px] text-white/70">
-                    {step === "upload" ? `Envoi… ${progress ?? 0} %` : "Vérification de la vidéo…"}
+                  <Loader2 className="h-5 w-5 animate-spin text-fuchsia-200" />
+                  <span className="px-2 text-center text-[10px] text-white/70">
+                    {step === "upload" ? `Envoi… ${progress ?? 0} %` : "Vérification…"}
                   </span>
                   {step === "upload" && (
                     <span className="h-1 w-3/4 overflow-hidden rounded-full bg-white/10">
@@ -218,9 +236,7 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
                 </>
               ) : (
                 <>
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5">
-                    <Clapperboard className="h-4 w-4" />
-                  </span>
+                  <Video className="h-5 w-5" />
                   <span className="text-[11px]">Ajouter</span>
                 </>
               )}
@@ -231,6 +247,6 @@ export default function VideosSection({ videos, onSaved }: { videos: ProfileVide
 
       <input ref={inputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={onFile} className="sr-only" />
       {gate.modal}
-    </div>
+    </section>
   );
 }
