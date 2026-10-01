@@ -266,18 +266,25 @@ export type UploadScreening =
 
 /**
  * À appeler après l'upload Cloudinary et avant d'enregistrer la photo.
- * - Sans selfie de référence : autorisé (sauf si PHOTO_VERIFICATION_ENFORCED).
+ * - Sans selfie de référence : refusé pour le site web (requireSelfie) ou si
+ *   PHOTO_VERIFICATION_ENFORCED=true ; autorisé sinon (app mobile, en
+ *   attendant qu'elle propose le selfie).
  * - Avec selfie : la photo doit correspondre.
  * - En cas d'indisponibilité d'AWS : la photo est acceptée mais le badge
  *   « Photo vérifiée » est retiré jusqu'à la prochaine vérification.
  */
-export async function screenUpload(userId: mongoose.Types.ObjectId | string, imageUrl: string, kind: "avatar" | "photo"): Promise<UploadScreening> {
+export async function screenUpload(
+  userId: mongoose.Types.ObjectId | string,
+  imageUrl: string,
+  kind: "avatar" | "photo",
+  { requireSelfie = false }: { requireSelfie?: boolean } = {}
+): Promise<UploadScreening> {
   if (!isPhotoVerificationConfigured()) return { allowed: true, verifiedMatch: false };
 
   const reference = await loadReference(userId).catch(() => null);
 
   if (!reference) {
-    if (isPhotoVerificationEnforced()) {
+    if (requireSelfie || isPhotoVerificationEnforced()) {
       return {
         allowed: false,
         status: 403,

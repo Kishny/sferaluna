@@ -74,6 +74,7 @@ import DashboardTopbar from "@/components/dashboard/DashboardTopbar";
 import DashboardHome from "@/components/dashboard/DashboardHome";
 import { useDashboardData } from "@/components/dashboard/useDashboardData";
 import type { MissingField, NotificationCounts } from "@/components/dashboard/types";
+import { useSelfieGate } from "@/components/photo-verification/SelfieGate";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1464,6 +1465,9 @@ function ProfilTab({
 }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const avatarGate = useSelfieGate("avatar");
+  const profileSearchParams = useSearchParams();
+  const backFromSelfie = profileSearchParams?.get("photo") === "avatar" || profileSearchParams?.get("photo") === "photo";
   const [uploadMsg, setUploadMsg] = useState<{
     type: "success" | "error";
     text: string;
@@ -1489,6 +1493,7 @@ function ProfilTab({
 
       const res = await fetch("/api/upload/avatar", {
         method: "POST",
+        headers: { "X-SferaLuna-Client": "web" },
         body: formData,
       });
 
@@ -1589,9 +1594,15 @@ function ProfilTab({
             </p>
           )}
 
+          {backFromSelfie && !avatarGate.needsSelfie && !user.image && (
+            <p className="mb-2 text-xs text-emerald-300">
+              ✓ Selfie validé. Ajoutez maintenant votre photo de profil : elle sera vérifiée automatiquement.
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => avatarGate.guard(() => fileInputRef.current?.click())}
             disabled={isUploading}
             className="rounded-lg border border-purple-400/30 bg-purple-500/30 px-4 py-1.5 text-xs font-medium text-purple-200 transition hover:bg-purple-500/40 disabled:opacity-50"
           >
@@ -1605,6 +1616,7 @@ function ProfilTab({
             onChange={handleFileChange}
             className="sr-only"
           />
+          {avatarGate.modal}
         </div>
       </div>
 
@@ -3054,10 +3066,13 @@ function PhotosSection({
   const [pendingSlot, setPendingSlot] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoGate = useSelfieGate("photo");
 
   const handleClickAdd = (slotIndex: number) => {
-    setPendingSlot(slotIndex);
-    fileInputRef.current?.click();
+    photoGate.guard(() => {
+      setPendingSlot(slotIndex);
+      fileInputRef.current?.click();
+    });
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -3073,7 +3088,11 @@ function PhotosSection({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload/photo", { method: "POST", body: formData });
+      const res = await fetch("/api/upload/photo", {
+        method: "POST",
+        headers: { "X-SferaLuna-Client": "web" },
+        body: formData,
+      });
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success) {
@@ -3210,6 +3229,7 @@ function PhotosSection({
         onChange={handleFileChange}
         className="sr-only"
       />
+      {photoGate.modal}
     </div>
   );
 }

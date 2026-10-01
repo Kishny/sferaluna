@@ -116,7 +116,9 @@ export async function POST(req: NextRequest) {
 
     // Vérification des photos : la photo principale doit montrer le visage
     // du selfie de référence (si la membre a fait sa vérification).
-    const screening = await screenUpload(owner._id, result.secure_url, "avatar");
+    const screening = await screenUpload(owner._id, result.secure_url, "avatar", {
+      requireSelfie: req.headers.get("x-sferaluna-client") === "web",
+    });
     if (!screening.allowed) {
       await cloudinary.uploader.destroy(result.public_id).catch(() => {});
       return NextResponse.json(

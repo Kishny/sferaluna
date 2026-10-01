@@ -14,7 +14,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -62,6 +62,10 @@ type Step = "intro" | "selfie" | "analysing" | "result";
 
 function VerificationContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Retour vers la page d'origine (ex. Mon profil, au moment d'ajouter une photo).
+  const rawNext = searchParams.get("next") || "";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -203,7 +207,7 @@ function VerificationContent() {
     <ExplorerShell>
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="pt-4">
-          <BackButton fallbackHref="/mon-compte?tab=profil" fallbackLabel="Retour à mon profil" />
+          <BackButton fallbackHref={next ?? "/mon-compte?tab=profil"} fallbackLabel="Retour à mon profil" />
         </div>
 
         <div className="mt-6 text-center">
@@ -326,6 +330,12 @@ function VerificationContent() {
                       </Link>
                     </div>
                   </div>
+                )}
+
+                {next && (
+                  <Link href={next} className={cn(BTN_PRIMARY, "h-12 w-full")}>
+                    <UserRound className="h-5 w-5" /> {status.hasMainPhoto ? "Revenir à mon profil" : "Ajouter ma photo de profil"}
+                  </Link>
                 )}
 
                 <div className={cn(PANEL, "flex flex-wrap items-center justify-between gap-3 p-5 text-sm text-white/70")}>
