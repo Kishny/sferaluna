@@ -462,15 +462,16 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
   /**
-   * En développement, la web preview Expo (localhost:8082) appelle le backend
-   * (localhost:3000) cross-origin. Les cookies SameSite=Lax (défaut NextAuth)
-   * ne sont pas envoyés sur les requêtes fetch cross-origin.
+   * Preview web Expo (localhost:8082) → backend (localhost:3000) en
+   * cross-origin : il faut des cookies SameSite=None. Les navigateurs
+   * refusent SameSite=None sans l'attribut Secure (y compris sur localhost),
+   * ce qui empêchait toute connexion sur le site en `npm run dev`.
    *
-   * On passe à SameSite=none pour localhost. Chrome l'accepte sans Secure
-   * sur localhost (exception trustworthy origin depuis Chrome 91).
-   * Cette config ne s'applique qu'en NODE_ENV=development.
+   * Cette configuration n'est donc activée qu'à la demande, pour tester
+   * l'app Expo en web : NEXTAUTH_DEV_CROSS_ORIGIN=true dans .env.local.
+   * Chrome accepte les cookies Secure sur http://localhost.
    */
-  ...(process.env.NODE_ENV === "development"
+  ...(process.env.NODE_ENV === "development" && process.env.NEXTAUTH_DEV_CROSS_ORIGIN === "true"
     ? {
         cookies: {
           sessionToken: {
@@ -479,7 +480,7 @@ export const authOptions: NextAuthOptions = {
               httpOnly: true,
               sameSite: "none" as const,
               path: "/",
-              secure: false,
+              secure: true,
             },
           },
           callbackUrl: {
@@ -488,7 +489,7 @@ export const authOptions: NextAuthOptions = {
               httpOnly: false,
               sameSite: "none" as const,
               path: "/",
-              secure: false,
+              secure: true,
             },
           },
           csrfToken: {
@@ -497,7 +498,7 @@ export const authOptions: NextAuthOptions = {
               httpOnly: false,
               sameSite: "none" as const,
               path: "/",
-              secure: false,
+              secure: true,
             },
           },
           pkceCodeVerifier: {
@@ -506,7 +507,7 @@ export const authOptions: NextAuthOptions = {
               httpOnly: true,
               sameSite: "none" as const,
               path: "/",
-              secure: false,
+              secure: true,
             },
           },
         },
