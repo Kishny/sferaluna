@@ -53,11 +53,6 @@ const publicPages = [
     priority: 1.0,
   },
   {
-    path: "/commencer",
-    changeFrequency: "monthly",
-    priority: 0.9,
-  },
-  {
     path: "/tarifs",
     changeFrequency: "weekly",
     priority: 0.9,

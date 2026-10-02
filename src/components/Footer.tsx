@@ -91,6 +91,7 @@ export default function Footer() {
         { label: 'LunaGather', href: '/evenements' },
         { label: 'VibeMentor', href: '/vibementor' },
         { label: 'FAQ', href: '/faq' },
+        { label: 'Guide', href: '/guide' },
         { label: 'Sécurité', href: '/securite' },
         { label: 'Tarifs', href: '/tarifs' },
       ],
@@ -103,6 +104,7 @@ export default function Footer() {
         { label: 'Confidentialité', href: '/confidentialite' },
         { label: 'Conditions', href: '/conditions' },
         { label: 'Cookies', href: '/cookies' },
+        { label: 'Accessibilité', href: '/accessibilite' },
       ],
     },
   ];

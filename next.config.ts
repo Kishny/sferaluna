@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Anciennes adresses : la page « Commencer » a été supprimée.
+  async redirects() {
+    return [{ source: "/commencer", destination: "/", permanent: true }];
+  },
+
   async headers() {
     return [
       {
