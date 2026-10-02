@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     // 2. Lire et valider le body JSON
     // ─────────────────────────────────────────────
 
-    let body: { plan?: unknown } | null = null;
+    let body: { plan?: unknown; withdrawalWaiver?: unknown } | null = null;
 
     try {
       body = await req.json();
@@ -129,6 +129,19 @@ export async function POST(req: NextRequest) {
           success: false,
           error: "Body JSON invalide.",
           code: "INVALID_JSON_BODY",
+        },
+        { status: 400 }
+      );
+    }
+
+    // La renonciation au droit de rétractation (case cochée sur /paiement) est
+    // obligatoire : sans elle, aucune session de paiement n'est créée.
+    if (body?.withdrawalWaiver !== true) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Cochez la case d'accès immédiat avant de payer.",
+          code: "WITHDRAWAL_WAIVER_REQUIRED",
         },
         { status: 400 }
       );
@@ -317,6 +330,8 @@ export async function POST(req: NextRequest) {
         email: user.email,
         plan,
         planLabel: planLabels[plan],
+        // Renonciation au droit de rétractation cochée avant le paiement (preuve).
+        withdrawalWaiver: body?.withdrawalWaiver === true ? `accepted_${new Date().toISOString()}` : "not_recorded",
       },
 
       /**

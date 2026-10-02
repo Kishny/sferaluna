@@ -69,6 +69,7 @@ function PaiementContent() {
   const [selected, setSelected] = useState<PaidPlanId>("premium-monthly");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [waiver, setWaiver] = useState(false);
 
   const offer = useMemo(() => PAID_PLANS.find((p) => p.id === selected) ?? PAID_PLANS[1], [selected]);
   const style = STYLE[offer.id];
@@ -77,13 +78,18 @@ function PaiementContent() {
 
   const pay = async () => {
     if (loading || isCurrent) return;
+    if (!waiver) {
+      setError("Cochez la case d’accès immédiat avant de payer.");
+      document.getElementById("waiver")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const res = await fetch("/api/stripe/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selected }),
+        body: JSON.stringify({ plan: selected, withdrawalWaiver: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success || !data?.url) {
@@ -262,6 +268,25 @@ function PaiementContent() {
                   </dd>
                 </div>
               </dl>
+
+              <label htmlFor="waiver" className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-300/25 bg-white/[0.04] p-3.5 text-sm leading-relaxed text-white/80">
+                <input
+                  id="waiver"
+                  type="checkbox"
+                  checked={waiver}
+                  onChange={(e) => {
+                    setWaiver(e.target.checked);
+                    setError("");
+                  }}
+                  className="mt-0.5 h-5 w-5 shrink-0 accent-fuchsia-500"
+                />
+                <span>
+                  Je demande l’accès immédiat à mon abonnement et je reconnais renoncer à mon droit de rétractation de 14 jours.{" "}
+                  <a href="/conditions#section-4" target="_blank" rel="noreferrer" className="text-pink-300 hover:underline">
+                    Voir les conditions
+                  </a>
+                </span>
+              </label>
 
               {error && (
                 <p className="mt-4 flex items-start gap-2 rounded-xl border border-red-300/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-100">
