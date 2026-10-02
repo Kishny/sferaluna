@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   User,
+  UsersRound,
   X,
 } from "lucide-react";
 
@@ -96,6 +97,7 @@ export default function DashboardSidebar({
       locked: features ? !features.vibePlanner : false,
     },
     { key: "vibesphere", label: "VibeSphere", icon: Orbit, href: "/vibesphere" },
+    { key: "communaute", label: "Communauté", icon: UsersRound, href: "/communaute" },
   ];
 
   const accountItems: NavItem[] = [

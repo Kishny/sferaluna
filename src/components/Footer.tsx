@@ -87,6 +87,7 @@ export default function Footer() {
       title: 'Communauté',
       icon: '💜',
       links: [
+        { label: 'Forum', href: '/communaute' },
         { label: 'LunaGather', href: '/evenements' },
         { label: 'VibeMentor', href: '/vibementor' },
         { label: 'FAQ', href: '/faq' },
