@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   Bell,
+  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -118,7 +119,7 @@ type ResetTarget = "messages" | "matches" | "visits" | "posts" | "journal";
 
 const nav: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "users", label: "Utilisateurs", icon: Users },
+  { id: "users", label: "Utilisatrices", icon: Users },
   { id: "reports", label: "Signalements", icon: Flag },
   { id: "testimonials", label: "Témoignages", icon: MessageCircle },
   { id: "newsletter", label: "Newsletter", icon: Mail },
@@ -127,7 +128,7 @@ const nav: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
 
 const sectionTitle: Record<TabId, { title: string; sub: string }> = {
   dashboard: { title: "Dashboard Admin", sub: "Vue d'ensemble de la plateforme" },
-  users: { title: "Utilisateurs", sub: "Gestion des membres" },
+  users: { title: "Utilisatrices", sub: "Gestion des membres" },
   reports: { title: "Signalements", sub: "Modération de la communauté" },
   testimonials: { title: "Témoignages", sub: "Validation des avis" },
   newsletter: { title: "Newsletter", sub: "Communication aux abonnées" },
@@ -508,6 +509,7 @@ function PlanDonut({
 export default function AdminPage() {
   const router = useRouter();
   const { status } = useSession();
+  const [quickSearch, setQuickSearch] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -934,7 +936,7 @@ export default function AdminPage() {
 
   if (status === "loading" || isLoadingStats) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d0620]">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-purple-300" />
           <p className="text-sm text-white/50">
@@ -948,17 +950,16 @@ export default function AdminPage() {
   const pendingReports = reports.filter((r) => r.status === "pending");
 
   return (
-    <div className="min-h-screen bg-[#120726] text-white antialiased">
-      {/* halos d'ambiance */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/3 h-[28rem] w-[28rem] rounded-full bg-violet-600/15 blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-pink-600/12 blur-[120px]" />
-        <div className="absolute top-1/2 -left-20 h-72 w-72 rounded-full bg-amber-500/8 blur-[120px]" />
+    <div className="min-h-screen bg-[#0d0620] text-white antialiased">
+      {/* Illustration de fond (public/images/admin-bg.webp), très assombrie sous le contenu */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url(/images/admin-bg.webp)" }} />
+        <div className="absolute inset-0 bg-[#0d0620]/80" />
       </div>
 
       <div className="relative z-10 flex">
         {/* -------- Sidebar (desktop) -------- */}
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-white/[0.03] px-4 py-6 backdrop-blur-xl lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-violet-300/15 bg-[#0d0620]/55 px-4 py-6 backdrop-blur-xl lg:flex">
           <button
             onClick={() => router.push("/mon-compte")}
             className="mb-6 flex items-center gap-2 px-2 text-xs text-white/40 transition hover:text-white"
@@ -995,7 +996,7 @@ export default function AdminPage() {
                   onClick={() => setActiveTab(item.id)}
                   className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     isActive
-                      ? "bg-gradient-to-r from-violet-600/40 to-fuchsia-600/20 text-white shadow-lg shadow-violet-900/40 ring-1 ring-white/10"
+                      ? "bg-gradient-to-r from-violet-600/70 to-fuchsia-600/40 text-white shadow-lg shadow-violet-900/40 ring-1 ring-fuchsia-300/40"
                       : "text-white/50 hover:bg-white/5 hover:text-white"
                   }`}
                 >
@@ -1018,8 +1019,8 @@ export default function AdminPage() {
           </nav>
 
           <button
-            onClick={() => router.push("/mon-compte")}
-            className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/50 transition hover:bg-red-500/10 hover:text-red-300"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="mt-4 flex items-center gap-3 rounded-xl border border-violet-300/15 bg-white/[0.03] px-3 py-3 text-sm font-medium text-white/70 transition hover:bg-red-500/10 hover:text-red-300"
           >
             <LogOut className="h-[18px] w-[18px]" />
             Déconnexion
@@ -1027,35 +1028,84 @@ export default function AdminPage() {
         </aside>
 
         {/* -------- Main -------- */}
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="relative min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
+          {/* Bandeau illustré derrière l'en-tête */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[340px] overflow-hidden" aria-hidden>
+            <div
+              className="absolute inset-0 bg-cover bg-[position:center_47%]"
+              style={{
+                backgroundImage: "url(/images/admin-bg.webp)",
+                WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
+                maskImage: "linear-gradient(to bottom, #000 45%, transparent 100%)",
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0d0620]/70 via-transparent to-[#0d0620]/30" />
+          </div>
+
           {/* Header */}
-          <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <header className="mb-6 flex flex-col-reverse gap-4 lg:min-h-[150px] lg:flex-row lg:items-start lg:justify-between">
+            <div className="lg:pt-10">
+              {activeTab === "dashboard" && (
+                <p className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/85">
+                  <Crown className="h-4 w-4 text-amber-300" /> Bonjour Admin
+                </p>
+              )}
+              <h1 className="text-3xl font-bold tracking-tight drop-shadow-[0_2px_12px_rgba(13,6,32,0.9)] sm:text-4xl">
                 {sectionTitle[activeTab].title}
               </h1>
-              <p className="mt-1 text-sm text-white/40">
+              <p className="mt-1.5 text-sm text-white/80 drop-shadow-[0_2px_8px_rgba(13,6,32,0.9)] sm:text-base">
                 {sectionTitle[activeTab].sub}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 [&>*]:backdrop-blur-xl">
+              <p className="hidden h-11 items-center gap-2.5 rounded-xl border border-violet-300/25 bg-[#140a2e]/70 px-3.5 text-sm xl:flex">
+                <CalendarDays className="h-4 w-4 text-fuchsia-300" />
+                <span className="text-white/60">Aujourd’hui</span>
+                <span className="font-semibold" suppressHydrationWarning>
+                  {new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+              </p>
+              <form
+                role="search"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setSearch(quickSearch.trim());
+                  setActiveTab("users");
+                }}
+                className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-violet-300/25 bg-[#140a2e]/70 px-3.5 sm:w-60 sm:flex-none"
+              >
+                <Search className="h-4 w-4 shrink-0 text-white/70" />
+                <input
+                  value={quickSearch}
+                  onChange={(e) => setQuickSearch(e.target.value)}
+                  placeholder="Rechercher une utilisatrice…"
+                  aria-label="Rechercher une utilisatrice"
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-white placeholder:text-white/55 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0"
+                />
+              </form>
+
               <button
                 onClick={handleRefresh}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
+                className="flex h-11 items-center gap-2 rounded-xl border border-violet-300/25 bg-[#140a2e]/70 px-3.5 text-sm text-white/85 transition hover:bg-white/10 hover:text-white"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="hidden sm:inline">Actualiser</span>
               </button>
 
-              <button className="relative rounded-xl border border-white/10 bg-white/5 p-2.5 text-white/70 transition hover:bg-white/10">
+              <button
+                type="button"
+                onClick={() => setActiveTab("reports")}
+                aria-label={pendingReports.length > 0 ? `${pendingReports.length} signalement(s) à traiter` : "Signalements"}
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-violet-300/25 bg-[#140a2e]/70 text-white/85 transition hover:bg-white/10"
+              >
                 <Bell className="h-4 w-4" />
                 {pendingReports.length > 0 && (
                   <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-pink-500 ring-2 ring-[#120726]" />
                 )}
               </button>
 
-              <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 py-1.5 pl-1.5 pr-3">
+              <div className="flex h-11 items-center gap-2.5 rounded-xl border border-violet-300/25 bg-[#140a2e]/70 pl-1.5 pr-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 text-sm font-bold">
                   A
                 </div>
@@ -1122,7 +1172,7 @@ export default function AdminPage() {
                 {[
                   {
                     icon: Users,
-                    label: "Total Utilisateurs",
+                    label: "Total utilisatrices",
                     value: formatNumber(stats.users.total),
                     sub: `+${stats.users.newLast7days} cette semaine`,
                     trend: "up" as const,
@@ -1133,7 +1183,7 @@ export default function AdminPage() {
                   },
                   {
                     icon: Activity,
-                    label: "Membres Actifs",
+                    label: "Membres actives",
                     value: formatNumber(stats.users.active24h),
                     sub: "connectés / 24h",
                     trend: "up" as const,
@@ -1144,7 +1194,7 @@ export default function AdminPage() {
                   },
                   {
                     icon: UserX,
-                    label: "Membres Inactifs",
+                    label: "Membres inactives",
                     value: formatNumber(stats.users.inactive),
                     sub: "aucune activité 30j",
                     trend: "down" as const,
@@ -1155,7 +1205,7 @@ export default function AdminPage() {
                   },
                   {
                     icon: Heart,
-                    label: "Matches Actifs",
+                    label: "Matches actifs",
                     value: formatNumber(stats.matches.active),
                     sub: `+${stats.matches.last7days} cette semaine`,
                     trend: "up" as const,
@@ -1166,7 +1216,7 @@ export default function AdminPage() {
                   },
                   {
                     icon: MessageCircle,
-                    label: "Messages (auj.)",
+                    label: "Messages (aujourd’hui)",
                     value: formatNumber(stats.messages.today),
                     sub: `${formatNumber(stats.messages.last7days)} / 7j`,
                     trend: "up" as const,
@@ -1181,30 +1231,33 @@ export default function AdminPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className={`relative overflow-hidden rounded-2xl border ${s.ring} bg-gradient-to-br ${s.glow} p-4 backdrop-blur-sm`}
+                    className={`relative overflow-hidden rounded-2xl border ${s.ring} bg-[#140a2e]/80 p-4 backdrop-blur-sm`}
                   >
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className={`rounded-xl p-2 ${s.iconBg}`}>
-                        <s.icon className="h-4 w-4" />
+                    <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${s.glow}`} />
+                    <div className="relative mb-2 flex items-center justify-between">
+                      <div className={`rounded-xl p-2.5 ${s.iconBg}`}>
+                        <s.icon className="h-5 w-5" />
                       </div>
                       {s.trend === "up" ? (
-                        <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                        <TrendingUp className="h-5 w-5 text-emerald-400" />
                       ) : (
-                        <TrendingDown className="h-3.5 w-3.5 text-orange-400" />
+                        <TrendingDown className="h-5 w-5 text-orange-400" />
                       )}
                     </div>
-                    <p className="text-2xl font-bold tracking-tight">{s.value}</p>
-                    <p className="mt-0.5 text-xs text-white/50">{s.label}</p>
-                    <p className={`mt-1.5 text-[11px] font-medium ${s.accent}`}>
-                      {s.sub}
-                    </p>
+                    <div className="relative flex items-end gap-3">
+                      <p className="text-3xl font-bold leading-none tracking-tight">{s.value}</p>
+                      <div className="min-w-0 pb-0.5">
+                        <p className="truncate text-[13px] text-white/85">{s.label}</p>
+                        <p className={`truncate text-xs font-medium ${s.accent}`}>{s.sub}</p>
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>
 
               {/* Row 2 */}
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+                <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
                   <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-white/70">
                     <UserRound className="h-4 w-4 text-violet-300" />
                     Nouveaux inscrits
@@ -1226,7 +1279,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+                <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
                   <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-white/70">
                     <Activity className="h-4 w-4 text-emerald-300" />
                     Taux de rétention
@@ -1287,7 +1340,7 @@ export default function AdminPage() {
 
               {/* Row 3 : graphique + donut */}
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+                <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-semibold">
@@ -1315,7 +1368,7 @@ export default function AdminPage() {
                   <CombinedChart data={stats.dailySeries} />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+                <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
                   <div className="mb-5 flex items-center justify-between">
                     <h3 className="text-sm font-semibold">Répartition des plans</h3>
                     <MoreHorizontal className="h-4 w-4 text-white/30" />
@@ -1355,7 +1408,7 @@ export default function AdminPage() {
 
               {/* Row 4 : derniers inscrits + activités */}
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm">
+                <div className="overflow-hidden rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 backdrop-blur-sm">
                   <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
                     <h3 className="text-sm font-semibold">Derniers inscrits</h3>
                     <button
@@ -1445,7 +1498,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Activités récentes = signalements réels */}
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+                <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="flex items-center gap-2 text-sm font-semibold">
                       <Bell className="h-4 w-4 text-pink-300" />
