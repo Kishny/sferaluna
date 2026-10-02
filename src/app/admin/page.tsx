@@ -1135,6 +1135,21 @@ export default function AdminPage() {
                 {item.label}
               </button>
             ))}
+            {/* Sur téléphone, la barre latérale est masquée : sorties ici. */}
+            <button
+              onClick={() => router.push("/mon-compte")}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/70"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Mon compte
+            </button>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-200"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Déconnexion
+            </button>
           </div>
 
           <AnimatePresence>
@@ -1341,7 +1356,7 @@ export default function AdminPage() {
               {/* Row 3 : graphique + donut */}
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
                 <div className="rounded-2xl border border-violet-300/20 bg-[#140a2e]/80 p-5 backdrop-blur-sm">
-                  <div className="mb-4 flex items-center justify-between">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h3 className="text-sm font-semibold">
                         Activité — 7 derniers jours
