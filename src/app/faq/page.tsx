@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 import { SiteShell } from "@/components/site/sections";
-import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink, SectionTitle, TILE } from "@/components/site/pagekit";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PageBody, PageHero, PANEL, PhotoBackdrop, Pink, SectionTitle, TILE } from "@/components/site/pagekit";
 import { BADGE, FAQS, type CategoryId } from "@/components/site/faq";
 import { cn } from "@/components/site/ui";
 
@@ -77,7 +77,10 @@ export default function FAQPage() {
   return (
     <SiteShell back moon={false}>
       <PageBody>
+        <PhotoBackdrop src="/images/guide-accessibilite-bg.webp" />
+
         <PageHero
+          scene={false}
           id="faq"
           pill="Centre d’aide"
           pillIcon={HelpCircle}

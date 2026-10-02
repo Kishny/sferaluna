@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 import { SiteShell, useIsLoggedIn, useSiteStats } from "@/components/site/sections";
-import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink, SectionTitle, StatTile, TILE, statValue } from "@/components/site/pagekit";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PageBody, PageHero, PANEL, PhotoBackdrop, Pink, SectionTitle, StatTile, statValue, TILE } from "@/components/site/pagekit";
 import { cn } from "@/components/site/ui";
 
 const PRINCIPLES: { icon: LucideIcon; title: string; text: string }[] = [
@@ -68,7 +68,10 @@ export default function ValeursPage() {
   return (
     <SiteShell back moon={false}>
       <PageBody>
+        <PhotoBackdrop src="/images/guide-accessibilite-bg.webp" />
+
         <PageHero
+          scene={false}
           id="val"
           pill="L’ADN de SferaLuna"
           pillIcon={Sparkles}

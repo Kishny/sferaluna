@@ -34,7 +34,7 @@ import {
 
 import { useCookieConsent } from "@/hooks/useCookieConsent";
 import { SiteShell } from "@/components/site/sections";
-import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink, TILE } from "@/components/site/pagekit";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PageBody, PageHero, PANEL, PhotoBackdrop, Pink, TILE } from "@/components/site/pagekit";
 import { cn } from "@/components/site/ui";
 
 const UPDATED = "2 octobre 2026";
@@ -116,7 +116,10 @@ export default function CookiesPage() {
   return (
     <SiteShell back moon={false}>
       <PageBody>
+        <PhotoBackdrop src="/images/guide-accessibilite-bg.webp" />
+
         <PageHero
+          scene={false}
           id="ck"
           pill="Politique des cookies"
           pillIcon={Cookie}

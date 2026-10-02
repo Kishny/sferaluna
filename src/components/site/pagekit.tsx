@@ -180,7 +180,8 @@ export function PageHero({
         {text && <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">{text}</p>}
         {children}
       </div>
-      {note && <ScriptNote className="absolute -right-2 top-2 hidden rotate-[-8deg] text-right xl:block">{note}</ScriptNote>}
+      {/* Sur une illustration peinte, la note se confondrait avec la lune : on ne l'affiche pas. */}
+      {note && scene && <ScriptNote className="absolute -right-2 top-2 hidden rotate-[-8deg] text-right xl:block">{note}</ScriptNote>}
     </header>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle, ShieldCheck, Star, UsersRound } from "lucide-react";
 
 import { SiteShell } from "@/components/site/sections";
-import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink } from "@/components/site/pagekit";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PageBody, PageHero, PANEL, PhotoBackdrop, Pink } from "@/components/site/pagekit";
 import JsonLd from "@/components/JsonLd";
 import { PublicTestimonial } from "@/components/testimonials/TestimonialCard";
 import TestimonialsExplorer from "@/components/testimonials/TestimonialsExplorer";
@@ -128,7 +128,10 @@ export default async function TemoignagesPage() {
   return (
     <SiteShell back moon={false}>
       <PageBody>
+        <PhotoBackdrop src="/images/guide-accessibilite-bg.webp" />
+
         <PageHero
+          scene={false}
           id="tem"
           pill="Paroles de membres"
           pillIcon={MessageCircle}
