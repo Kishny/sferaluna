@@ -150,7 +150,7 @@ function SafetyCard({
           <h3 className="flex-1 text-lg font-semibold leading-tight text-white">{title}</h3>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-white/70">{text}</p>
-        <div className="mt-auto pt-4">{children}</div>
+        <div className="mt-auto hidden pt-4 sm:block">{children}</div>
         <div className="mt-3 flex justify-end">
           <ArrowCircle className="h-8 w-8" />
         </div>

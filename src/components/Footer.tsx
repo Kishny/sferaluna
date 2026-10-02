@@ -59,7 +59,7 @@ export default function Footer() {
   /**
    * Accordéon mobile.
    */
-  const [openGroup, setOpenGroup] = useState<string | null>('SferaLuna');
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const footerGroups: FooterGroup[] = [
     {
@@ -142,13 +142,13 @@ export default function Footer() {
               </div>
             </Link>
 
-            <p className="mt-4 text-sm leading-relaxed text-white/60">
+            <p className="mt-4 hidden text-sm leading-relaxed text-white/60 sm:block">
               Une plateforme pensée pour les femmes qui veulent des rencontres
               sincères, sûres et alignées avec leur vibe.
             </p>
 
             {/* Badges rassurance */}
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 hidden grid-cols-2 gap-2 sm:grid">
               <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2 text-xs text-white/70">
                 <Shield size={14} className="text-[#D9B8FF]" />
                 Sécurité

@@ -14,6 +14,8 @@
 
 import type { ElementType, ReactNode } from "react";
 import { motion } from "framer-motion";
+
+import MobileFold from "@/components/site/MobileFold";
 import {
   Ban,
   BellOff,
@@ -78,14 +80,16 @@ export function ModerationSection() {
                 <h3 className="text-lg font-semibold text-white">{step.title}</h3>
               </div>
               <p className="mt-3 text-sm leading-relaxed text-white/75">{step.text}</p>
-              <ul className={cn(GLASS_INNER, "mt-auto space-y-1.5 p-3 pt-3")}>
-                {step.points.map((p) => (
-                  <li key={p} className="flex items-center gap-2 text-[13px] text-white/85">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-fuchsia-300" />
-                    {p}
-                  </li>
-                ))}
-              </ul>
+              <MobileFold className="mt-auto pt-3" label="Voir les exemples" hideLabel="Masquer les exemples">
+                <ul className={cn(GLASS_INNER, "space-y-1.5 p-3")}>
+                  {step.points.map((p) => (
+                    <li key={p} className="flex items-center gap-2 text-[13px] text-white/85">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-fuchsia-300" />
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </MobileFold>
             </motion.div>
           ))}
         </div>
@@ -210,7 +214,8 @@ function ActionCard({
           <p className="text-sm text-white/65">{tagline}</p>
         </div>
       </div>
-      <dl className="mt-5 space-y-3">
+      <MobileFold className="mt-5 sm:mt-5" label="Comment ça se passe" hideLabel="Masquer">
+      <dl className="space-y-3">
         {rows.map(({ icon: Icon, label, content }) => (
           <div key={label} className={cn(GLASS_INNER, "p-3.5")}>
             <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-white/55">
@@ -220,6 +225,7 @@ function ActionCard({
           </div>
         ))}
       </dl>
+      </MobileFold>
     </motion.div>
   );
 }

@@ -51,6 +51,7 @@ import {
   SectionHeading,
   cn,
 } from '@/components/site/ui';
+import MobileFold from '@/components/site/MobileFold';
 
 // ─────────────────────────────────────────────
 // Bloc fonctionnalité
@@ -104,7 +105,13 @@ function FeatureBlock({
             {cta}
           </PrimaryButton>
         </div>
-        {children && <div className="min-w-0">{children}</div>}
+        {children && (
+          <div className="min-w-0">
+            <MobileFold label="Voir l’aperçu" hideLabel="Masquer l’aperçu" buttonClassName="!mt-0">
+              {children}
+            </MobileFold>
+          </div>
+        )}
       </div>
     </motion.article>
   );

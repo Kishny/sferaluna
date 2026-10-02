@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
 import { Container, SiteShell } from "@/components/site/sections";
+import MobileFold from "@/components/site/MobileFold";
 
 export const metadata = {
   title: "Politique de confidentialité",
@@ -28,7 +29,9 @@ function Section({ n, title, children }: { n: number; title: string; children: R
         <span className="mr-2 text-fuchsia-300">{n}.</span>
         {title}
       </h2>
-      <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-white/75">{children}</div>
+      <MobileFold className="mt-3 space-y-3 text-[15px] leading-relaxed text-white/75" label="Lire cette section" hideLabel="Replier" defaultOpen={n === 1} buttonClassName="!mt-1">
+        {children}
+      </MobileFold>
     </section>
   );
 }
@@ -56,7 +59,7 @@ export default function ConfidentialitePage() {
             <p className="mt-3 text-sm text-white/60">Dernière mise à jour : {UPDATED}</p>
           </header>
 
-          <div className="mt-8 space-y-9 rounded-3xl border border-violet-300/[0.16] bg-[#1b0d38]/80 p-6 backdrop-blur-xl sm:p-10">
+          <div className="mt-8 space-y-6 rounded-3xl sm:space-y-9 border border-violet-300/[0.16] bg-[#1b0d38]/80 p-6 backdrop-blur-xl sm:p-10">
             <Section n={1} title="Les données que nous collectons">
               <List
                 items={[

@@ -103,11 +103,11 @@ export default function ValeursPage() {
         <SectionTitle className="!mt-8" icon={Sparkles} tone="gold" title="Les piliers de notre communauté" subtitle="Des valeurs concrètes au service d’une expérience plus humaine et authentique." />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {PILLARS.map(({ icon: Icon, tone, title, text, tags }) => (
-            <article key={title} className={cn(PANEL, "flex flex-col items-center p-6 text-center transition hover:border-fuchsia-300/40 xl:px-3 xl:py-5")}>
-              <Icon className={cn("h-10 w-10 drop-shadow-[0_0_14px_rgba(217,70,239,0.55)]", tone)} />
+            <article key={title} className={cn(PANEL, "flex flex-col items-center p-4 text-center transition hover:border-fuchsia-300/40 sm:p-6 xl:px-3 xl:py-5")}>
+              <Icon className={cn("h-8 w-8 drop-shadow-[0_0_14px_rgba(217,70,239,0.55)] sm:h-10 sm:w-10", tone)} />
               <h3 className="mt-3 text-lg font-semibold text-white">{title}</h3>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-white/70">{text}</p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <div className="mt-4 hidden flex-wrap justify-center gap-2 sm:flex">
                 {tags.map((tag) => (
                   <span key={tag} className="rounded-full border border-violet-300/25 bg-white/[0.04] px-3 py-1 text-xs text-white/80">
                     {tag}

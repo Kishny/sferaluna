@@ -204,7 +204,7 @@ export function DiscoverGrid() {
             <Link
               href={loggedIn ? item.appHref : item.infoHref}
               className={cn(
-                "group relative flex h-full min-h-[230px] flex-col justify-between overflow-hidden rounded-3xl p-5 transition duration-300 hover:-translate-y-1",
+                "group relative flex h-full min-h-[170px] flex-col sm:min-h-[230px] justify-between overflow-hidden rounded-3xl p-5 transition duration-300 hover:-translate-y-1",
                 withScene ? "border border-violet-300/20" : GLASS,
                 featured && FEATURED_RING
               )}

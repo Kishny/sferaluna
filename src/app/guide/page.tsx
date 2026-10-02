@@ -34,6 +34,7 @@ import {
 import { SiteShell, useIsLoggedIn } from "@/components/site/sections";
 import { SceneArt, type SceneVariant } from "@/components/site/art";
 import { FAQS } from "@/components/site/faq";
+import MobileFold from "@/components/site/MobileFold";
 import { BAND_GHOST, BAND_PRIMARY, PANEL, PageBody, PageHero, PhotoBackdrop, TILE } from "@/components/site/pagekit";
 import { cn } from "@/components/site/ui";
 
@@ -198,6 +199,7 @@ export default function GuidePage() {
               <div className="flex flex-1 flex-col p-4 pt-2">
                 <h3 className="text-[17px] font-semibold leading-snug text-white">{title}</h3>
                 <p className="mt-1 text-xs text-pink-300 xl:hidden">{duration}</p>
+                <MobileFold defaultOpen={i === 0} className="sm:!flex sm:flex-1 sm:flex-col" label="Voir cette étape" hideLabel="Replier" buttonClassName="!mt-1">
                 <p className="mt-2 text-sm leading-relaxed text-white/70">{text}</p>
                 <ul className="mt-3 flex-1 space-y-2">
                   {points.map((point) => (
@@ -208,10 +210,11 @@ export default function GuidePage() {
                 </ul>
                 <Link
                   href={loggedIn ? appHref : href}
-                  className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-full border border-violet-200/35 text-sm font-medium text-white transition hover:border-fuchsia-300/70 hover:bg-fuchsia-500/10"
+                  className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full border border-violet-200/35 text-sm font-medium text-white transition hover:border-fuchsia-300/70 hover:bg-fuchsia-500/10"
                 >
                   {i === 0 && loggedIn ? "Voir mon profil" : cta} <ArrowRight className="h-4 w-4" />
                 </Link>
+                </MobileFold>
               </div>
             </article>
           ))}
