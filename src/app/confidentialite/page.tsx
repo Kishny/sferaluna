@@ -1,455 +1,175 @@
-// src/app/contact/page.tsx
-
-"use client";
-
-import { useState } from "react";
-import BackButton from "@/components/BackButton";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  CheckCircle2,
-  ChevronDown,
-  Heart,
-  Mail,
-  MessageCircle,
-  Moon,
-  Send,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+// src/app/confidentialite/page.tsx
 
 /**
- * Page Contact SferaLuna.
+ * Politique de confidentialité.
  *
- * Cette page gère :
- * - un formulaire de contact simple ;
- * - un état d'envoi simulé ;
- * - un état de confirmation après envoi ;
- * - des informations de contact rapides ;
- * - une logique mobile compacte avec accordéon.
- *
- * Important :
- * L'envoi est actuellement simulé avec un setTimeout.
- * Plus tard, tu pourras connecter handleSubmit à :
- * - une route API /api/contact ;
- * - Resend ;
- * - Nodemailer ;
- * - Brevo ;
- * - ou un service externe.
+ * Le contenu décrit les traitements réellement effectués par le site
+ * (inscription, profil, messagerie, vérifications d'identité et de photos,
+ * paiement, e-mails). À faire relire avant toute modification de fond.
  */
 
-interface ContactForm {
-  nom: string;
-  email: string;
-  sujet: string;
-  message: string;
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
+
+import { Container, SiteShell } from "@/components/site/sections";
+
+export const metadata = {
+  title: "Politique de confidentialité",
+  description: "Quelles données SferaLuna collecte, pourquoi, avec quels prestataires, et comment exercer vos droits.",
+};
+
+const UPDATED = "2 octobre 2026";
+const CONTACT = "contact@sferaluna.com";
+
+function Section({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section className="scroll-mt-28" id={`section-${n}`}>
+      <h2 className="text-xl font-bold text-white">
+        <span className="mr-2 text-fuchsia-300">{n}.</span>
+        {title}
+      </h2>
+      <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-white/75">{children}</div>
+    </section>
+  );
 }
 
-export default function ContactPage() {
-  /**
-   * Données du formulaire.
-   */
-  const [form, setForm] = useState<ContactForm>({
-    nom: "",
-    email: "",
-    sujet: "",
-    message: "",
-  });
+const List = ({ items }: { items: React.ReactNode[] }) => (
+  <ul className="list-disc space-y-1.5 pl-5 marker:text-fuchsia-300">
+    {items.map((item, i) => (
+      <li key={i}>{item}</li>
+    ))}
+  </ul>
+);
 
-  /**
-   * true lorsque le message a été envoyé.
-   */
-  const [sent, setSent] = useState(false);
+const B = ({ children }: { children: React.ReactNode }) => <strong className="font-semibold text-white">{children}</strong>;
 
-  /**
-   * true pendant l'envoi du message.
-   */
-  const [sending, setSending] = useState(false);
-
-  /**
-   * Accordéon mobile pour les infos utiles.
-   */
-  const [openInfo, setOpenInfo] = useState<string | null>("response");
-
-  /**
-   * Données affichées dans les petites cards d'information.
-   */
-  const contactInfos = [
-    {
-      id: "email",
-      emoji: "📧",
-      title: "Email",
-      value: "contact@sferaluna.com",
-      description:
-        "Notre équipe reçoit votre demande directement par email.",
-    },
-    {
-      id: "response",
-      emoji: "💬",
-      title: "Réponse",
-      value: "Sous 24–48h",
-      description:
-        "Nous répondons généralement sous 24 à 48h selon le volume de demandes.",
-    },
-    {
-      id: "premium",
-      emoji: "🛡️",
-      title: "Support premium",
-      value: "Prioritaire",
-      description:
-        "Les membres premium bénéficient d'un traitement prioritaire.",
-    },
-  ];
-
-  /**
-   * Gestion de l'envoi du formulaire.
-   *
-   * Pour le moment :
-   * - on empêche le rechargement de la page ;
-   * - on simule un envoi ;
-   * - on affiche l'écran de succès.
-   */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (sending) return;
-
-    setSending(true);
-
-    /**
-     * Simulation d'envoi.
-     * À remplacer par un vrai fetch plus tard :
-     *
-     * await fetch("/api/contact", {
-     *   method: "POST",
-     *   headers: { "Content-Type": "application/json" },
-     *   body: JSON.stringify(form),
-     * });
-     */
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    setSent(true);
-    setSending(false);
-  };
-
+export default function ConfidentialitePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 text-[#1C1C1C] sm:px-4 sm:pb-16 sm:pt-24">
-        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
-          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
-        </div>
-      <div className="mx-auto max-w-2xl">
-        {/* Header / Hero compact */}
-        <motion.header
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="mb-4 rounded-3xl border border-[#8E7AB5]/15 bg-white/75 p-4 text-center shadow-sm backdrop-blur sm:mb-8 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
-        >
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-1.5 text-xs font-medium text-[#8E7AB5] sm:mb-6 sm:px-4 sm:py-2 sm:text-sm">
-            <Mail size={14} />
-            Contactez-nous
+    <SiteShell back>
+      <section className="relative pb-16">
+        <Container className="max-w-4xl">
+          <header className="text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-fuchsia-300/50 bg-fuchsia-500/10 px-4 py-1.5 text-sm font-semibold text-fuchsia-100">
+              <ShieldCheck className="h-4 w-4" /> Politique de confidentialité
+            </span>
+            <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">Vos données, notre responsabilité</h1>
+            <p className="mt-3 text-sm text-white/60">Dernière mise à jour : {UPDATED}</p>
+          </header>
+
+          <div className="mt-8 space-y-9 rounded-3xl border border-violet-300/[0.16] bg-[#1b0d38]/80 p-6 backdrop-blur-xl sm:p-10">
+            <Section n={1} title="Les données que nous collectons">
+              <List
+                items={[
+                  <><B>Compte :</B> adresse e-mail, mot de passe (stocké chiffré, jamais lisible), ou identifiant Google si vous vous connectez avec Google.</>,
+                  <><B>Profil :</B> pseudonyme, âge, ville et département, orientation, intentions, centres d’intérêt, valeurs, langues, profession, bio, photos et vidéos.</>,
+                  <><B>Activité :</B> likes, matchs, visites de profils, messages échangés, publications VibeSphere, VibeMentor et Communauté, propositions VibePlanner, inscriptions aux événements.</>,
+                  <><B>Journal émotionnel :</B> vos humeurs et notes. Elles sont privées et ne sont visibles par aucune autre membre.</>,
+                  <><B>Abonnement :</B> l’offre choisie et l’état de l’abonnement. Vos coordonnées bancaires sont saisies chez Stripe : SferaLuna ne les reçoit jamais.</>,
+                  <><B>Sécurité :</B> signalements, blocages et date de dernière connexion.</>,
+                ]}
+              />
+            </Section>
+
+            <Section n={2} title="Vérification d’identité et des photos">
+              <p>
+                <B>Identité.</B> La vérification d’identité est réalisée par Stripe Identity : votre pièce d’identité et votre selfie sont transmis à Stripe et traités par Stripe.
+                SferaLuna ne conserve que le résultat (vérifiée ou non).
+              </p>
+              <p>
+                <B>Photos.</B> Si vous choisissez de vérifier vos photos, un selfie pris en direct est analysé puis comparé à vos photos et vidéos de profil par Amazon Rekognition
+                (Amazon Web Services, région Irlande). Il s’agit d’un traitement de <B>données biométriques</B>, effectué uniquement avec votre <B>consentement explicite</B>, donné avant le selfie.
+              </p>
+              <List
+                items={[
+                  "Le selfie de référence est conservé chiffré et n’est jamais affiché, ni à vous, ni aux autres membres.",
+                  <>Vous pouvez retirer votre consentement et supprimer ce selfie à tout moment depuis la page <Link href="/verification-photo" className="text-pink-300 hover:underline">Vérification des photos</Link>. Le badge « Photo vérifiée » est alors retiré.</>,
+                  "Il est supprimé automatiquement si vous supprimez votre compte.",
+                ]}
+              />
+            </Section>
+
+            <Section n={3} title="Pourquoi nous utilisons vos données">
+              <List
+                items={[
+                  "Créer et gérer votre compte, afficher votre profil selon la visibilité que vous avez choisie.",
+                  "Vous proposer des profils compatibles (intentions, centres d’intérêt, localisation).",
+                  "Faire fonctionner la messagerie, les événements et les espaces communautaires.",
+                  "Gérer votre abonnement et vous envoyer les e-mails liés au service (confirmation, mot de passe, paiement).",
+                  "Protéger les membres : vérifications, filtre anti-harcèlement de la messagerie, traitement des signalements par l’équipe de modération.",
+                ]}
+              />
+              <p>Nous ne vendons pas vos données et ne les utilisons pas pour de la publicité ciblée.</p>
+            </Section>
+
+            <Section n={4} title="Nos prestataires">
+              <p>Vos données sont traitées par des prestataires techniques, uniquement pour faire fonctionner le service :</p>
+              <List
+                items={[
+                  <><B>Vercel</B> : hébergement du site et mesure d’audience.</>,
+                  <><B>MongoDB</B> : base de données.</>,
+                  <><B>Cloudinary</B> : stockage des photos et vidéos.</>,
+                  <><B>Stripe</B> : paiement et vérification d’identité.</>,
+                  <><B>Amazon Web Services (Rekognition)</B> : vérification des photos par selfie.</>,
+                  <><B>Resend</B> : envoi des e-mails.</>,
+                  <><B>Pusher</B> : messagerie et notifications en temps réel.</>,
+                  <><B>Google</B> : connexion avec un compte Google, si vous l’utilisez.</>,
+                ]}
+              />
+              <p>Certains de ces prestataires sont établis aux États-Unis. Les transferts sont encadrés par les garanties prévues par le RGPD (clauses contractuelles types ou cadre de protection des données UE–États-Unis).</p>
+            </Section>
+
+            <Section n={5} title="Durée de conservation">
+              <p>
+                Vos données sont conservées tant que votre compte existe. Vous pouvez supprimer votre compte à tout moment depuis <B>Mon compte → Sécurité</B> : votre profil, vos photos et vidéos,
+                vos matchs, les messages que vous avez envoyés, vos publications, votre journal et votre selfie de vérification sont alors effacés. Un abonnement en cours n’est pas renouvelé.
+              </p>
+              <p>Les données de facturation sont conservées par Stripe pendant la durée imposée par la loi.</p>
+            </Section>
+
+            <Section n={6} title="Vos droits">
+              <p>Conformément au RGPD, vous pouvez à tout moment :</p>
+              <List
+                items={[
+                  "accéder à vos données et en obtenir une copie ;",
+                  "les faire rectifier (la plupart se modifient directement dans Mon profil) ;",
+                  "les faire effacer ;",
+                  "vous opposer à un traitement ou en demander la limitation ;",
+                  "retirer votre consentement, notamment pour la vérification des photos.",
+                ]}
+              />
+              <p>
+                Écrivez-nous à{" "}
+                <a href={`mailto:${CONTACT}`} className="text-pink-300 hover:underline">
+                  {CONTACT}
+                </a>{" "}
+                ou via la page <Link href="/contact" className="text-pink-300 hover:underline">Contact</Link>. Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL (cnil.fr).
+              </p>
+            </Section>
+
+            <Section n={7} title="Sécurité">
+              <p>
+                Mots de passe chiffrés, connexions HTTPS, selfie de vérification chiffré, accès aux données limité à l’équipe de modération pour le traitement des signalements.
+                Aucun système n’étant infaillible, signalez-nous sans attendre toute activité suspecte sur votre compte.
+              </p>
+            </Section>
+
+            <Section n={8} title="Cookies">
+              <p>
+                Le site utilise des cookies nécessaires à la connexion. La mesure d’audience (Vercel Analytics) fonctionne sans cookie et sans vous identifier. Le détail et vos choix sont sur la page{" "}
+                <Link href="/cookies" className="text-pink-300 hover:underline">Cookies</Link>.
+              </p>
+            </Section>
           </div>
 
-          <h1 className="text-2xl font-bold leading-tight text-[#1C1C1C] sm:text-4xl">
-            On est là pour vous 💜
-          </h1>
-
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-[#666] sm:mt-4 sm:text-lg">
-            Une question, un problème ou juste envie de dire bonjour ?
-            Écrivez-nous.
-          </p>
-        </motion.header>
-
-        {/* Infos contact desktop/tablette */}
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-5 hidden grid-cols-3 gap-4 sm:mb-10 sm:grid"
-        >
-          {contactInfos.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-2xl border border-[#8E7AB5]/15 bg-white p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <p className="mb-2 text-2xl">{item.emoji}</p>
-
-              <p className="mb-1 text-xs text-[#999]">{item.title}</p>
-
-              <p className="text-sm font-semibold text-[#5B4B8A]">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </motion.section>
-
-        {/* Infos contact mobile en accordéon compact */}
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-4 space-y-2 sm:hidden"
-        >
-          {contactInfos.map((item) => {
-            const isOpen = openInfo === item.id;
-
-            return (
-              <div
-                key={item.id}
-                className="overflow-hidden rounded-2xl border border-[#E8E0FF] bg-white shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenInfo(isOpen ? null : item.id)}
-                  className="flex w-full items-center gap-3 px-3 py-3 text-left"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-lg">
-                    {item.emoji}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-semibold text-[#5B4B8A]">
-                      {item.title}
-                    </h2>
-
-                    <p className="truncate text-xs text-[#666]">
-                      {item.value}
-                    </p>
-                  </div>
-
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-[#F0ECFA] px-3 pb-3 pt-2">
-                        <p className="text-xs leading-relaxed text-[#666]">
-                          {item.description}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </motion.section>
-
-        {/* Formulaire / succès */}
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="rounded-3xl border border-[#8E7AB5]/15 bg-white p-4 shadow-lg sm:p-8"
-        >
-          {sent ? (
-            /**
-             * Écran de succès après envoi.
-             */
-            <div className="py-6 text-center sm:py-8">
-              <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-green-500 sm:h-16 sm:w-16" />
-
-              <h2 className="mb-2 text-xl font-bold text-[#1C1C1C] sm:text-2xl">
-                Message envoyé ! 🎉
-              </h2>
-
-              <p className="mx-auto mb-5 max-w-sm text-sm leading-relaxed text-[#666] sm:mb-6">
-                Nous vous répondrons dans les 24–48h.
-              </p>
-
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSent(false);
-                    setForm({
-                      nom: "",
-                      email: "",
-                      sujet: "",
-                      message: "",
-                    });
-                  }}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E8E0FF] px-5 py-3 text-sm font-semibold text-[#8E7AB5] transition hover:border-[#8E7AB5] hover:bg-[#8E7AB5]/5 sm:w-auto"
-                >
-                  <MessageCircle size={16} />
-                  Nouveau message
-                </button>
-
-                <Link
-                  href="/"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto"
-                >
-                  <Moon size={16} />
-                  Retour à l&apos;accueil
-                </Link>
-              </div>
-            </div>
-          ) : (
-            /**
-             * Formulaire principal.
-             */
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              <div className="mb-4 flex items-center justify-between gap-3 sm:mb-6">
-                <h2 className="flex items-center gap-2 text-base font-bold text-[#1C1C1C] sm:text-xl">
-                  <MessageCircle className="h-5 w-5 text-[#8E7AB5]" />
-                  Envoyez-nous un message
-                </h2>
-
-                <span className="hidden rounded-full bg-[#8E7AB5]/10 px-3 py-1 text-xs font-medium text-[#8E7AB5] sm:inline-flex">
-                  Support Luna
-                </span>
-              </div>
-
-              {/* Nom + email */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-[#666] sm:text-sm">
-                    Votre nom
-                  </span>
-
-                  <input
-                    required
-                    value={form.nom}
-                    onChange={(e) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        nom: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-[#E8E0FF] px-3 py-2.5 text-sm text-[#1C1C1C] placeholder-[#999] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
-                    placeholder="Luna Dupont"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-medium text-[#666] sm:text-sm">
-                    Votre email
-                  </span>
-
-                  <input
-                    required
-                    type="email"
-                    value={form.email}
-                    onChange={(e) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        email: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-[#E8E0FF] px-3 py-2.5 text-sm text-[#1C1C1C] placeholder-[#999] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
-                    placeholder="vous@email.com"
-                  />
-                </label>
-              </div>
-
-              {/* Sujet */}
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-[#666] sm:text-sm">
-                  Sujet
-                </span>
-
-                <select
-                  required
-                  value={form.sujet}
-                  onChange={(e) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      sujet: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-[#E8E0FF] bg-white px-3 py-2.5 text-sm text-[#1C1C1C] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
-                >
-                  <option value="">Choisir un sujet…</option>
-                  <option value="technique">Problème technique</option>
-                  <option value="abonnement">Abonnement / Paiement</option>
-                  <option value="compte">Mon compte</option>
-                  <option value="signalement">Signalement</option>
-                  <option value="autre">Autre</option>
-                </select>
-              </label>
-
-              {/* Message */}
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-[#666] sm:text-sm">
-                  Message
-                </span>
-
-                <textarea
-                  required
-                  rows={4}
-                  value={form.message}
-                  onChange={(e) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      message: e.target.value,
-                    }))
-                  }
-                  className="w-full resize-none rounded-xl border border-[#E8E0FF] px-3 py-2.5 text-sm text-[#1C1C1C] placeholder-[#999] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
-                  placeholder="Décrivez votre demande en détail…"
-                />
-              </label>
-
-              {/* Résumé confiance */}
-              <div className="rounded-2xl border border-[#E8E0FF] bg-[#FDFCFF] p-3">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#8E7AB5]" />
-
-                  <p className="text-xs leading-relaxed text-[#666]">
-                    Votre message reste confidentiel. Les demandes liées à la
-                    sécurité, au signalement ou au compte sont traitées avec
-                    attention.
-                  </p>
-                </div>
-              </div>
-
-              {/* Bouton envoyer */}
-              <button
-                type="submit"
-                disabled={sending}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:py-3.5"
-              >
-                {sending ? (
-                  <>
-                    <Sparkles className="h-4 w-4 animate-spin" />
-                    Envoi en cours…
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    Envoyer le message
-                  </>
-                )}
-              </button>
-
-              <p className="flex items-center justify-center gap-1 text-center text-[11px] text-[#999] sm:text-xs">
-                <Heart size={12} className="text-[#FF6B6B]" />
-                Nous respectons votre vie privée. Aucun spam.
-              </p>
-            </form>
-          )}
-        </motion.section>
-
-        {/* Retour */}
-        <p className="mt-5 text-center text-xs text-[#999] sm:mt-8 sm:text-sm">
-          <Link
-            href="/"
-            className="font-medium text-[#8E7AB5] underline-offset-2 transition hover:underline"
-          >
-            ← Retour à l&apos;accueil
-          </Link>
-        </p>
-      </div>
-    </main>
+          <nav className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-white/60">
+            <Link href="/conditions" className="hover:text-white">Conditions d’utilisation</Link>
+            <span aria-hidden>·</span>
+            <Link href="/cookies" className="hover:text-white">Cookies</Link>
+            <span aria-hidden>·</span>
+            <Link href="/contact" className="hover:text-white">Contact</Link>
+          </nav>
+        </Container>
+      </section>
+    </SiteShell>
   );
 }
