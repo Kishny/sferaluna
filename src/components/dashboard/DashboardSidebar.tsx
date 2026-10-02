@@ -15,6 +15,7 @@ import {
   Lock,
   MessageSquareText,
   Moon,
+  Orbit,
   Shield,
   SlidersHorizontal,
   Sparkles,
@@ -94,6 +95,7 @@ export default function DashboardSidebar({
       href: "/vibeplanner",
       locked: features ? !features.vibePlanner : false,
     },
+    { key: "vibesphere", label: "VibeSphere", icon: Orbit, href: "/vibesphere" },
   ];
 
   const accountItems: NavItem[] = [

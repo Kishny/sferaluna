@@ -29,22 +29,23 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
-  BarChart3,
   ChevronDown,
   Loader2,
   Moon,
-  Music,
   Play,
   RefreshCw,
   Sparkles,
   Sun,
   Trash2,
-  Wand2,
   X,
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { Playfair_Display } from "next/font/google";
+
+/** Serif du titre (auto-hébergée par next/font). */
+const titleFont = Playfair_Display({ subsets: ["latin"], weight: ["700"], display: "swap" });
 
 // ─────────────────────────────────────────────
 // Types
@@ -237,8 +238,101 @@ function OrbitGlow({
 }
 
 // ─────────────────────────────────────────────
+// Thème jour / nuit
+// ─────────────────────────────────────────────
+
+type Theme = {
+  isDay: boolean;
+  page: string;
+  card: string;
+  soft: string;
+  title: string;
+  text: string;
+  muted: string;
+  field: string;
+  iconBubble: string;
+  divider: string;
+};
+
+function themeFor(isDay: boolean): Theme {
+  return isDay
+    ? {
+        isDay,
+        page: "bg-gradient-to-b from-[#e9defc] via-[#f3ecff] to-[#e6d9fb] text-[#2a1f5c]",
+        card: "border-white/90 bg-white/85 shadow-[0_18px_50px_-28px_rgba(91,63,214,0.45)]",
+        soft: "border-[#e3d7fb] bg-white/70",
+        title: "text-[#231a52]",
+        text: "text-[#3b2f6b]",
+        muted: "text-[#7a6aa4]",
+        field: "border-[#ddd0f7] bg-white text-[#231a52] placeholder:text-[#a99cc9] focus:border-[#8b5cf6] focus:ring-[#8b5cf6]/20",
+        iconBubble: "bg-[#efe7ff]",
+        divider: "border-[#ece3fb]",
+      }
+    : {
+        isDay,
+        page: "bg-gradient-to-b from-[#12081f] via-[#1c0f3d] to-[#12081f] text-white",
+        card: "border-violet-300/[0.16] bg-[#1b0d38]/80 shadow-[0_18px_50px_-24px_rgba(8,0,24,0.9)]",
+        soft: "border-violet-300/15 bg-white/[0.04]",
+        title: "text-white",
+        text: "text-white/85",
+        muted: "text-white/60",
+        field: "border-violet-300/20 bg-white/[0.05] text-white placeholder:text-white/40 focus:border-fuchsia-300/60 focus:ring-fuchsia-500/20",
+        iconBubble: "bg-white/[0.07]",
+        divider: "border-white/10",
+      };
+}
+
+/** Décor du bandeau : lune, planètes, étoiles et nuages (SVG, aucun fichier à charger). */
+function HeroDecor({ isDay }: { isDay: boolean }) {
+  const cloud = isDay ? "#ffffff" : "#3b2473";
+  const moonA = isDay ? "#f4ecff" : "#e9d5ff";
+  const moonB = isDay ? "#cdb8f5" : "#7c3aed";
+  const star = isDay ? "#ffffff" : "#f5e8ff";
+  return (
+    <svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+      <defs>
+        <radialGradient id="jr-moon" cx="40%" cy="35%" r="70%">
+          <stop offset="0%" stopColor={moonA} />
+          <stop offset="100%" stopColor={moonB} />
+        </radialGradient>
+        <filter id="jr-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="14" />
+        </filter>
+      </defs>
+      {/* Grande lune à droite */}
+      <circle cx="930" cy="150" r="130" fill="url(#jr-moon)" opacity={isDay ? 0.75 : 0.55} />
+      <circle cx="890" cy="110" r="16" fill={moonB} opacity="0.25" />
+      <circle cx="975" cy="170" r="24" fill={moonB} opacity="0.2" />
+      <circle cx="930" cy="80" r="9" fill={moonB} opacity="0.22" />
+      {/* Petites planètes */}
+      <circle cx="285" cy="72" r="26" fill="url(#jr-moon)" opacity="0.9" />
+      <ellipse cx="285" cy="72" rx="44" ry="10" fill="none" stroke={moonB} strokeOpacity="0.45" strokeWidth="1.5" transform="rotate(-18 285 72)" />
+      <circle cx="330" cy="150" r="9" fill="url(#jr-moon)" opacity="0.8" />
+      <circle cx="1085" cy="128" r="12" fill="url(#jr-moon)" opacity="0.85" />
+      {/* Orbites */}
+      <ellipse cx="170" cy="150" rx="210" ry="120" fill="none" stroke={moonB} strokeOpacity="0.25" strokeDasharray="3 7" />
+      {/* Étoiles */}
+      {[
+        [380, 80, 7], [1010, 110, 9], [1150, 40, 6], [60, 60, 6], [640, 30, 4], [760, 210, 5], [470, 215, 4], [1120, 205, 5],
+      ].map(([x, y, s], i) => (
+        <path key={i} d={`M${x} ${y - s} L${x + s * 0.28} ${y - s * 0.28} L${x + s} ${y} L${x + s * 0.28} ${y + s * 0.28} L${x} ${y + s} L${x - s * 0.28} ${y + s * 0.28} L${x - s} ${y} L${x - s * 0.28} ${y - s * 0.28} Z`} fill={star} opacity="0.9" />
+      ))}
+      {/* Nuages */}
+      <g filter="url(#jr-blur)" fill={cloud} opacity={isDay ? 0.9 : 0.55}>
+        <ellipse cx="120" cy="250" rx="220" ry="46" />
+        <ellipse cx="430" cy="270" rx="200" ry="40" />
+        <ellipse cx="780" cy="268" rx="240" ry="44" />
+        <ellipse cx="1110" cy="252" rx="200" ry="48" />
+      </g>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Page principale
 // ─────────────────────────────────────────────
+
+const NOTE_MAX = 500;
 
 export default function JournalPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -253,73 +347,25 @@ export default function JournalPage() {
 
   const [error, setError] = useState("");
   const [loadedStorage, setLoadedStorage] = useState(false);
-  const [saving, setSaving] = useState(false);
 
-  /**
-   * Accordéons mobile.
-   */
   const [formOpen, setFormOpen] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
 
-  /** Morceau en cours de lecture dans le lecteur intégré (dock bas de page). */
   const [playingTrack, setPlayingTrack] = useState<PlaylistItem | null>(null);
 
   const isDay = period === "jour";
-
-  // ─────────────────────────────────────────────
-  // Classes dynamiques
-  // ─────────────────────────────────────────────
-
-  const titleClass = isDay ? "text-[#5B4B8A]" : "text-[#D9B8FF]";
-  const textPrimary = isDay ? "text-[#2E2A3A]" : "text-white";
-  const textSecondary = isDay ? "text-[#6B5F8E]" : "text-white/80";
-  const textMuted = isDay ? "text-[#7A6AA4]" : "text-white/60";
-
-  const cardBg = isDay
-    ? "bg-white/75 border-[#D9B8FF]/80"
-    : "bg-white/10 border-white/20";
-
-  const softCardBg = isDay
-    ? "bg-white/55 border-[#D9B8FF]/60"
-    : "bg-white/5 border-white/10";
-
-  const moodBackground = useMemo(() => {
-    switch (mood) {
-      case "Apaisé":
-        return "bg-gradient-to-br from-[#d0f0c0] via-[#f0fff0] to-[#f6f1ff]";
-      case "Triste":
-        return "bg-gradient-to-br from-[#4b6cb7] via-[#28395f] to-[#182848]";
-      case "Énergique":
-        return "bg-gradient-to-br from-[#ffe259] via-[#ffc371] to-[#ffa751]";
-      case "Amoureux":
-        return "bg-gradient-to-br from-[#ff9a9e] via-[#fad0c4] to-[#f6f1ff]";
-      case "Pensif":
-        return "bg-gradient-to-br from-[#a1c4fd] via-[#c2e9fb] to-[#f6f1ff]";
-      case "Heureux":
-        return "bg-gradient-to-br from-[#f6d365] via-[#fda085] to-[#f6f1ff]";
-      default:
-        return "";
-    }
-  }, [mood]);
-
-  const mainBackground =
-    moodBackground ||
-    (isDay
-      ? "bg-gradient-to-br from-[#f6f1ff] via-[#f4ecfc] to-[#e8dbff]"
-      : "bg-gradient-to-b from-[#0f0c29] via-[#302b63] to-[#24243e]");
+  const t = themeFor(isDay);
 
   const filteredPlaylist = useMemo(() => {
     if (!selectedMood) return playlistItems;
-
     const filtered = playlistItems.filter((item) => item.mood === selectedMood);
     return filtered.length > 0 ? filtered : playlistItems;
   }, [selectedMood]);
 
   const stats = useMemo(() => {
     const uniqueMoods = new Set(entries.map((entry) => entry.mood));
-
     return {
       total: entries.length,
       rituals: entries.filter((entry) => entry.ritualDone).length,
@@ -329,26 +375,14 @@ export default function JournalPage() {
     };
   }, [entries]);
 
-  // ─────────────────────────────────────────────
-  // Chargement initial depuis l'API
-  // ─────────────────────────────────────────────
-
+  // ── Chargement (entrées enregistrées sur le compte, via /api/journal) ──
   const loadEntries = useCallback(async () => {
     try {
       const res = await fetch("/api/journal", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       if (!data.success || !Array.isArray(data.entries)) return;
-
       setEntries(data.entries);
-
-      if (data.entries.length > 0) {
-        const last = data.entries[0] as Entry;
-        setMood(last.mood || "");
-        setSelectedMood(last.mood || "");
-        setAiAnalysis(last.aiAnalysis || null);
-        setPeriod(last.period || "jour");
-      }
     } catch (err) {
       console.error("Erreur chargement journal :", err);
     } finally {
@@ -360,29 +394,15 @@ export default function JournalPage() {
     loadEntries();
   }, [loadEntries]);
 
-  // ─────────────────────────────────────────────
-  // Actions
-  // ─────────────────────────────────────────────
-
+  // ── Actions ──
   const playMoodSound = (selected: string) => {
     if (!isMoodName(selected)) return;
-
-    const sound = moodSoundMap[selected];
-
-    if (!sound) return;
-
     try {
-      const audio = new Audio(sound);
+      const audio = new Audio(moodSoundMap[selected]);
       audio.volume = 0.35;
-
-      audio.play().catch((audioError) => {
-        console.log(
-          "Son non joué, probablement bloqué par le navigateur :",
-          audioError
-        );
-      });
-    } catch (audioError) {
-      console.log("Erreur de lecture audio :", audioError);
+      audio.play().catch(() => {});
+    } catch {
+      /* son indisponible */
     }
   };
 
@@ -394,28 +414,16 @@ export default function JournalPage() {
 
   const handleSubmit = async () => {
     if (!mood.trim() && !note.trim()) {
-      setError("Veuillez sélectionner une humeur ou écrire une note.");
+      setError("Choisis une humeur ou écris une note.");
       return;
     }
-
     setError("");
     setIsAnalyzing(true);
+    if (mood) playMoodSound(mood);
 
-    if (mood) {
-      playMoodSound(mood);
-    }
-
-    // Simuler l'analyse IA (délai visuel 1,2s)
-    await new Promise((resolve) => window.setTimeout(resolve, 1200));
-
-    const analysis = mood
-      ? simulateAiAnalysis(mood)
-      : "Aucune humeur détectée. Ta note reste précieuse 💫";
-
-    setAiAnalysis(analysis);
+    const analysis = mood ? simulateAiAnalysis(mood) : "Ta note est précieuse, même sans humeur associée 💫";
 
     try {
-      setSaving(true);
       const res = await fetch("/api/journal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -427,62 +435,47 @@ export default function JournalPage() {
           aiAnalysis: analysis,
         }),
       });
-
       const data = await res.json().catch(() => null);
-
-      if (res.ok && data?.success && data.entry) {
-        setEntries((prev) => [data.entry, ...prev]);
+      if (!res.ok || !data?.success || !data.entry) {
+        setError(data?.error || "L’entrée n’a pas pu être enregistrée. Réessaie dans un instant.");
+        return;
       }
-    } catch (err) {
-      console.error("Erreur sauvegarde entrée :", err);
+      setEntries((prev) => [data.entry, ...prev]);
+      setAiAnalysis(analysis);
+      setMood("");
+      setNote("");
+      setSelectedMood("");
+      setTimelineOpen(true);
+    } catch {
+      setError("Connexion impossible. Ton entrée n’a pas été enregistrée.");
     } finally {
-      setSaving(false);
+      setIsAnalyzing(false);
     }
-
-    setMood("");
-    setNote("");
-    setSelectedMood("");
-    setIsAnalyzing(false);
-    setTimelineOpen(true);
   };
 
   const handleRitualToggle = async (id: string) => {
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
-
     const newValue = !entry.ritualDone;
-
-    // Optimistic update
-    setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ritualDone: newValue } : e))
-    );
-
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ritualDone: newValue } : e)));
     try {
       await fetch(`/api/journal/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ritualDone: newValue }),
       });
-    } catch (err) {
-      console.error("Erreur toggle ritual :", err);
-      // Rollback
-      setEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, ritualDone: !newValue } : e))
-      );
+    } catch {
+      setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ritualDone: !newValue } : e)));
     }
   };
 
   const deleteEntry = async (id: string) => {
-    const confirmed = window.confirm("Supprimer cette entrée ?");
-    if (!confirmed) return;
-
+    if (!window.confirm("Supprimer cette entrée ?")) return;
     setEntries((prev) => prev.filter((e) => e.id !== id));
-
     try {
       await fetch(`/api/journal/${id}`, { method: "DELETE" });
-    } catch (err) {
-      console.error("Erreur suppression entrée :", err);
-      await loadEntries(); // Recharger si erreur
+    } catch {
+      await loadEntries();
     }
   };
 
@@ -495,18 +488,9 @@ export default function JournalPage() {
   };
 
   const resetJournal = async () => {
-    const confirmed = window.confirm(
-      "Voulez-vous vraiment supprimer tout votre journal ?"
-    );
-    if (!confirmed) return;
-
+    if (!window.confirm("Voulez-vous vraiment supprimer tout votre journal ?")) return;
     setEntries([]);
-    setMood("");
-    setNote("");
-    setSelectedMood("");
-    setAiAnalysis(null);
-    setError("");
-
+    clearCurrentInput();
     try {
       await fetch("/api/journal", { method: "DELETE" });
     } catch (err) {
@@ -515,415 +499,267 @@ export default function JournalPage() {
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-      handleSubmit();
-    }
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) handleSubmit();
   };
-
-  if (!loadedStorage) {
-    return (
-      <>
-        <Header />
-
-        <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f6f1ff] via-[#f4ecfc] to-[#e8dbff] px-4">
-          <div className="text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#8E7AB5]" />
-            <p className="text-sm text-[#6B5F8E]">
-              Chargement du journal émotionnel...
-            </p>
-          </div>
-        </main>
-
-        <div className="hidden sm:block">
-          <Footer />
-        </div>
-      </>
-    );
-  }
 
   return (
     <>
       <Header />
 
-      <main
-        className={`relative min-h-screen overflow-hidden px-3 py-20 transition-all duration-500 sm:px-4 sm:py-24 ${mainBackground}`}
-      >
-        {/* Décor immersif : sphères en orbite + halos flottants animés */}
+      <main className={`relative min-h-screen overflow-hidden px-3 pb-16 pt-20 transition-colors duration-500 sm:px-5 sm:pt-24 ${t.page}`}>
+        {/* Décor de page */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <OrbitGlow
-            className="journal-spin right-[-14%] top-16 h-72 w-72 sm:h-[26rem] sm:w-[26rem]"
-            stroke={isDay ? "#8E7AB5" : "#FFFFFF"}
-          />
-          <OrbitGlow
-            className="journal-spin-rev left-[-16%] top-[52%] h-80 w-80 sm:h-[32rem] sm:w-[32rem]"
-            stroke={isDay ? "#B79CE0" : "#E9D5FF"}
-          />
-          <div
-            className={`journal-float absolute left-1/4 top-24 h-56 w-56 rounded-full blur-[120px] sm:h-72 sm:w-72 ${
-              isDay ? "bg-purple-300/40" : "bg-violet-600/25"
-            }`}
-          />
-          <div
-            className={`journal-float-slow absolute bottom-10 right-[12%] h-64 w-64 rounded-full blur-[130px] sm:h-80 sm:w-80 ${
-              isDay ? "bg-pink-200/50" : "bg-pink-600/20"
-            }`}
-          />
+          <OrbitGlow className="journal-spin right-[-10%] top-[38%] h-80 w-80 sm:h-[30rem] sm:w-[30rem]" stroke={isDay ? "#8E7AB5" : "#FFFFFF"} />
+          <OrbitGlow className="journal-spin-rev left-[-12%] top-[30%] h-72 w-72 sm:h-[26rem] sm:w-[26rem]" stroke={isDay ? "#B79CE0" : "#E9D5FF"} />
+          <div className={`absolute -bottom-24 left-0 right-0 h-64 blur-3xl ${isDay ? "bg-white/70" : "bg-violet-700/20"}`} />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-3xl space-y-4 sm:space-y-10">
-          {/* Hero compact */}
+        <div className="relative z-10 mx-auto max-w-[1500px]">
+          {/* ── Bandeau ── */}
           <motion.section
-            initial={{ opacity: 0, y: -24 }}
+            initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className={`rounded-3xl border p-4 text-center backdrop-blur-md sm:p-6 ${cardBg}`}
+            transition={{ duration: 0.45 }}
+            className={`relative isolate overflow-hidden rounded-[28px] border px-4 pb-8 pt-4 text-center sm:px-6 sm:pb-10 sm:pt-5 ${
+              isDay ? "border-white/90 bg-gradient-to-br from-[#e4d6fb] via-[#efe6ff] to-[#dccbf8]" : "border-violet-300/20 bg-gradient-to-br from-[#241052] via-[#1b0d38] to-[#2c1260]"
+            }`}
           >
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="absolute inset-0 -z-10">
+              <HeroDecor isDay={isDay} />
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
               <Link
                 href="/vibesphere"
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition ${
-                  isDay
-                    ? "border-[#D9B8FF] bg-white/55 text-[#6B5F8E] hover:bg-white"
-                    : "border-white/15 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white"
+                className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition ${
+                  isDay ? "border-white bg-white/80 text-[#4b3d86] hover:bg-white" : "border-white/15 bg-white/10 text-white/85 hover:bg-white/15"
                 }`}
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
+                <ArrowLeft className="h-4 w-4" />
                 Retour
               </Link>
 
-              <div
-                className={`grid grid-cols-2 gap-1 rounded-full border p-1 ${
-                  isDay
-                    ? "border-[#D9B8FF] bg-white/55"
-                    : "border-white/20 bg-white/10"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setPeriod("jour")}
-                  className={`flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs transition ${
-                    isDay
-                      ? "bg-[#8E7AB5] text-white shadow"
-                      : "text-white/70 hover:bg-white/10"
-                  }`}
-                >
-                  <Sun className="h-3.5 w-3.5" />
-                  Jour
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPeriod("nuit")}
-                  className={`flex items-center justify-center gap-1 rounded-full px-2.5 py-1 text-xs transition ${
-                    !isDay
-                      ? "bg-[#8E7AB5] text-white shadow"
-                      : "text-[#6B5F8E] hover:bg-white/30"
-                  }`}
-                >
-                  <Moon className="h-3.5 w-3.5" />
-                  Nuit
-                </button>
+              <div className={`flex gap-1 rounded-full border p-1 ${isDay ? "border-white bg-white/80" : "border-white/15 bg-white/10"}`} role="group" aria-label="Thème du journal">
+                {(
+                  [
+                    ["jour", "Jour", Sun],
+                    ["nuit", "Nuit", Moon],
+                  ] as const
+                ).map(([value, label, Icon]) => {
+                  const on = period === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPeriod(value)}
+                      aria-pressed={on}
+                      className={`flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition sm:px-4 ${
+                        on ? "bg-gradient-to-r from-[#7c5cf0] to-[#5b3fd6] text-white shadow" : isDay ? "text-[#4b3d86] hover:bg-[#efe7ff]" : "text-white/75 hover:bg-white/10"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#8E7AB5]/30 bg-white/35 px-3 py-1.5 text-xs text-[#8E7AB5] backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" />
+            <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm sm:-mt-9 ${isDay ? "border-white bg-white/85 text-[#4b3d86]" : "border-white/15 bg-white/10 text-violet-100"}`}>
+              <Sparkles className="h-4 w-4" />
               Espace intime Luna
-            </div>
+            </span>
 
-            <h1 className={`text-2xl font-black leading-tight sm:text-4xl ${titleClass}`}>
-              Journal Émotionnel
-            </h1>
-
-            <p className={`mx-auto mt-1.5 max-w-xl text-xs leading-relaxed sm:text-sm ${textSecondary}`}>
-              Dépose tes émotions, observe tes cycles intérieurs et transforme
-              tes ressentis en repères doux.
+            <h1 className={`${titleFont.className} mt-4 text-4xl font-bold leading-tight sm:text-6xl ${t.title}`}>Journal Émotionnel</h1>
+            <p className={`mx-auto mt-2 max-w-xl text-sm leading-relaxed sm:text-lg ${isDay ? "text-[#4b3d86]" : "text-white/80"}`}>
+              Dépose tes émotions, observe tes cycles intérieurs et transforme tes ressentis en repères doux.
             </p>
+            <div className={`mt-4 flex items-center justify-center gap-3 ${isDay ? "text-[#6f5bb8]" : "text-violet-200"}`} aria-hidden>
+              <span className="h-px w-10 bg-current opacity-50" />
+              <Sparkles className="h-3 w-3" />
+              <Moon className="h-5 w-5 fill-current" />
+              <Sparkles className="h-3 w-3" />
+              <span className="h-px w-10 bg-current opacity-50" />
+            </div>
           </motion.section>
 
-          {/* Formulaire accordéon */}
-          <AccordionSection
-            title="Écrire une entrée"
-            icon="✍️"
-            isOpen={formOpen}
-            setIsOpen={setFormOpen}
-            className={cardBg}
-            titleClass={textPrimary}
-            mutedClass={textMuted}
-            subtitle={
-              selectedMood
-                ? `${isMoodName(selectedMood) ? moodEmojiMap[selectedMood] : "✨"} ${selectedMood}`
-                : "Choisis une humeur ou écris une note."
-            }
-          >
-            <JournalForm
-              mood={mood}
-              note={note}
-              selectedMood={selectedMood}
-              isAnalyzing={isAnalyzing}
-              aiAnalysis={aiAnalysis}
-              error={error}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
-              textMuted={textMuted}
-              softCardBg={softCardBg}
-              setMood={setMood}
-              setNote={setNote}
-              setSelectedMood={setSelectedMood}
-              setError={setError}
-              handleMoodSelect={handleMoodSelect}
-              handleSubmit={handleSubmit}
-              clearCurrentInput={clearCurrentInput}
-              handleKeyDown={handleKeyDown}
-            />
-          </AccordionSection>
+          {/* ── Contenu ── */}
+          {!loadedStorage ? (
+            <div className="flex flex-col items-center gap-3 py-20">
+              <Loader2 className={`h-8 w-8 animate-spin ${isDay ? "text-[#7c5cf0]" : "text-fuchsia-300"}`} />
+              <p className={`text-sm ${t.muted}`}>Chargement du journal émotionnel…</p>
+            </div>
+          ) : (
+            <div className="mx-auto mt-5 grid max-w-[1400px] grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1.72fr)_minmax(0,1fr)] lg:gap-5">
+              {/* Colonne gauche : écrire */}
+              <AccordionSection
+                t={t}
+                title="Écrire une entrée"
+                icon="✏️"
+                isOpen={formOpen}
+                setIsOpen={setFormOpen}
+                serif
+                subtitle={selectedMood ? `${isMoodName(selectedMood) ? moodEmojiMap[selectedMood] : "✨"} ${selectedMood}` : "Choisis une humeur ou écris une note."}
+              >
+                <JournalForm
+                  t={t}
+                  mood={mood}
+                  note={note}
+                  isAnalyzing={isAnalyzing}
+                  aiAnalysis={aiAnalysis}
+                  error={error}
+                  setMood={setMood}
+                  setNote={setNote}
+                  setSelectedMood={setSelectedMood}
+                  setError={setError}
+                  handleMoodSelect={handleMoodSelect}
+                  handleSubmit={handleSubmit}
+                  clearCurrentInput={clearCurrentInput}
+                  handleKeyDown={handleKeyDown}
+                />
+              </AccordionSection>
 
-          {/* Timeline accordéon */}
-          <AccordionSection
-            title={`Timeline (${entries.length})`}
-            icon="🕰️"
-            isOpen={timelineOpen}
-            setIsOpen={setTimelineOpen}
-            className={cardBg}
-            titleClass={textPrimary}
-            mutedClass={textMuted}
-            subtitle={
-              entries.length > 0
-                ? "Tes dernières entrées émotionnelles."
-                : "Aucune entrée pour le moment."
-            }
-            rightAction={
-              entries.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    resetJournal();
-                  }}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-2 py-1 text-[10px] transition ${
-                    isDay
-                      ? "border-red-200 bg-white/45 text-red-500 hover:bg-red-50"
-                      : "border-red-400/20 bg-red-500/10 text-red-300 hover:bg-red-500/20"
-                  }`}
+              {/* Colonne droite */}
+              <div className="min-w-0 space-y-4">
+                <AccordionSection
+                  t={t}
+                  title={`Timeline (${entries.length})`}
+                  icon="🕰️"
+                  isOpen={timelineOpen}
+                  setIsOpen={setTimelineOpen}
+                  subtitle={entries.length > 0 ? "Tes dernières entrées émotionnelles." : "Aucune entrée pour le moment."}
+                  rightAction={
+                    entries.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          resetJournal();
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
+                          isDay ? "border-red-200 bg-white text-red-500 hover:bg-red-50" : "border-red-400/25 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                        }`}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Tout effacer
+                      </button>
+                    ) : null
+                  }
                 >
-                  <RefreshCw className="h-3 w-3" />
-                  Reset
-                </button>
-              ) : null
-            }
-          >
-            {entries.length === 0 ? (
-              <div className={`rounded-2xl border p-6 text-center ${softCardBg}`}>
-                <p className="mb-2 text-4xl">💭</p>
-
-                <p className={`text-sm font-medium ${textPrimary}`}>
-                  Aucune entrée pour l’instant
-                </p>
-
-                <p className={`mt-1 text-xs ${textMuted}`}>
-                  Commence par écrire ton premier mood.
-                </p>
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                <AnimatePresence>
-                  {entries.map((entry) => (
-                    <motion.li
-                      key={entry.id}
-                      initial={{ opacity: 0, x: -14 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      className={`rounded-2xl border border-l-4 p-3 ${
-                        entry.ritualDone
-                          ? "border-l-green-500"
-                          : "border-l-[#8E7AB5]"
-                      } ${softCardBg}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-start gap-2">
-                          <span className="text-xl">
-                            {isMoodName(entry.mood)
-                              ? moodEmojiMap[entry.mood]
-                              : "📝"}
-                          </span>
-
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <h3 className={`truncate text-sm font-semibold ${titleClass}`}>
-                                {entry.mood}
-                              </h3>
-
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] ${
-                                  entry.period === "jour"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-blue-900 text-blue-100"
-                                }`}
-                              >
-                                {entry.period === "jour" ? "☀️" : "🌙"}
-                              </span>
-                            </div>
-
-                            <small className={`text-[10px] ${textMuted}`}>
-                              {entry.date}
-                            </small>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleRitualToggle(entry.id)}
-                            className={`rounded-lg px-2 py-1 text-[10px] transition ${
-                              entry.ritualDone
-                                ? "bg-green-500/20 text-green-700"
-                                : "bg-[#8E7AB5]/20 text-[#8E7AB5]"
-                            }`}
-                          >
-                            {entry.ritualDone ? "✅" : "🌱"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteEntry(entry.id)}
-                            className="rounded-lg bg-red-500/15 px-2 py-1 text-xs text-red-600 transition hover:bg-red-500/25"
-                            aria-label="Supprimer l'entrée"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {entry.note && entry.note !== "Aucune note" && (
-                        <p className={`mt-2 whitespace-pre-wrap text-xs leading-relaxed sm:text-sm ${textPrimary}`}>
-                          {entry.note}
-                        </p>
-                      )}
-
-                      {entry.aiAnalysis && (
-                        <div
-                          className={`mt-2 rounded-xl border-l-2 border-[#8E7AB5] p-2 ${
-                            isDay ? "bg-[#f8f7ff]" : "bg-white/5"
-                          }`}
-                        >
-                          <p className={`text-xs italic leading-relaxed ${textSecondary}`}>
-                            🧠 {entry.aiAnalysis}
-                          </p>
-                        </div>
-                      )}
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
-              </ul>
-            )}
-          </AccordionSection>
-
-          {/* Playlist accordéon */}
-          <AccordionSection
-            title="Playlist Luna"
-            icon="🎵"
-            isOpen={playlistOpen}
-            setIsOpen={setPlaylistOpen}
-            className={cardBg}
-            titleClass={textPrimary}
-            mutedClass={textMuted}
-            subtitle="Une sélection musicale selon ton mood."
-          >
-            <div className="grid gap-3 md:grid-cols-2">
-              {filteredPlaylist.map((track) => {
-                const isPlaying = playingTrack?.url === track.url;
-
-                return (
-                  <button
-                    key={`${track.title}-${track.mood}`}
-                    type="button"
-                    onClick={() => setPlayingTrack(track)}
-                    className={`group relative w-full overflow-hidden rounded-2xl border p-3 text-left backdrop-blur-md transition hover:scale-[1.02] ${
-                      isPlaying
-                        ? "border-[#8E7AB5] bg-[#8E7AB5]/15 ring-1 ring-[#8E7AB5]/40"
-                        : softCardBg
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Pochette / bouton lecture */}
-                      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#8E7AB5]/35 to-[#5B4B8A]/20 text-lg">
-                        <span
-                          className={
-                            isPlaying
-                              ? "opacity-0"
-                              : "transition group-hover:opacity-0"
-                          }
-                        >
-                          {isMoodName(track.mood) ? moodEmojiMap[track.mood] : "🎵"}
-                        </span>
-
-                        <span
-                          className={`absolute inset-0 flex items-center justify-center ${
-                            isPlaying
-                              ? "opacity-100"
-                              : "opacity-0 transition group-hover:opacity-100"
-                          }`}
-                        >
-                          {isPlaying ? (
-                            <span className="flex items-end gap-[2px]">
-                              <span className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]" />
-                              <span
-                                className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]"
-                                style={{ animationDelay: "0.2s" }}
-                              />
-                              <span
-                                className="eq-bar h-4 w-[3px] rounded-full bg-[#8E7AB5]"
-                                style={{ animationDelay: "0.4s" }}
-                              />
-                            </span>
-                          ) : (
-                            <Play
-                              className="h-4 w-4 text-[#8E7AB5]"
-                              fill="currentColor"
-                            />
-                          )}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className={`text-sm font-semibold ${textPrimary}`}>
-                          {track.title}
-                        </h3>
-
-                        <p className={`text-xs ${textMuted}`}>
-                          Humeur : {track.mood}
-                        </p>
-
-                        <p className={`mt-1 text-xs leading-relaxed ${textMuted}`}>
-                          {track.description}
-                        </p>
-                      </div>
+                  {entries.length === 0 ? (
+                    <div className={`rounded-2xl border px-4 py-6 text-center ${t.soft}`}>
+                      <EmptyJournalArt isDay={isDay} />
+                      <p className={`mt-3 text-sm font-semibold ${t.title}`}>Aucune entrée pour l’instant</p>
+                      <p className={`mt-1 text-sm ${t.muted}`}>Commence par écrire ton premier mood.</p>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          </AccordionSection>
+                  ) : (
+                    <ul className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
+                      <AnimatePresence>
+                        {entries.map((entry) => (
+                          <motion.li
+                            key={entry.id}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.96 }}
+                            className={`rounded-2xl border border-l-4 p-3 ${entry.ritualDone ? "border-l-emerald-500" : "border-l-[#8b5cf6]"} ${t.soft}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex min-w-0 items-start gap-2.5">
+                                <span className="text-2xl leading-none">{isMoodName(entry.mood) ? moodEmojiMap[entry.mood] : "📝"}</span>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <h3 className={`truncate text-sm font-semibold ${t.title}`}>{entry.mood}</h3>
+                                    <span className="text-xs" title={entry.period === "jour" ? "Écrite de jour" : "Écrite de nuit"}>
+                                      {entry.period === "jour" ? "☀️" : "🌙"}
+                                    </span>
+                                  </div>
+                                  <small className={`text-[11px] ${t.muted}`}>{entry.date}</small>
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRitualToggle(entry.id)}
+                                  aria-pressed={entry.ritualDone}
+                                  title={entry.ritualDone ? "Rituel fait" : "Marquer le rituel comme fait"}
+                                  className={`rounded-lg px-2 py-1 text-xs transition ${entry.ritualDone ? "bg-emerald-500/20" : isDay ? "bg-[#efe7ff]" : "bg-white/10"}`}
+                                >
+                                  {entry.ritualDone ? "✅" : "🌱"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteEntry(entry.id)}
+                                  className="rounded-lg bg-red-500/15 px-2 py-1 text-red-500 transition hover:bg-red-500/25"
+                                  aria-label="Supprimer l’entrée"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            {entry.note && entry.note !== "Aucune note" && <p className={`mt-2 whitespace-pre-wrap text-sm leading-relaxed ${t.text}`}>{entry.note}</p>}
+                            {entry.aiAnalysis && (
+                              <p className={`mt-2 rounded-xl border-l-2 border-[#8b5cf6] px-2.5 py-2 text-xs italic leading-relaxed ${isDay ? "bg-[#f6f1ff] text-[#5b4b8a]" : "bg-white/5 text-white/75"}`}>
+                                🌙 {entry.aiAnalysis}
+                              </p>
+                            )}
+                          </motion.li>
+                        ))}
+                      </AnimatePresence>
+                    </ul>
+                  )}
+                </AccordionSection>
 
-          {/* Stats accordéon */}
-          <AccordionSection
-            title="Tes statistiques"
-            icon="📊"
-            isOpen={statsOpen}
-            setIsOpen={setStatsOpen}
-            className={cardBg}
-            titleClass={textPrimary}
-            mutedClass={textMuted}
-            subtitle="Ton activité émotionnelle locale."
-          >
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
-              <StatCard label="Entrées" value={stats.total} />
-              <StatCard label="Rituels" value={stats.rituals} />
-              <StatCard label="Humeurs" value={stats.uniqueMoods} />
-              <StatCard label="Jour" value={stats.dayEntries} />
-              <StatCard label="Nuit" value={stats.nightEntries} />
+                <AccordionSection t={t} title="Playlist Luna" icon="🎵" isOpen={playlistOpen} setIsOpen={setPlaylistOpen} subtitle="Une sélection musicale selon ton mood.">
+                  <div className="grid gap-2.5">
+                    {filteredPlaylist.map((track) => {
+                      const isPlaying = playingTrack?.url === track.url;
+                      return (
+                        <button
+                          key={`${track.title}-${track.mood}`}
+                          type="button"
+                          onClick={() => setPlayingTrack(track)}
+                          className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                            isPlaying ? "border-[#8b5cf6] bg-[#8b5cf6]/15" : `${t.soft} hover:border-[#8b5cf6]/60`
+                          }`}
+                        >
+                          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg ${t.iconBubble}`}>
+                            {isPlaying ? (
+                              <span className="flex items-end gap-[2px]">
+                                {[0, 0.2, 0.4].map((d) => (
+                                  <span key={d} className="eq-bar h-4 w-[3px] rounded-full bg-[#8b5cf6]" style={{ animationDelay: `${d}s` }} />
+                                ))}
+                              </span>
+                            ) : isMoodName(track.mood) ? (
+                              moodEmojiMap[track.mood]
+                            ) : (
+                              "🎵"
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={`block text-sm font-semibold ${t.title}`}>{track.title}</span>
+                            <span className={`block text-xs ${t.muted}`}>
+                              {track.mood} · {track.description}
+                            </span>
+                          </span>
+                          <Play className="h-4 w-4 shrink-0 text-[#8b5cf6]" fill="currentColor" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </AccordionSection>
+
+                <AccordionSection t={t} title="Tes statistiques" icon="📊" isOpen={statsOpen} setIsOpen={setStatsOpen} subtitle="Ton activité émotionnelle en chiffres.">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5">
+                    <StatCard t={t} label="Entrées" value={stats.total} />
+                    <StatCard t={t} label="Rituels" value={stats.rituals} />
+                    <StatCard t={t} label="Humeurs" value={stats.uniqueMoods} />
+                    <StatCard t={t} label="Jour" value={stats.dayEntries} />
+                    <StatCard t={t} label="Nuit" value={stats.nightEntries} />
+                  </div>
+                </AccordionSection>
+              </div>
             </div>
-          </AccordionSection>
+          )}
         </div>
       </main>
 
@@ -931,7 +767,6 @@ export default function JournalPage() {
         <Footer />
       </div>
 
-      {/* Lecteur musical intégré (dock bas de page, style Spotify) */}
       <MoodPlayer track={playingTrack} onClose={() => setPlayingTrack(null)} />
 
       <style jsx global>{`
@@ -945,26 +780,6 @@ export default function JournalPage() {
             transform: rotate(-360deg);
           }
         }
-        @keyframes journal-float {
-          0%,
-          100% {
-            transform: translateY(0);
-            opacity: 0.8;
-          }
-          50% {
-            transform: translateY(-26px);
-            opacity: 1;
-          }
-        }
-        @keyframes journal-float-slow {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(26px);
-          }
-        }
         .journal-spin {
           animation: journal-spin 70s linear infinite;
           transform-origin: center;
@@ -972,12 +787,6 @@ export default function JournalPage() {
         .journal-spin-rev {
           animation: journal-spin-rev 90s linear infinite;
           transform-origin: center;
-        }
-        .journal-float {
-          animation: journal-float 12s ease-in-out infinite;
-        }
-        .journal-float-slow {
-          animation: journal-float-slow 16s ease-in-out infinite;
         }
         @keyframes eq {
           0%,
@@ -993,12 +802,9 @@ export default function JournalPage() {
           transform-origin: bottom;
           animation: eq 0.9s ease-in-out infinite;
         }
-
         @media (prefers-reduced-motion: reduce) {
           .journal-spin,
           .journal-spin-rev,
-          .journal-float,
-          .journal-float-slow,
           .eq-bar {
             animation: none;
           }
@@ -1009,69 +815,86 @@ export default function JournalPage() {
 }
 
 // ─────────────────────────────────────────────
-// Composant accordéon générique
+// Illustration « journal vide »
+// ─────────────────────────────────────────────
+
+function EmptyJournalArt({ isDay }: { isDay: boolean }) {
+  return (
+    <svg viewBox="0 0 220 110" className="mx-auto h-24 w-48" aria-hidden>
+      <ellipse cx="110" cy="92" rx="88" ry="14" fill={isDay ? "#e6dafb" : "#3b2473"} />
+      <ellipse cx="70" cy="86" rx="40" ry="12" fill={isDay ? "#efe7ff" : "#4c2f8f"} />
+      <ellipse cx="150" cy="88" rx="44" ry="12" fill={isDay ? "#efe7ff" : "#4c2f8f"} />
+      <g transform="rotate(-12 110 55)">
+        <rect x="82" y="22" width="58" height="66" rx="7" fill="#b89cf2" />
+        <rect x="88" y="22" width="52" height="66" rx="6" fill="#cdb8f7" />
+        <path d="M121 44a11 11 0 1 0 9 17 9 9 0 0 1-9-17Z" fill="#6d4fd8" />
+        {[30, 40, 50, 60, 70, 80].map((y) => (
+          <circle key={y} cx="85" cy={y} r="2.6" fill="none" stroke="#6d4fd8" strokeWidth="1.6" />
+        ))}
+        <rect x="108" y="86" width="5" height="14" fill="#6d4fd8" />
+      </g>
+      {[
+        [40, 40, 5, "#f5c451"], [176, 30, 5, "#f5c451"], [190, 62, 3, "#8b5cf6"], [58, 18, 3, "#8b5cf6"], [150, 12, 3, "#8b5cf6"],
+      ].map(([x, y, s, c], i) => (
+        <path key={i} d={`M${x} ${Number(y) - Number(s)} L${Number(x) + Number(s) * 0.3} ${Number(y) - Number(s) * 0.3} L${Number(x) + Number(s)} ${y} L${Number(x) + Number(s) * 0.3} ${Number(y) + Number(s) * 0.3} L${x} ${Number(y) + Number(s)} L${Number(x) - Number(s) * 0.3} ${Number(y) + Number(s) * 0.3} L${Number(x) - Number(s)} ${y} L${Number(x) - Number(s) * 0.3} ${Number(y) - Number(s) * 0.3} Z`} fill={String(c)} />
+      ))}
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Carte repliable
 // ─────────────────────────────────────────────
 
 function AccordionSection({
+  t,
   title,
   subtitle,
   icon,
   isOpen,
   setIsOpen,
-  className,
-  titleClass,
-  mutedClass,
   rightAction,
+  serif = false,
   children,
 }: {
+  t: Theme;
   title: string;
   subtitle?: string;
   icon: string;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
-  className: string;
-  titleClass: string;
-  mutedClass: string;
   rightAction?: React.ReactNode;
+  serif?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: 22 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`overflow-hidden rounded-3xl border shadow-xl backdrop-blur-md ${className}`}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className={`overflow-hidden rounded-3xl border backdrop-blur-md ${t.card}`}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left sm:px-5 sm:py-4"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        className="flex w-full cursor-pointer items-center gap-3.5 px-4 py-4 text-left sm:px-5"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#8E7AB5]/15 text-lg">
-          {icon}
-        </span>
-
+        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-2xl ${t.iconBubble}`}>{icon}</span>
         <div className="min-w-0 flex-1">
-          <h2 className={`truncate text-sm font-bold sm:text-xl ${titleClass}`}>
-            {title}
-          </h2>
-
-          {subtitle && (
-            <p className={`truncate text-[11px] sm:text-sm ${mutedClass}`}>
-              {subtitle}
-            </p>
-          )}
+          <h2 className={`truncate text-lg font-bold sm:text-xl ${serif ? titleFont.className : ""} ${t.title}`}>{title}</h2>
+          {subtitle && <p className={`truncate text-sm ${t.muted}`}>{subtitle}</p>}
         </div>
-
         {rightAction}
-
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+        <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${t.isDay ? "text-[#4b3d86]" : "text-white/70"} ${isOpen ? "rotate-180" : ""}`} />
+      </div>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -1082,9 +905,7 @@ function AccordionSection({
             transition={{ duration: 0.24, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/20 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              {children}
-            </div>
+            <div className={`border-t px-4 pb-5 pt-4 sm:px-5 ${t.divider}`}>{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1093,20 +914,16 @@ function AccordionSection({
 }
 
 // ─────────────────────────────────────────────
-// Formulaire du journal
+// Formulaire
 // ─────────────────────────────────────────────
 
 function JournalForm({
+  t,
   mood,
   note,
-  selectedMood,
   isAnalyzing,
   aiAnalysis,
   error,
-  textPrimary,
-  textSecondary,
-  textMuted,
-  softCardBg,
   setMood,
   setNote,
   setSelectedMood,
@@ -1116,16 +933,12 @@ function JournalForm({
   clearCurrentInput,
   handleKeyDown,
 }: {
+  t: Theme;
   mood: string;
   note: string;
-  selectedMood: string;
   isAnalyzing: boolean;
   aiAnalysis: string | null;
   error: string;
-  textPrimary: string;
-  textSecondary: string;
-  textMuted: string;
-  softCardBg: string;
   setMood: React.Dispatch<React.SetStateAction<string>>;
   setNote: React.Dispatch<React.SetStateAction<string>>;
   setSelectedMood: React.Dispatch<React.SetStateAction<string>>;
@@ -1135,6 +948,7 @@ function JournalForm({
   clearCurrentInput: () => void;
   handleKeyDown: (event: React.KeyboardEvent) => void;
 }) {
+  const field = `w-full rounded-2xl border pl-12 pr-4 text-[15px] outline-none transition focus:ring-2 ${t.field}`;
   return (
     <>
       <AnimatePresence>
@@ -1143,59 +957,48 @@ function JournalForm({
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="mb-3 flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-500 sm:text-sm"
+            className="mb-3 flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-500"
           >
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span className="flex-1">{error}</span>
-
-            <button type="button" onClick={() => setError("")}>
+            <button type="button" onClick={() => setError("")} aria-label="Fermer">
               <X className="h-4 w-4" />
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Moods */}
-      <div className="mb-4">
-        <p className={`mb-2 text-xs font-semibold sm:text-sm ${textPrimary}`}>
-          Choisis ton humeur Luna
-        </p>
-
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
-          {moodSuggestions.map((label) => {
-            const selected = mood === label;
-
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => handleMoodSelect(label)}
-                className={`rounded-2xl border p-2 text-center transition hover:scale-[1.03] sm:p-3 ${
-                  selected
-                    ? "border-[#8E7AB5] bg-[#8E7AB5]/30 shadow-lg"
-                    : `${softCardBg} hover:bg-white/20`
-                }`}
-                title={label}
-              >
-                <span className="block text-xl sm:text-3xl">
-                  {moodEmojiMap[label]}
-                </span>
-
-                <span className={`mt-1 block text-[10px] sm:text-[11px] ${textMuted}`}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      <p className={`mb-2 text-sm font-semibold ${t.title}`}>Choisis ton humeur Luna</p>
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+        {moodSuggestions.map((label) => {
+          const selected = mood === label;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => handleMoodSelect(label)}
+              aria-pressed={selected}
+              className={`rounded-2xl border px-2 py-3 text-center transition hover:-translate-y-0.5 ${
+                selected
+                  ? t.isDay
+                    ? "border-[#8b5cf6] bg-[#f1e9ff] shadow-[0_10px_24px_-14px_rgba(124,92,240,0.9)]"
+                    : "border-fuchsia-300/70 bg-fuchsia-500/15"
+                  : `${t.soft} hover:border-[#8b5cf6]/60`
+              }`}
+            >
+              <span className="block text-3xl leading-none sm:text-4xl">{moodEmojiMap[label]}</span>
+              <span className={`mt-2 block text-sm ${selected ? t.title : t.text}`}>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="space-y-3">
-        <label className="block">
-          <span className={`text-xs font-medium sm:text-sm ${textPrimary}`}>
-            Humeur du moment
+      <label className="mt-4 block">
+        <span className={`text-sm font-semibold ${t.title}`}>Humeur du moment</span>
+        <span className="relative mt-1.5 block">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg" aria-hidden>
+            🌿
           </span>
-
           <input
             value={mood}
             onChange={(event) => {
@@ -1204,78 +1007,63 @@ function JournalForm({
               setError("");
             }}
             onKeyDown={handleKeyDown}
-            placeholder="ex : Apaisé(e), Énergique..."
-            className="mt-1 w-full rounded-xl border border-[#8E7AB5]/30 bg-white/85 p-2.5 text-sm text-[#1C1C1C] outline-none transition focus:border-[#8E7AB5] sm:p-3"
+            maxLength={40}
+            placeholder="ex : Apaisé(e), Énergique…"
+            className={`${field} h-12`}
           />
-        </label>
+        </span>
+      </label>
 
-        <label className="block">
-          <span className={`text-xs font-medium sm:text-sm ${textPrimary}`}>
-            Note ou pensée
+      <label className="mt-4 block">
+        <span className={`text-sm font-semibold ${t.title}`}>Note ou pensée</span>
+        <span className="relative mt-1.5 block">
+          <span className="pointer-events-none absolute left-4 top-3.5 text-lg" aria-hidden>
+            ✏️
           </span>
-
           <textarea
             value={note}
-            onChange={(event) => setNote(event.target.value)}
+            onChange={(event) => setNote(event.target.value.slice(0, NOTE_MAX))}
             onKeyDown={handleKeyDown}
-            placeholder="Écris librement..."
-            rows={3}
-            className="mt-1 w-full resize-none rounded-xl border border-[#8E7AB5]/30 bg-white/85 p-2.5 text-sm text-[#1C1C1C] outline-none transition focus:border-[#8E7AB5] sm:p-3"
+            placeholder="Écris librement…"
+            rows={4}
+            className={`${field} resize-y py-3.5 pb-7`}
           />
-        </label>
-      </div>
+          <span className={`pointer-events-none absolute bottom-3 right-4 text-xs ${t.muted}`}>
+            {note.length}/{NOTE_MAX}
+          </span>
+        </span>
+      </label>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={isAnalyzing}
-          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#8E7AB5] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 shrink-0 sm:flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8b6cf6] to-[#5b3fd6] px-6 text-base font-semibold text-white shadow-[0_14px_30px_-14px_rgba(91,63,214,0.95)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Analyse...
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-4 w-4" />
-              Ajouter
-            </>
-          )}
+          {isAnalyzing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+          {isAnalyzing ? "Enregistrement…" : "Ajouter"}
         </button>
-
         <button
           type="button"
           onClick={clearCurrentInput}
-          className="rounded-full border border-[#8E7AB5] px-5 py-2.5 text-sm font-medium text-[#8E7AB5] transition hover:bg-[#8E7AB5]/10"
+          className={`flex h-12 items-center justify-center gap-2 rounded-full border px-7 text-base font-medium transition ${
+            t.isDay ? "border-[#8b5cf6] bg-white text-[#4b3d86] hover:bg-[#f1e9ff]" : "border-violet-300/40 text-white hover:bg-white/10"
+          }`}
         >
+          <Trash2 className="h-4 w-4" />
           Effacer
         </button>
       </div>
 
-      {isAnalyzing && (
-        <p className="mt-3 animate-pulse text-center text-xs italic text-[#8E7AB5] sm:text-sm">
-          Analyse IA en cours...
-        </p>
-      )}
-
       <AnimatePresence>
         {aiAnalysis && !isAnalyzing && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className={`mt-4 rounded-xl border p-3 sm:p-4 ${softCardBg}`}
-          >
-            <h3 className={`mb-1 flex items-center gap-2 text-sm font-semibold ${textPrimary}`}>
-              <Sparkles className="h-4 w-4 text-[#8E7AB5]" />
-              Analyse IA
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`mt-4 rounded-2xl border p-4 ${t.soft}`}>
+            <h3 className={`mb-1 flex items-center gap-2 text-sm font-semibold ${t.title}`}>
+              <Moon className="h-4 w-4 text-[#8b5cf6]" />
+              Le mot de Luna
             </h3>
-
-            <p className={`text-xs leading-relaxed sm:text-sm ${textSecondary}`}>
-              {aiAnalysis}
-            </p>
+            <p className={`text-sm leading-relaxed ${t.text}`}>{aiAnalysis}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1284,14 +1072,14 @@ function JournalForm({
 }
 
 // ─────────────────────────────────────────────
-// Card statistique
+// Chiffre
 // ─────────────────────────────────────────────
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ t, label, value }: { t: Theme; label: string; value: number }) {
   return (
-    <div className="rounded-xl bg-white/35 p-3 text-center sm:p-4">
-      <p className="text-xl font-bold text-[#8E7AB5] sm:text-2xl">{value}</p>
-      <p className="text-xs text-[#6B5F8E] sm:text-sm">{label}</p>
+    <div className={`rounded-2xl border p-3 text-center ${t.soft}`}>
+      <p className="text-2xl font-bold text-[#8b5cf6]">{value}</p>
+      <p className={`text-xs ${t.muted}`}>{label}</p>
     </div>
   );
 }
