@@ -3,65 +3,54 @@
 "use client";
 
 /**
- * Étape 4 du formulaire d'inscription SferaLuna.
- *
- * Objectif :
- * - définir une question de sécurité ;
- * - définir une réponse ;
- * - choisir 3 à 5 centres d'intérêt ;
- * - mettre à jour correctement React Hook Form pour le tableau interets.
- *
- * Important :
- * Les centres d'intérêt sont gérés ici, et uniquement ici.
- * Step5 ne doit pas les répéter, sinon la logique de validation devient confuse.
+ * Étape 4 : question de sécurité + 3 à 5 centres d'intérêt.
+ * Les centres d'intérêt sont gérés ici et uniquement ici.
+ * Les `value` sont celles enregistrées en base : ne pas les renommer.
  */
 
 import { useFormContext } from "react-hook-form";
-import { Check } from "lucide-react";
+import {
+  BookOpen,
+  Camera,
+  ChevronDown,
+  Clapperboard,
+  Dumbbell,
+  Gamepad2,
+  Laptop,
+  Leaf,
+  MessageSquareText,
+  Music,
+  Palette,
+  Plane,
+  Shield,
+  Shirt,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
 
-/**
- * Questions de sécurité disponibles.
- */
+import { CheckBox, ErrorText, Helper, INPUT, IconField, Label, StepTitle, TILE, TILE_ON, cx } from "./ui";
+
 const questionsSecurite = [
-  {
-    value: "nom-animal",
-    label: "Quel était le nom de votre premier animal de compagnie ?",
-  },
-  {
-    value: "ville-naissance",
-    label: "Dans quelle ville êtes-vous né(e) ?",
-  },
-  {
-    value: "film-prefere",
-    label: "Quel est votre film préféré ?",
-  },
-  {
-    value: "prof-reve",
-    label: "Quel était le métier de vos rêves quand vous étiez enfant ?",
-  },
-  {
-    value: "livre-prefere",
-    label: "Quel est votre livre préféré ?",
-  },
+  { value: "nom-animal", label: "Quel était le nom de votre premier animal de compagnie ?" },
+  { value: "ville-naissance", label: "Dans quelle ville êtes-vous née ?" },
+  { value: "film-prefere", label: "Quel est votre film préféré ?" },
+  { value: "prof-reve", label: "Quel était le métier de vos rêves quand vous étiez enfant ?" },
+  { value: "livre-prefere", label: "Quel est votre livre préféré ?" },
 ];
 
-/**
- * Centres d'intérêt proposés.
- * Le schéma Zod demande 3 à 5 choix.
- */
-const interetsDisponibles = [
-  { value: "voyage", label: "Voyage" },
-  { value: "cuisine", label: "Cuisine" },
-  { value: "sport", label: "Sport" },
-  { value: "musique", label: "Musique" },
-  { value: "cinema", label: "Cinéma" },
-  { value: "lecture", label: "Lecture" },
-  { value: "art", label: "Art" },
-  { value: "technologie", label: "Technologie" },
-  { value: "nature", label: "Nature" },
-  { value: "mode", label: "Mode" },
-  { value: "gaming", label: "Jeux vidéo" },
-  { value: "photographie", label: "Photographie" },
+const interetsDisponibles: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: "voyage", label: "Voyage", icon: Plane },
+  { value: "cuisine", label: "Cuisine", icon: UtensilsCrossed },
+  { value: "sport", label: "Sport", icon: Dumbbell },
+  { value: "musique", label: "Musique", icon: Music },
+  { value: "cinema", label: "Cinéma", icon: Clapperboard },
+  { value: "lecture", label: "Lecture", icon: BookOpen },
+  { value: "art", label: "Art", icon: Palette },
+  { value: "technologie", label: "Technologie", icon: Laptop },
+  { value: "nature", label: "Nature", icon: Leaf },
+  { value: "mode", label: "Mode", icon: Shirt },
+  { value: "gaming", label: "Jeux vidéo", icon: Gamepad2 },
+  { value: "photographie", label: "Photographie", icon: Camera },
 ];
 
 export default function Step4() {
@@ -72,202 +61,95 @@ export default function Step4() {
     formState: { errors },
   } = useFormContext();
 
+  const question = watch("question") || "";
   const reponse = watch("reponse") || "";
   const selectedInterets: string[] = watch("interets") || [];
 
-  /**
-   * Ajoute ou retire un centre d'intérêt.
-   * Maximum 5 choix.
-   */
+  /** Ajoute ou retire un centre d'intérêt (5 au maximum). */
   const toggleInteret = (value: string) => {
-    const alreadySelected = selectedInterets.includes(value);
-
-    if (alreadySelected) {
-      const nextInterets = selectedInterets.filter((item) => item !== value);
-
-      setValue("interets", nextInterets, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      });
-
-      return;
-    }
-
-    if (selectedInterets.length >= 5) return;
-
-    setValue("interets", [...selectedInterets, value], {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true,
-    });
+    const selected = selectedInterets.includes(value);
+    if (!selected && selectedInterets.length >= 5) return;
+    const next = selected ? selectedInterets.filter((item) => item !== value) : [...selectedInterets, value];
+    setValue("interets", next, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   return (
-    <div className="space-y-8 sm:space-y-10">
-      {/* Titre de l'étape */}
-      <div>
-        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
-          Sécurité et centres d’intérêt
-        </h2>
+    <div className="space-y-6">
+      <StepTitle plain="Sécurité" accent="et centres d’intérêt">
+        Ajoutez une question de sécurité et choisissez quelques centres d’intérêt pour améliorer vos suggestions SferaLuna.
+      </StepTitle>
 
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">
-          Ajoutez une question de sécurité et choisissez quelques centres
-          d’intérêt pour améliorer vos suggestions SferaLuna.
-        </p>
-      </div>
-
-      {/* Bloc question de sécurité */}
-      <section className="space-y-5">
+      <section className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">
-            Question de sécurité
-          </h3>
-
-          <p className="mt-2 text-sm text-gray-300">
-            Cette question pourra être utilisée si vous oubliez votre mot de
-            passe.
-          </p>
+          <h3 className="text-lg font-semibold text-white">Question de sécurité</h3>
+          <Helper>Cette question pourra être utilisée si vous oubliez votre mot de passe.</Helper>
         </div>
 
-        {/* Question */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-100">
-            Sélectionnez une question{" "}
-            <span className="text-pink-400">*</span>
-          </label>
-
-          <select
-            {...register("question")}
-            className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
-          >
-            <option value="" className="bg-gray-900 text-white">
+        <IconField
+          id="question"
+          label="Sélectionnez une question"
+          required
+          icon={Shield}
+          error={errors.question?.message as string | undefined}
+          right={<ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/70" />}
+        >
+          <select id="question" {...register("question")} className={cx(INPUT, "appearance-none !bg-none pr-12", !question && "text-white/50")}>
+            <option value="" className="bg-[#1a0b2e] text-white">
               Choisissez une question
             </option>
-
-            {questionsSecurite.map((question) => (
-              <option
-                key={question.value}
-                value={question.value}
-                className="bg-gray-900 text-white"
-              >
-                {question.label}
+            {questionsSecurite.map((q) => (
+              <option key={q.value} value={q.value} className="bg-[#1a0b2e] text-white">
+                {q.label}
               </option>
             ))}
           </select>
+        </IconField>
 
-          {errors.question && (
-            <p className="text-sm text-red-300">
-              {errors.question.message as string}
-            </p>
-          )}
-        </div>
-
-        {/* Réponse */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-100">
-            Votre réponse <span className="text-pink-400">*</span>
-          </label>
-
-          <input
-            {...register("reponse")}
-            type="text"
-            placeholder="Votre réponse, maximum 200 caractères"
-            maxLength={200}
-            className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
-          />
-
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-gray-400">
-              Cette réponse doit rester personnelle et facile à retenir.
-            </p>
-
-            <p
-              className={`text-xs ${
-                reponse.length > 180 ? "text-pink-300" : "text-gray-400"
-              }`}
-            >
-              {reponse.length}/200
-            </p>
+        <div>
+          <IconField id="reponse" label="Votre réponse" required icon={MessageSquareText}>
+            <input id="reponse" {...register("reponse")} type="text" placeholder="Votre réponse, maximum 200 caractères" maxLength={200} className={INPUT} />
+          </IconField>
+          <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-white/60">
+            <span>Cette réponse doit rester personnelle et facile à retenir.</span>
+            <span className={cx("shrink-0", reponse.length > 180 && "text-pink-300")}>{reponse.length}/200</span>
           </div>
-
-          {errors.reponse && (
-            <p className="text-sm text-red-300">
-              {errors.reponse.message as string}
-            </p>
-          )}
+          <ErrorText>{errors.reponse?.message as string | undefined}</ErrorText>
         </div>
       </section>
 
-      {/* Bloc centres d'intérêt */}
-      <section className="space-y-5 border-t border-white/10 pt-6">
-        <div>
-          <h3 className="text-lg font-semibold text-white">
-            Centres d’intérêt <span className="text-pink-400">*</span>
-          </h3>
+      <section className="border-t border-white/10 pt-5">
+        <Label as="h3" required>
+          <span className="text-lg">Centres d’intérêt</span>
+        </Label>
+        <Helper>Sélectionnez entre 3 et 5 centres d’intérêt pour personnaliser votre expérience.</Helper>
 
-          <p className="mt-2 text-sm text-gray-300">
-            Sélectionnez entre 3 et 5 centres d’intérêt pour personnaliser votre
-            expérience.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {interetsDisponibles.map((interet) => {
-            const isSelected = selectedInterets.includes(interet.value);
-            const isDisabled = selectedInterets.length >= 5 && !isSelected;
-
+        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {interetsDisponibles.map(({ value, label, icon: Icon }) => {
+            const on = selectedInterets.includes(value);
+            const disabled = selectedInterets.length >= 5 && !on;
             return (
               <button
-                key={interet.value}
+                key={value}
                 type="button"
-                onClick={() => toggleInteret(interet.value)}
-                disabled={isDisabled}
-                className={`rounded-xl border p-3 text-left transition-all ${
-                  isSelected
-                    ? "border-pink-400 bg-pink-500/20 text-white"
-                    : isDisabled
-                      ? "cursor-not-allowed border-white/10 bg-white/5 text-gray-500"
-                      : "border-white/20 bg-white/10 text-gray-200 hover:border-purple-300/50 hover:bg-white/15"
-                }`}
+                role="checkbox"
+                aria-checked={on}
+                onClick={() => toggleInteret(value)}
+                disabled={disabled}
+                className={cx("flex h-11 items-center gap-3 px-3.5 text-left", on ? TILE_ON : TILE, disabled && "cursor-not-allowed opacity-40")}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                      isSelected
-                        ? "border-pink-400 bg-pink-500"
-                        : "border-white/30"
-                    }`}
-                  >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                  </div>
-
-                  <span className="text-sm font-medium">{interet.label}</span>
-                </div>
+                <CheckBox on={on} />
+                <Icon className="h-5 w-5 shrink-0 text-fuchsia-300" />
+                <span className="truncate text-sm font-medium text-white">{label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p
-            className={`text-sm ${
-              selectedInterets.length < 3 ? "text-pink-300" : "text-gray-300"
-            }`}
-          >
-            {selectedInterets.length}/5 sélectionnés — minimum 3
-          </p>
-
-          {selectedInterets.length >= 5 && (
-            <p className="text-sm text-pink-300">Maximum atteint</p>
-          )}
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+          <span className={selectedInterets.length < 3 ? "text-pink-300" : "text-white/70"}>{selectedInterets.length}/5 sélectionnés — minimum 3</span>
+          {selectedInterets.length >= 5 && <span className="text-pink-300">Maximum atteint</span>}
         </div>
-
-        {errors.interets && (
-          <p className="text-sm text-red-300">
-            {errors.interets.message as string}
-          </p>
-        )}
+        <ErrorText>{errors.interets?.message as string | undefined}</ErrorText>
       </section>
     </div>
   );

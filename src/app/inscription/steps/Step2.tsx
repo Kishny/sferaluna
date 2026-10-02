@@ -3,22 +3,14 @@
 "use client";
 
 /**
- * Étape 2 du formulaire d'inscription SferaLuna.
- *
- * Objectif :
- * - choisir une orientation ;
- * - choisir une ou plusieurs intentions relationnelles ;
- * - mettre à jour React Hook Form avec setValue pour les tableaux ;
- * - afficher clairement les erreurs de validation.
+ * Étape 2 : orientation (choix unique) et intentions (choix multiples).
+ * Les `value` sont celles enregistrées en base : ne pas les renommer.
  */
 
 import { useFormContext } from "react-hook-form";
-import { Check } from "lucide-react";
 
-/**
- * Liste des orientations proposées.
- * Les values sont celles envoyées dans MongoDB.
- */
+import { CheckBox, ErrorText, Helper, Label, RadioDot, StepTitle, TILE, TILE_ON, cx } from "./ui";
+
 const orientations = [
   { value: "hetero", label: "Hétérosexuelle" },
   { value: "homo", label: "Lesbienne / Homosexuelle" },
@@ -28,10 +20,6 @@ const orientations = [
   { value: "other", label: "Autre" },
 ];
 
-/**
- * Liste des intentions relationnelles.
- * L'utilisateur peut en sélectionner plusieurs.
- */
 const intentions = [
   { value: "rencontre-serieuse", label: "Rencontre sérieuse" },
   { value: "amitie", label: "Amitié" },
@@ -51,137 +39,60 @@ export default function Step2() {
   const selectedOrientation = watch("orientation");
   const selectedIntentions: string[] = watch("intentions") || [];
 
-  /**
-   * Ajoute ou retire une intention du tableau.
-   */
   const toggleIntention = (value: string) => {
-    const nextIntentions = selectedIntentions.includes(value)
-      ? selectedIntentions.filter((item) => item !== value)
-      : [...selectedIntentions, value];
-
-    setValue("intentions", nextIntentions, {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true,
-    });
+    const next = selectedIntentions.includes(value) ? selectedIntentions.filter((item) => item !== value) : [...selectedIntentions, value];
+    setValue("intentions", next, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Titre de l'étape */}
-      <div>
-        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
-          Orientation et intentions
-        </h2>
+    <div className="space-y-7">
+      <StepTitle plain="Orientation" accent="et intentions">
+        Ces informations nous aident à proposer des rencontres plus compatibles avec vos attentes.
+      </StepTitle>
 
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">
-          Ces informations nous aident à proposer des rencontres plus
-          compatibles avec vos attentes.
-        </p>
-      </div>
-
-      {/* Bloc orientation */}
-      <section className="space-y-4">
-        <label className="block text-sm font-semibold text-gray-100">
-          Orientation <span className="text-pink-400">*</span>
-        </label>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section role="radiogroup" aria-label="Orientation">
+        <Label as="p" required>
+          Orientation
+        </Label>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {orientations.map((orientation) => {
-            const isSelected = selectedOrientation === orientation.value;
-
+            const on = selectedOrientation === orientation.value;
             return (
-              <label
-                key={orientation.value}
-                className={`flex cursor-pointer items-center rounded-xl border p-3 transition-all sm:p-4 ${
-                  isSelected
-                    ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
-                }`}
-              >
-                <input
-                  type="radio"
-                  {...register("orientation")}
-                  value={orientation.value}
-                  className="h-4 w-4 accent-pink-500"
-                />
-
-                <span
-                  className={`ml-3 text-sm font-medium ${
-                    isSelected ? "text-white" : "text-gray-100"
-                  }`}
-                >
-                  {orientation.label}
-                </span>
+              <label key={orientation.value} className={cx("flex h-[54px] cursor-pointer items-center gap-4 px-5 focus-within:ring-2 focus-within:ring-fuchsia-400/60", on ? TILE_ON : TILE)}>
+                <input type="radio" {...register("orientation")} value={orientation.value} className="sr-only" />
+                <RadioDot on={on} />
+                <span className="text-[15px] font-medium text-white">{orientation.label}</span>
               </label>
             );
           })}
         </div>
-
-        {errors.orientation && (
-          <p className="text-sm text-red-300">
-            {errors.orientation.message as string}
-          </p>
-        )}
+        <ErrorText>{errors.orientation?.message as string | undefined}</ErrorText>
       </section>
 
-      {/* Bloc intentions */}
-      <section className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-100">
-            Quelles sont vos intentions ?{" "}
-            <span className="text-pink-400">*</span>
-          </label>
-
-          <p className="mt-2 text-sm text-gray-300">
-            Sélectionnez une ou plusieurs options.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section>
+        <Label as="p" required>
+          Quelles sont vos intentions ?
+        </Label>
+        <Helper>Sélectionnez une ou plusieurs options.</Helper>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {intentions.map((intention) => {
-            const isSelected = selectedIntentions.includes(intention.value);
-
+            const on = selectedIntentions.includes(intention.value);
             return (
               <button
                 key={intention.value}
                 type="button"
+                role="checkbox"
+                aria-checked={on}
                 onClick={() => toggleIntention(intention.value)}
-                className={`rounded-xl border p-3 text-left transition-all sm:p-4 ${
-                  isSelected
-                    ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
-                }`}
+                className={cx("flex h-[50px] items-center gap-4 px-5 text-left", on ? TILE_ON : TILE)}
               >
-                <div className="flex items-center">
-                  <div
-                    className={`mr-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                      isSelected
-                        ? "border-pink-500 bg-pink-500"
-                        : "border-gray-300 bg-white/5"
-                    }`}
-                  >
-                    {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-                  </div>
-
-                  <span
-                    className={`text-sm font-medium ${
-                      isSelected ? "text-white" : "text-gray-100"
-                    }`}
-                  >
-                    {intention.label}
-                  </span>
-                </div>
+                <CheckBox on={on} />
+                <span className="text-[15px] font-medium text-white">{intention.label}</span>
               </button>
             );
           })}
         </div>
-
-        {errors.intentions && (
-          <p className="text-sm text-red-300">
-            {errors.intentions.message as string}
-          </p>
-        )}
+        <ErrorText>{errors.intentions?.message as string | undefined}</ErrorText>
       </section>
     </div>
   );

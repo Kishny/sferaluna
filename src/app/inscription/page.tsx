@@ -36,19 +36,25 @@ import Step2 from "./steps/Step2";
 import Step3 from "./steps/Step3";
 import Step4 from "./steps/Step4";
 import Step5 from "./steps/Step5";
+import { cx } from "./steps/ui";
 
 import {
+  AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Check,
   Crown,
+  IdCard,
   Loader2,
   Lock,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Star,
   Users,
+  UsersRound,
   Zap,
-  AlertCircle,
 } from "lucide-react";
 
 /**
@@ -168,7 +174,7 @@ const lunaBenefits = [
   "Filtres avancés",
   "Statistiques détaillées",
   "Rencontres personnalisées",
-  "Support VIP 24/7",
+  "Support dédié 7j/7",
 ];
 
 /**
@@ -215,32 +221,49 @@ function getStepFromErrors(errors: Partial<Record<keyof FormData, unknown>>) {
 type IdentityVerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
 /**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera".
+ * Décor spatial de secours (planètes, étoiles, horizon), utilisé tant
+ * qu'aucune image n'est déposée dans public/images/inscription-bg.*
+ * (voir layout.tsx). L'image, si elle existe, le recouvre entièrement.
  */
-function OrbitGlow({ className = "" }: { className?: string }) {
+function SpaceBackdrop() {
+  const stars = Array.from({ length: 90 }).map((_, i) => ({
+    x: (i * 173) % 1600,
+    y: (i * 97) % 760,
+    r: 0.6 + ((i * 7) % 4) * 0.35,
+    o: 0.35 + ((i * 13) % 6) * 0.1,
+  }));
+
   return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
-    >
-      <circle cx="100" cy="100" r="90" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke="#FFFFFF" strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill="#FFFFFF" />
-      <circle cx="190" cy="100" r="3" fill="#FFFFFF" />
-      <circle cx="100" cy="190" r="3" fill="#FFFFFF" />
-      <circle cx="10" cy="100" r="3" fill="#FFFFFF" />
-    </svg>
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0d0822]" aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_100%,#5b21b6_0%,#2a1163_35%,#130a2e_70%,#0d0822_100%)]" />
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
+        <defs>
+          <radialGradient id="sp-planet" cx="72%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="#8b5cf6" />
+            <stop offset="45%" stopColor="#4c1d95" />
+            <stop offset="100%" stopColor="#170a36" />
+          </radialGradient>
+          <radialGradient id="sp-planet2" cx="28%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="#a78bfa" />
+            <stop offset="50%" stopColor="#5b21b6" />
+            <stop offset="100%" stopColor="#1a0b3a" />
+          </radialGradient>
+          <linearGradient id="sp-ground" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b1a78" />
+            <stop offset="100%" stopColor="#120726" />
+          </linearGradient>
+        </defs>
+        {stars.map((s, i) => (
+          <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#fff" opacity={s.o} />
+        ))}
+        <circle cx="-60" cy="470" r="330" fill="url(#sp-planet)" />
+        <circle cx="1650" cy="640" r="250" fill="url(#sp-planet2)" />
+        <circle cx="1470" cy="80" r="105" fill="url(#sp-planet2)" opacity="0.75" />
+        <path d="M0 900 L0 760 L90 700 L180 740 L280 690 L360 750 L1240 750 L1330 690 L1420 730 L1510 680 L1600 720 L1600 900 Z" fill="url(#sp-ground)" />
+        <rect x="0" y="800" width="1600" height="100" fill="#120726" opacity="0.6" />
+      </svg>
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "var(--inscription-bg, none)" }} />
+    </div>
   );
 }
 
@@ -253,6 +276,13 @@ const highlightBars = [
   "from-[#FF6B9D] to-[#FF8E53]",
   "from-[#667EEA] to-[#764BA2]",
 ];
+
+/** Surfaces et boutons du parcours. */
+const CARD = "rounded-[28px] border border-violet-300/30 bg-[#150f38]/80 shadow-[0_30px_90px_-40px_rgba(124,58,237,0.9)] backdrop-blur-xl";
+const BTN_NEXT =
+  "flex h-[52px] w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 px-8 text-[17px] font-semibold text-white shadow-[0_10px_30px_-10px_rgba(236,72,153,0.9)] ring-1 ring-white/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto";
+const BTN_BACK =
+  "flex h-[50px] w-full items-center justify-center gap-3 rounded-xl border border-violet-200/35 bg-white/[0.03] px-7 text-base text-white transition hover:border-fuchsia-300/60 hover:bg-white/[0.08] disabled:opacity-50 sm:w-auto";
 
 function InscriptionPageContent() {
   const router = useRouter();
@@ -551,6 +581,11 @@ function InscriptionPageContent() {
     setStep((currentStep) => Math.min(currentStep + 1, steps.length));
   };
 
+  /** À chaque changement d'étape, on revient en haut de la page. */
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [step]);
+
   /**
    * Bouton Retour.
    */
@@ -718,535 +753,338 @@ function InscriptionPageContent() {
    * Loader pendant le chargement de session NextAuth.
    */
   if (status === "loading" || status === "unauthenticated" || alreadyOnboarded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] px-4 text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          <p className="text-sm text-gray-300 sm:text-base">
-            Chargement de votre espace SferaLuna...
-          </p>
-        </div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
+  const isFinal = step >= steps.length;
+
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] font-sans text-white">
-      {/* Éléments décoratifs de fond */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl sm:h-96 sm:w-96" />
-        <div className="absolute left-1/3 top-1/3 h-64 w-64 rounded-full bg-pink-500/10 blur-3xl" />
-        <OrbitGlow className="right-[-10%] top-16 h-72 w-72 sm:h-96 sm:w-96" />
-        <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-      </div>
+    <main className="relative isolate min-h-screen overflow-x-hidden font-sans text-white">
+      <SpaceBackdrop />
 
-      {/* Étoiles globales depuis globals.css */}
-      <div className="stars" />
-
-      <div className="relative z-10 mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-8">
-        {/* Bouton retour accueil */}
-        <div className="mb-5 sm:mb-6">
-          <button
-            onClick={() => router.push("/")}
-            className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300 transition-all duration-200 hover:border-purple-400/50 hover:bg-white/10 hover:text-white sm:px-4"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-1" />
-            Retour à l&apos;accueil
-          </button>
-        </div>
-
+      <div className="relative z-10 mx-auto max-w-[1180px] px-4 pb-10 pt-5 sm:px-5 sm:pt-6">
         {/* En-tête */}
-        <section className="mb-6 text-center sm:mb-8">
-          <div className="mb-3 flex items-center justify-center gap-2 sm:mb-4">
-            <Crown className="h-7 w-7 text-yellow-400 sm:h-8 sm:w-8" />
+        <header className="relative text-center">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="group mb-5 inline-flex h-12 items-center gap-3 rounded-full border border-violet-300/30 bg-[#1b1040]/70 px-6 text-[15px] text-white/90 backdrop-blur transition hover:border-fuchsia-300/60 hover:text-white xl:absolute xl:left-0 xl:top-0 xl:mb-0 2xl:-left-20"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            Retour à l’accueil
+          </button>
 
-            <h1 className="bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-2xl font-bold leading-tight text-transparent sm:text-4xl">
-              Création du profil SferaLuna
-            </h1>
-          </div>
-
-          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-gray-300 sm:text-lg">
-            Complétez votre profil, puis choisissez l'offre qui correspond à
-            votre expérience.
-          </p>
-        </section>
-
-        {/* Barre de progression */}
-        <section className="mx-auto mb-6 max-w-3xl sm:mb-8">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs text-gray-300 sm:text-sm">
-              Étape {step + 1} sur {totalScreens}
+          <h1 className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1 text-3xl font-bold leading-tight tracking-tight sm:text-[40px] xl:pt-3">
+            <Crown className="h-9 w-9 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)] sm:h-11 sm:w-11" />
+            <span>
+              <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">Création du</span> profil{" "}
+              <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">SferaLuna</span>
             </span>
+          </h1>
+          <p className="mx-auto mt-1.5 max-w-3xl text-base text-white/80 sm:text-lg">Complétez votre profil, puis choisissez l’offre qui correspond à votre expérience.</p>
 
-            <span className="text-xs text-gray-300 sm:text-sm">
-              {Math.round(progress)}%
-            </span>
-          </div>
-
-          <div className="h-2 overflow-hidden rounded-full bg-gray-700">
+          {/* Progression */}
+          <div className="mx-auto mt-4 max-w-[800px]">
+            <div className="mb-2 flex items-center justify-between text-[15px] text-white/85">
+              <span>
+                Étape {step + 1} sur {totalScreens}
+              </span>
+              <span>{Math.round(progress)}%</span>
+            </div>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+              className="h-2 overflow-hidden rounded-full bg-white/15"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress)}
+              aria-label="Progression de la création du profil"
+            >
+              <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-        </section>
+        </header>
 
-        <section className="mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
+        <section className="mt-5 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           {/* Colonne principale */}
-          <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-gray-700/50 bg-gradient-to-br from-gray-900/80 to-gray-800/80 p-4 shadow-2xl backdrop-blur-sm sm:p-6 lg:p-8">
-              {/* Erreur globale */}
-              {submitError && (
-                <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200 sm:mb-6">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{submitError}</span>
-                </div>
-              )}
+          <div className={cx(CARD, "border-violet-300/45 p-5 sm:p-8 lg:px-10 lg:py-8")}>
+            {submitError && (
+              <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-rose-400/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{submitError}</span>
+              </div>
+            )}
 
-              {step < steps.length && StepComponent ? (
-                <FormProvider {...methods}>
-                  <form
-                    onSubmit={(event) => event.preventDefault()}
-                    className="space-y-5 sm:space-y-6"
-                  >
-                    {/* Badge étape */}
-                    <div className="mb-4 sm:mb-6">
-                      <div className="inline-flex items-center rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-4 py-2">
-                        <Star className="mr-2 h-4 w-4 text-yellow-400" />
-                        <span className="text-sm font-medium text-white">
-                          Étape profil
-                        </span>
-                      </div>
-                    </div>
+            {!isFinal && StepComponent ? (
+              <FormProvider {...methods}>
+                <form onSubmit={(event) => event.preventDefault()}>
+                  <span className="mb-4 inline-flex h-10 items-center gap-2.5 rounded-full border border-fuchsia-400/45 bg-fuchsia-500/15 px-4 text-sm font-medium text-white">
+                    <Star className="h-4 w-4 text-amber-300" /> Étape profil
+                  </span>
 
-                    <StepComponent />
+                  <StepComponent />
 
-                    {/* Navigation entre étapes */}
-                    <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-700 pt-5 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:pt-6">
-                      {step > 0 ? (
-                        <button
-                          type="button"
-                          onClick={onBack}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white sm:w-auto"
-                        >
-                          <ArrowLeft className="h-4 w-4" />
-                          Retour
-                        </button>
-                      ) : (
-                        <div className="hidden sm:block" />
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={onNext}
-                        className="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-3 font-medium text-white transition-all hover:from-purple-700 hover:to-pink-700 sm:w-auto"
-                      >
-                        Continuer
+                  <div className="mt-6 flex flex-col-reverse gap-3 border-t border-white/12 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                    {step > 0 ? (
+                      <button type="button" onClick={onBack} className={BTN_BACK}>
+                        <ArrowLeft className="h-4 w-4" /> Retour
                       </button>
+                    ) : (
+                      <span className="hidden sm:block" />
+                    )}
+                    <button type="button" onClick={onNext} className={cx(BTN_NEXT, "sm:w-[190px]")}>
+                      Continuer <ArrowRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                </form>
+              </FormProvider>
+            ) : (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <span className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-400/20">
+                    <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-[0_0_40px_-4px_rgba(52,211,153,0.9)] ring-2 ring-emerald-200/60">
+                      <Check className="h-9 w-9 text-white" strokeWidth={3} />
+                    </span>
+                  </span>
+                  <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-[38px]">
+                    Votre profil est <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">prêt</span>
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-2xl text-[15px] leading-relaxed text-white/80 sm:text-base">
+                    Dernière étape : enregistrez votre profil, puis vérifiez votre identité. C’est obligatoire pour accéder à votre compte — gratuit ou payant.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {finalHighlights.map((item, index) => (
+                    <div key={item.title} className="relative overflow-hidden rounded-xl border border-violet-200/20 bg-white/[0.06] p-5">
+                      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${highlightBars[index % highlightBars.length]}`} />
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/30 text-white">{item.icon}</span>
+                      <h3 className="mt-3 text-lg font-semibold text-white">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-white/70">{item.description}</p>
                     </div>
-                  </form>
-                </FormProvider>
-              ) : (
-                <FormProvider {...methods}>
-                  <div className="space-y-6 sm:space-y-8">
-                    <div className="text-center">
-                      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-green-400/30 bg-green-500/20">
-                        <Check className="h-8 w-8 text-green-300" />
-                      </div>
+                  ))}
+                </div>
 
-                      <h2 className="mb-3 text-2xl font-bold text-white sm:text-3xl">
-                        Votre profil est prêt
-                      </h2>
-
-                      <p className="text-sm leading-relaxed text-gray-300 sm:text-base">
-                        Dernière étape : enregistrez votre profil, puis
-                        vérifiez votre identité. C&apos;est obligatoire pour
-                        accéder à votre compte — gratuit ou payant.
-                      </p>
-                    </div>
-
-                    {/* Cartes de résumé */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {finalHighlights.map((item, index) => {
-                        const bar = highlightBars[index % highlightBars.length];
-
-                        return (
-                          <div
-                            key={item.title}
-                            className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-5"
-                          >
-                            <div
-                              className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${bar}`}
-                            />
-
-                            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                              <div className="text-purple-300">{item.icon}</div>
-                            </div>
-
-                            <h3 className="font-bold text-white">
-                              {item.title}
-                            </h3>
-
-                            <p className="mt-1 text-sm text-gray-400">
-                              {item.description}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Vérification d'identité — obligatoire */}
-                    <div
-                      className={`rounded-xl border p-5 sm:p-6 ${
-                        identityStatus === "verified"
-                          ? "border-green-500/30 bg-gradient-to-r from-green-900/30 to-emerald-900/20"
-                          : "border-purple-700/30 bg-gradient-to-r from-purple-900/30 to-pink-900/30"
-                      }`}
-                    >
-                      <div className="mb-3 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/20 text-xl">
-                          🪪
-                        </div>
-
-                        <div>
-                          <h3 className="text-lg font-bold text-white">
-                            Vérification d&apos;identité
-                          </h3>
-
-                          <p className="text-xs font-semibold text-pink-300">
-                            Obligatoire — requise pour accéder à votre compte
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Avertissement navigateur in-app (Instagram, Facebook,
-                          TikTok…) : la caméra y est souvent bloquée. */}
-                      {isInAppBrowser && identityStatus !== "verified" && (
-                        <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                          <span className="shrink-0 text-base">⚠️</span>
-                          <span>
-                            Vous semblez naviguer depuis l&apos;application
-                            d&apos;un réseau social. La caméra peut y être
-                            bloquée et faire échouer la vérification.{" "}
-                            <strong className="font-semibold">
-                              Ouvrez plutôt cette page dans Safari ou Chrome
-                            </strong>{" "}
-                            (menu « … » → « Ouvrir dans le navigateur ») avant de
-                            lancer la vérification.
-                          </span>
-                        </div>
-                      )}
-
-                      {identityStatus === "verified" ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-                          <Check className="h-4 w-4 shrink-0" />
-                          <span>
-                            Identité vérifiée. Vous pouvez maintenant accéder
-                            à votre compte.
-                          </span>
-                        </div>
-                      ) : identityStatus === "pending" ? (
-                        <>
-                          <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-400/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
-                            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                            <span>
-                              Vérification en cours de traitement. Cela peut
-                              prendre quelques minutes.
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={refreshIdentityStatus}
-                            disabled={isCheckingIdentity}
-                            className="w-full rounded-xl border border-white/20 bg-white/5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60"
-                          >
-                            {isCheckingIdentity
-                              ? "Vérification du statut..."
-                              : "Rafraîchir le statut"}
-                          </button>
-
-                          {/* Filet de sécurité : permettre de relancer une
-                              nouvelle vérification si la personne est bloquée
-                              (page fermée, caméra refusée, souci technique…). */}
-                          <div className="mt-3 border-t border-white/10 pt-3">
-                            <p className="mb-2 text-center text-xs text-white/50">
-                              Un problème, une fenêtre fermée ou un blocage
-                              technique pendant la vérification ?
-                            </p>
-
-                            <button
-                              type="button"
-                              onClick={handleStartIdentityVerification}
-                              disabled={isLaunchingVerification}
-                              className="w-full rounded-xl border border-purple-400/40 bg-purple-500/15 py-3 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/25 disabled:opacity-60"
-                            >
-                              {isLaunchingVerification
-                                ? "Préparation..."
-                                : "↻ Recommencer la vérification"}
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <p className="mb-4 text-sm leading-relaxed text-gray-300">
-                            Pour la sécurité de toutes les utilisatrices,
-                            SferaLuna exige une pièce d&apos;identité officielle
-                            et une photo prise en direct correspondant au
-                            visage sur la pièce. Sans cette vérification,
-                            l&apos;inscription n&apos;est pas validée et l&apos;accès au
-                            compte reste bloqué.
-                            {identityStatus === "failed" && (
-                              <span className="mt-2 block font-medium text-red-300">
-                                La vérification précédente n&apos;a pas pu être
-                                validée. Merci de réessayer.
-                              </span>
-                            )}
-                          </p>
-
-                          <button
-                            type="button"
-                            onClick={handleStartIdentityVerification}
-                            disabled={isLaunchingVerification || !isProfileSaved}
-                            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isLaunchingVerification
-                              ? "Préparation..."
-                              : identityStatus === "failed"
-                                ? "↻ Recommencer la vérification d'identité"
-                                : "Vérifier mon identité maintenant"}
-                          </button>
-
-                          {!isProfileSaved && (
-                            <p className="mt-2 text-center text-xs text-white/40">
-                              Enregistrez d&apos;abord votre profil ci-dessous
-                              pour lancer la vérification.
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Bloc Stripe — paiement optionnel, possible plus tard */}
-                    <div className="rounded-xl border border-blue-700/30 bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-5 sm:p-6">
-                      <div className="mb-3 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/20">
-                          <ShieldCheck className="h-5 w-5 text-blue-400" />
-                        </div>
-
-                        <h3 className="text-lg font-bold text-white">
-                          Paiement — facultatif pour le moment
-                        </h3>
-                      </div>
-
-                      <p className="text-sm leading-relaxed text-gray-300 sm:text-base">
-                        Une fois votre identité vérifiée, vous pouvez accéder
-                        gratuitement à votre compte avec les fonctionnalités
-                        de base. Vous pourrez choisir une offre Essentiel,
-                        Premium ou Elite à tout moment depuis Mon Compte.
-                      </p>
-                    </div>
-
-                    {/* Boutons finaux */}
-                    <div className="flex flex-col gap-3 border-t border-gray-700 pt-5 sm:pt-6">
-                      {!isProfileSaved ? (
-                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <button
-                            type="button"
-                            onClick={() => setStep(steps.length - 1)}
-                            disabled={isSubmittingProfile}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white disabled:opacity-50 sm:w-auto"
-                          >
-                            <ArrowLeft className="h-4 w-4" />
-                            Retour
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={handleSaveProfile}
-                            disabled={isSubmittingProfile}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-lg"
-                          >
-                            {isSubmittingProfile ? (
-                              <>
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                                Enregistrement...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-5 w-5" />
-                                Enregistrer mon profil
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      ) : identityStatus === "verified" ? (
-                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <button
-                            type="button"
-                            onClick={handleGoToOffers}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-600 px-6 py-3 text-gray-300 transition-colors hover:bg-gray-800 hover:text-white sm:w-auto"
-                          >
-                            <Star className="h-4 w-4" />
-                            Voir les offres Premium
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={handleAccessFreeAccount}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:from-purple-700 hover:to-pink-700 sm:w-auto sm:text-lg"
-                          >
-                            <Sparkles className="h-5 w-5" />
-                            Accéder à mon compte gratuit
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-center text-sm text-gray-400">
-                          Vérifiez votre identité ci-dessus pour débloquer
-                          l&apos;accès à votre compte.
-                        </p>
-                      )}
+                {/* Vérification d'identité — obligatoire */}
+                <div
+                  className={cx(
+                    "rounded-2xl border p-5 sm:p-6",
+                    identityStatus === "verified"
+                      ? "border-emerald-400/40 bg-emerald-500/10"
+                      : "border-fuchsia-400/60 bg-gradient-to-r from-violet-700/30 via-fuchsia-700/25 to-pink-700/25 shadow-[0_0_40px_-12px_rgba(217,70,239,0.8)]"
+                  )}
+                >
+                  <div className="mb-3 flex items-center gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/35">
+                      <IdCard className="h-6 w-6 text-white" />
+                    </span>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">Vérification d’identité</h3>
+                      <p className="text-sm font-semibold text-pink-300">Obligatoire — requise pour accéder à votre compte</p>
                     </div>
                   </div>
-                </FormProvider>
-              )}
-            </div>
+
+                  {/* Navigateur intégré (Instagram, Facebook, TikTok…) : la caméra y est souvent bloquée. */}
+                  {isInAppBrowser && identityStatus !== "verified" && (
+                    <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>
+                        Vous semblez naviguer depuis l’application d’un réseau social. La caméra peut y être bloquée et faire échouer la vérification.{" "}
+                        <strong className="font-semibold">Ouvrez plutôt cette page dans Safari ou Chrome</strong> (menu « … » → « Ouvrir dans le navigateur ») avant de lancer la vérification.
+                      </span>
+                    </div>
+                  )}
+
+                  {identityStatus === "verified" ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                      <Check className="h-4 w-4 shrink-0" />
+                      <span>Identité vérifiée. Vous pouvez maintenant accéder à votre compte.</span>
+                    </div>
+                  ) : identityStatus === "pending" ? (
+                    <>
+                      <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        <span>Vérification en cours de traitement. Cela peut prendre quelques minutes.</span>
+                      </div>
+
+                      <button type="button" onClick={refreshIdentityStatus} disabled={isCheckingIdentity} className={cx(BTN_BACK, "w-full sm:w-full")}>
+                        {isCheckingIdentity ? "Vérification du statut…" : "Rafraîchir le statut"}
+                      </button>
+
+                      {/* Filet de sécurité : relancer si la personne est bloquée (page fermée, caméra refusée…). */}
+                      <div className="mt-3 border-t border-white/10 pt-3">
+                        <p className="mb-2 text-center text-xs text-white/60">Un problème, une fenêtre fermée ou un blocage technique pendant la vérification ?</p>
+                        <button
+                          type="button"
+                          onClick={handleStartIdentityVerification}
+                          disabled={isLaunchingVerification}
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-fuchsia-400/40 bg-fuchsia-500/15 text-sm font-semibold text-white transition hover:bg-fuchsia-500/25 disabled:opacity-60"
+                        >
+                          <RotateCcw className="h-4 w-4" /> {isLaunchingVerification ? "Préparation…" : "Recommencer la vérification"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-4 text-sm leading-relaxed text-white/85 sm:text-[15px]">
+                        Pour la sécurité de toutes les utilisatrices, SferaLuna exige une pièce d’identité officielle et une photo prise en direct correspondant au visage sur la pièce. Sans cette
+                        vérification, l’inscription n’est pas validée et l’accès au compte reste bloqué.
+                        {identityStatus === "failed" && <span className="mt-2 block font-medium text-rose-300">La vérification précédente n’a pas pu être validée. Merci de réessayer.</span>}
+                      </p>
+
+                      <button type="button" onClick={handleStartIdentityVerification} disabled={isLaunchingVerification || !isProfileSaved} className={cx(BTN_NEXT, "relative w-full sm:w-full")}>
+                        {isLaunchingVerification ? "Préparation…" : identityStatus === "failed" ? "Recommencer la vérification d’identité" : "Vérifier mon identité maintenant"}
+                        <ArrowRight className="absolute right-5 h-5 w-5" />
+                      </button>
+
+                      {!isProfileSaved && <p className="mt-2 text-center text-xs text-white/60">Enregistrez d’abord votre profil ci-dessous pour lancer la vérification.</p>}
+                    </>
+                  )}
+                </div>
+
+                {/* Paiement — facultatif, possible plus tard */}
+                <div className="rounded-2xl border border-blue-300/25 bg-blue-500/10 p-5 sm:p-6">
+                  <div className="mb-2 flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/25">
+                      <ShieldCheck className="h-5 w-5 text-blue-200" />
+                    </span>
+                    <h3 className="text-lg font-bold text-white">Paiement — facultatif pour le moment</h3>
+                  </div>
+                  <p className="text-sm leading-relaxed text-white/80 sm:text-[15px]">
+                    Une fois votre identité vérifiée, vous pouvez accéder gratuitement à votre compte avec les fonctionnalités de base. Vous pourrez choisir une offre Essentiel, Premium ou Elite à tout
+                    moment depuis Mon Compte.
+                  </p>
+                </div>
+
+                {/* Boutons finaux */}
+                <div className="border-t border-white/12 pt-5">
+                  {!isProfileSaved ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button type="button" onClick={() => setStep(steps.length - 1)} disabled={isSubmittingProfile} className={BTN_BACK}>
+                        <ArrowLeft className="h-4 w-4" /> Retour
+                      </button>
+                      <button type="button" onClick={handleSaveProfile} disabled={isSubmittingProfile} className={BTN_NEXT}>
+                        {isSubmittingProfile ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" /> Enregistrement…
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5" /> Enregistrer mon profil
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : identityStatus === "verified" ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button type="button" onClick={handleGoToOffers} className={BTN_BACK}>
+                        <Star className="h-4 w-4" /> Voir les offres Premium
+                      </button>
+                      <button type="button" onClick={handleAccessFreeAccount} className={BTN_NEXT}>
+                        <Sparkles className="h-5 w-5" /> Accéder à mon compte gratuit
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-center text-sm text-white/70">Vérifiez votre identité ci-dessus pour débloquer l’accès à votre compte.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Colonne latérale */}
-          <aside className="lg:col-span-1">
-            <div className="space-y-5 lg:sticky lg:top-8 lg:space-y-6">
-              {/* Avantages */}
-              <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-900/40 to-pink-900/40 p-5 backdrop-blur-sm sm:p-6">
-                <div className="mb-5 flex items-center gap-3 sm:mb-6">
-                  <Crown className="h-6 w-6 text-yellow-400" />
+          <aside className="space-y-4 lg:sticky lg:top-6">
+            <div className={cx(CARD, "border-fuchsia-400/45 bg-gradient-to-br from-[#2a1260]/85 to-[#3b1257]/80 p-6")}>
+              <h2 className="flex items-center gap-4 text-[22px] font-bold text-white">
+                <Crown className="h-7 w-7 text-amber-400" />
+                <span>
+                  Avantages <span className="bg-gradient-to-r from-fuchsia-400 to-pink-400 bg-clip-text text-transparent">SferaLuna</span>
+                </span>
+              </h2>
 
-                  <h3 className="text-lg font-bold text-white sm:text-xl">
-                    Avantages SferaLuna
-                  </h3>
-                </div>
-
-                <ul className="space-y-3 sm:space-y-4">
-                  {lunaBenefits.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3">
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/20">
-                        <Check className="h-3 w-3 text-green-400" />
-                      </div>
-
-                      <span className="text-sm text-gray-200">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-5 border-t border-purple-500/30 pt-5 sm:mt-6 sm:pt-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-gray-300">
-                      Matches créés sur SferaLuna :
+              <ul className="mt-5 space-y-3">
+                {lunaBenefits.map((feature) => (
+                  <li key={feature} className="flex items-center gap-4">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-500/45 ring-1 ring-violet-300/40">
+                      <Check className="h-4 w-4 text-white" strokeWidth={2.5} />
                     </span>
+                    <span className="text-[15px] text-white/90">{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-                    <span className="font-bold text-white">
-                      {liveStats ? liveStats.matchs : "—"}
-                    </span>
-                  </div>
-                </div>
+              <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/15 pt-4">
+                <span className="text-[15px] text-fuchsia-200/90">Matches créés sur SferaLuna :</span>
+                <span className="text-2xl font-bold text-fuchsia-400">{liveStats ? liveStats.matchs : "—"}</span>
               </div>
+            </div>
 
-              {/* Témoignage — uniquement des témoignages réels et approuvés */}
-              {latestTestimonial && (
-                <div className="rounded-2xl border border-gray-700 bg-gray-900/60 p-5 backdrop-blur-sm sm:p-6">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
-                      <Users className="h-6 w-6 text-white" />
-                    </div>
+            {/* Témoignage — uniquement réel et approuvé */}
+            {latestTestimonial && (
+              <figure className={cx(CARD, "p-6")}>
+                <figcaption className="flex items-center gap-4">
+                  <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-500">
+                    <UsersRound className="h-6 w-6 text-white" />
+                  </span>
+                  <span>
+                    <span className="block text-lg font-semibold text-white">
+                      {latestTestimonial.authorName}
+                      {latestTestimonial.age ? `, ${latestTestimonial.age} ans` : ""}
+                    </span>
+                    <span className="mt-0.5 flex" aria-hidden>
+                      {[...Array(5)].map((_, index) => (
+                        <Star key={index} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      ))}
+                    </span>
+                  </span>
+                </figcaption>
+                <blockquote className="mt-4 text-[15px] italic leading-relaxed text-white/85">“{latestTestimonial.content}”</blockquote>
+              </figure>
+            )}
 
-                    <div>
-                      <h4 className="font-bold text-white">
-                        {latestTestimonial.authorName}
-                        {latestTestimonial.age
-                          ? `, ${latestTestimonial.age} ans`
-                          : ""}
-                      </h4>
-
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, index) => (
-                          <Star
-                            key={index}
-                            className="h-4 w-4 fill-current text-yellow-400"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-sm italic leading-relaxed text-gray-300 sm:text-base">
-                    “{latestTestimonial.content}”
-                  </p>
-                </div>
-              )}
-
-              {/* Compteur — données réelles, mises à jour automatiquement */}
-              <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-blue-900/40 to-cyan-900/40 p-5 backdrop-blur-sm sm:p-6">
-                <div className="text-center">
-                  <div className="mb-2 text-sm font-medium text-cyan-400">
-                    MEMBRES INSCRITS
-                  </div>
-
-                  <div className="mb-2 text-3xl font-bold text-white sm:text-4xl">
-                    {liveStats ? liveStats.membres : "—"}
-                  </div>
-
-                  <div className="text-sm text-gray-300">
-                    {liveStats ? liveStats.messages : "—"} messages échangés
-                  </div>
-                </div>
+            {/* Compteur — données réelles */}
+            <div className={cx(CARD, "flex items-center gap-6 border-blue-400/40 bg-gradient-to-r from-[#1b1a5e]/85 to-[#241a6e]/80 p-6")}>
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-500/20">
+                <Users className="h-7 w-7 text-blue-300" />
+              </span>
+              <div>
+                <p className="text-sm font-medium uppercase tracking-wide text-cyan-300">Membres inscrits</p>
+                <p className="text-4xl font-bold leading-tight text-white">{liveStats ? liveStats.membres : "—"}</p>
+                <p className="text-[15px] text-white/75">{liveStats ? liveStats.messages : "—"} messages échangés</p>
               </div>
             </div>
           </aside>
         </section>
 
-        {/* Footer sécurisé */}
-        <footer className="mx-auto mt-8 max-w-3xl text-center">
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              <span>Paiement 100% sécurisé</span>
-            </div>
-
-            <div className="hidden sm:block">•</div>
-
-            <div className="flex items-center gap-2">
-              <Check className="h-4 w-4" />
-              <span>Annulation à tout moment</span>
-            </div>
-
-            <div className="hidden sm:block">•</div>
-
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              <span>Données protégées</span>
-            </div>
-          </div>
+        <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-white/60">
+          <span className="flex items-center gap-2">
+            <Lock className="h-4 w-4" /> Paiement sécurisé par Stripe
+          </span>
+          <span className="flex items-center gap-2">
+            <Check className="h-4 w-4" /> Annulation à tout moment
+          </span>
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" /> Données protégées
+          </span>
         </footer>
       </div>
     </main>
   );
 }
 
+function PageLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0d0822] px-4 text-white">
+      <div className="text-center">
+        <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-fuchsia-300" />
+        <p className="text-sm text-white/75 sm:text-base">Chargement de votre espace SferaLuna…</p>
+      </div>
+    </div>
+  );
+}
+
 export default function InscriptionPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2d1b69] to-[#3a2a82] px-4 text-white">
-          <div className="text-center">
-            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            <p className="text-sm text-gray-300 sm:text-base">
-              Chargement de votre espace SferaLuna...
-            </p>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PageLoader />}>
       <InscriptionPageContent />
     </Suspense>
   );

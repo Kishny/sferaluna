@@ -3,25 +3,18 @@
 "use client";
 
 /**
- * Étape 3 du formulaire d'inscription SferaLuna.
- *
- * Objectif :
- * - choisir son département (métropole ou outre-mer) ;
- * - préciser sa ville ;
- * - définir la portée de recherche ;
- * - garder une UX fluide sur mobile.
+ * Étape 3 : département (métropole ou outre-mer), ville, portée de recherche.
  */
 
 import { useFormContext } from "react-hook-form";
-import {
-  DEPARTEMENTS,
-  getVillesPourDepartement,
-  isOutreMer,
-} from "@/lib/locations";
+import { Building2, ChevronDown, MapPin } from "lucide-react";
+
+import { DEPARTEMENTS, getVillesPourDepartement, isOutreMer } from "@/lib/locations";
+
+import { ErrorText, Helper, INPUT, IconField, Label, RadioDot, StepTitle, TILE, TILE_ON, cx } from "./ui";
 
 /**
- * Portée de recherche proposée.
- * Le « rayon » historique en km n'avait pas de sens entre territoires
+ * Portée de recherche. Un rayon en km n'a pas de sens entre territoires
  * éloignés (métropole ↔ outre-mer) : on raisonne par bassin géographique.
  */
 const portees = [
@@ -44,167 +37,87 @@ export default function Step3() {
 
   const villesSuggerees = getVillesPourDepartement(selectedDepartement);
 
-  const handleLocalisationClick = (ville: string) => {
-    setValue("localisation", ville, {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true,
-    });
-  };
-
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Titre de l'étape */}
-      <div>
-        <h2 className="text-xl font-bold text-purple-300 sm:text-2xl">
-          Localisation
-        </h2>
+    <div className="space-y-6">
+      <StepTitle plain="Local" accent="isation" joined>
+        Indiquez votre département et votre ville pour recevoir des suggestions cohérentes — métropole comme outre-mer.
+      </StepTitle>
 
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">
-          Indiquez votre département et votre ville pour recevoir des
-          suggestions cohérentes — métropole comme outre-mer.
-        </p>
-      </div>
-
-      {/* Département */}
-      <section className="space-y-4">
-        <label className="block text-sm font-semibold text-gray-100">
-          Votre département <span className="text-pink-400">*</span>
-        </label>
-
-        <select
-          {...register("departement")}
-          className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
-        >
+      <IconField
+        id="departement"
+        label="Votre département"
+        required
+        icon={MapPin}
+        helper={selectedDepartement && isOutreMer(selectedDepartement) ? "🌴 Territoire d’outre-mer — vos suggestions resteront dans votre bassin local." : undefined}
+        right={<ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-white/70" />}
+      >
+        <select id="departement" {...register("departement")} className={cx(INPUT, "appearance-none !bg-none pr-12", !selectedDepartement && "text-white/50")}>
           <option value="" className="bg-[#1a0b2e] text-gray-300">
             Sélectionnez votre département…
           </option>
-
           <optgroup label="France métropolitaine" className="bg-[#1a0b2e]">
             {DEPARTEMENTS.filter((d) => !d.outreMer).map((d) => (
-              <option
-                key={d.code}
-                value={d.code}
-                className="bg-[#1a0b2e] text-white"
-              >
+              <option key={d.code} value={d.code} className="bg-[#1a0b2e] text-white">
                 {d.code} — {d.nom}
               </option>
             ))}
           </optgroup>
-
           <optgroup label="Outre-mer" className="bg-[#1a0b2e]">
             {DEPARTEMENTS.filter((d) => d.outreMer).map((d) => (
-              <option
-                key={d.code}
-                value={d.code}
-                className="bg-[#1a0b2e] text-white"
-              >
+              <option key={d.code} value={d.code} className="bg-[#1a0b2e] text-white">
                 {d.code} — {d.nom}
               </option>
             ))}
           </optgroup>
         </select>
+      </IconField>
 
-        {selectedDepartement && isOutreMer(selectedDepartement) && (
-          <p className="text-xs text-purple-200">
-            🌴 Territoire d&apos;outre-mer — tes suggestions resteront dans ton
-            bassin local.
-          </p>
+      <div>
+        <IconField id="localisation" label="Votre ville" required icon={Building2} error={errors.localisation?.message as string | undefined}>
+          <input id="localisation" {...register("localisation")} type="text" autoComplete="address-level2" placeholder="Saisissez votre ville" className={INPUT} />
+        </IconField>
+
+        {villesSuggerees.length > 0 && (
+          <>
+            <p className="mb-3 mt-5 text-[15px] text-white/80">Villes principales :</p>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {villesSuggerees.map((ville) => {
+                const on = selectedLocalisation === ville;
+                return (
+                  <button
+                    key={ville}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setValue("localisation", ville, { shouldValidate: true, shouldDirty: true, shouldTouch: true })}
+                    className={cx("h-9 px-3 text-sm font-medium text-white", on ? TILE_ON : TILE)}
+                  >
+                    {ville}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
-      </section>
+      </div>
 
-      {/* Ville */}
-      <section className="space-y-4">
-        <label className="block text-sm font-semibold text-gray-100">
-          Votre ville <span className="text-pink-400">*</span>
-        </label>
-
-        <input
-          {...register("localisation")}
-          type="text"
-          placeholder="Saisissez votre ville"
-          className="w-full rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-white placeholder:text-gray-400 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/30"
-        />
-
-        <div>
-          <p className="mb-3 text-sm text-gray-300">Villes principales :</p>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {villesSuggerees.map((ville) => {
-              const isSelected = selectedLocalisation === ville;
-
-              return (
-                <button
-                  key={ville}
-                  type="button"
-                  onClick={() => handleLocalisationClick(ville)}
-                  className={`rounded-xl border px-3 py-3 text-sm font-medium transition-all ${
-                    isSelected
-                      ? "border-pink-400 bg-pink-500/20 text-white shadow-lg shadow-pink-500/10"
-                      : "border-white/25 bg-white/5 text-gray-100 hover:border-purple-300 hover:bg-white/10"
-                  }`}
-                >
-                  {ville}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {errors.localisation && (
-          <p className="text-sm text-red-300">
-            {errors.localisation.message as string}
-          </p>
-        )}
-      </section>
-
-      {/* Portée de recherche */}
-      <section className="space-y-4">
-        <label className="block text-sm font-semibold text-gray-100">
-          Portée de recherche <span className="text-pink-400">*</span>
-        </label>
-
-        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
+      <section role="radiogroup" aria-label="Portée de recherche">
+        <Label as="p" required>
+          Portée de recherche
+        </Label>
+        <div className="mt-3 grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
           {portees.map((portee) => {
-            const isSelected = selectedRayon === portee.value;
-
+            const on = selectedRayon === portee.value;
             return (
-              <label
-                key={portee.value}
-                className={`flex cursor-pointer items-center rounded-xl border p-3 transition-all sm:p-4 ${
-                  isSelected
-                    ? "border-pink-400 bg-pink-500/20 shadow-lg shadow-pink-500/10"
-                    : "border-white/25 bg-white/5 hover:border-purple-300 hover:bg-white/10"
-                }`}
-              >
-                <input
-                  type="radio"
-                  {...register("rayon")}
-                  value={portee.value}
-                  className="h-4 w-4 accent-pink-500"
-                />
-
-                <span
-                  className={`ml-3 text-sm font-medium ${
-                    isSelected ? "text-white" : "text-gray-100"
-                  }`}
-                >
-                  {portee.label}
-                </span>
+              <label key={portee.value} className={cx("flex h-[50px] cursor-pointer items-center gap-3 px-4 focus-within:ring-2 focus-within:ring-fuchsia-400/60", on ? TILE_ON : TILE)}>
+                <input type="radio" {...register("rayon")} value={portee.value} className="sr-only" />
+                <RadioDot on={on} />
+                <span className="text-sm font-medium text-white">{portee.label}</span>
               </label>
             );
           })}
         </div>
-
-        <p className="text-sm text-gray-300">
-          Cette portée définit l&apos;étendue de tes suggestions de profils.
-        </p>
-
-        {errors.rayon && (
-          <p className="text-sm text-red-300">
-            {errors.rayon.message as string}
-          </p>
-        )}
+        <Helper>Cette portée définit l’étendue de vos suggestions de profils.</Helper>
+        <ErrorText>{errors.rayon?.message as string | undefined}</ErrorText>
       </section>
     </div>
   );
