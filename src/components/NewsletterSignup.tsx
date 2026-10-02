@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Loader2, CheckCircle } from "lucide-react";
+import { ArrowRight, Mail, Loader2, CheckCircle } from "lucide-react";
 
 /**
  * Formulaire d'inscription à la newsletter SferaLuna.
@@ -9,7 +9,8 @@ import { Mail, Loader2, CheckCircle } from "lucide-react";
  * Branché sur POST /api/newsletter (stockage MongoDB + email de bienvenue +
  * synchronisation vers l'Audience Resend).
  *
- * Deux variantes visuelles :
+ * Trois variantes visuelles :
+ * - "night" : pied de page (champ et bouton réunis dans une même pastille) ;
  * - "dark"  : pour le footer (fond sombre) ;
  * - "light" : pour les sections claires (page d'accueil).
  */
@@ -17,7 +18,7 @@ export default function NewsletterSignup({
   variant = "dark",
   className = "",
 }: {
-  variant?: "dark" | "light";
+  variant?: "dark" | "light" | "night";
   className?: string;
 }) {
   const [email, setEmail] = useState("");
@@ -74,6 +75,44 @@ export default function NewsletterSignup({
         <CheckCircle size={18} className="shrink-0" />
         {message}
       </div>
+    );
+  }
+
+  if (variant === "night") {
+    return (
+      <form onSubmit={handleSubmit} className={className} noValidate>
+        <div className="flex h-14 items-center rounded-full border border-violet-200/40 bg-white/[0.04] pl-5 pr-1 transition focus-within:border-fuchsia-300/80">
+          <Mail size={20} className="shrink-0 text-white/75" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Ton adresse email"
+            aria-label="Adresse email"
+            autoComplete="email"
+            className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-base text-white placeholder:text-white/55 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0"
+          />
+          <button
+            type="submit"
+            disabled={status === "loading"}
+            className="flex h-12 shrink-0 items-center justify-center gap-3 rounded-full bg-gradient-to-r from-pink-100 via-fuchsia-300 to-fuchsia-400 px-5 text-base font-semibold text-[#2a1158] shadow-[0_8px_28px_-8px_rgba(232,121,249,0.9)] transition hover:brightness-105 disabled:opacity-60 sm:px-9"
+          >
+            {status === "loading" ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <>
+                S’inscrire <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </div>
+        {status === "error" && (
+          <p role="alert" className="mt-2 pl-5 text-xs text-red-300">
+            {message}
+          </p>
+        )}
+        <p className="mt-2 pl-5 text-xs text-white/50">Pas de spam. Désabonnement en un clic à tout moment.</p>
+      </form>
     );
   }
 
