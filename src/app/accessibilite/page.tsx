@@ -1,290 +1,198 @@
 // src/app/accessibilite/page.tsx
 
-"use client";
-
-import { useState } from "react";
-import BackButton from "@/components/BackButton";
-import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  Accessibility,
-  ChevronDown,
-  Heart,
-  Keyboard,
-  Mail,
-  Moon,
-  ShieldCheck,
-  Volume2,
-} from "lucide-react";
-
 /**
- * Page accessibilité SferaLuna.
+ * Engagement accessibilité.
  *
- * Version mobile-first :
- * - sections compactes ;
- * - accordéon mobile ;
- * - bloc complet sur desktop ;
- * - liens rapides adaptés aux petits écrans.
+ * Ce texte décrit des objectifs et des mesures, pas une conformité certifiée :
+ * aucun audit complet n'a été réalisé à ce jour (voir « Limitations connues »).
+ * À mettre à jour après un audit, avec le taux de conformité obtenu.
  */
 
+import Link from "next/link";
+import {
+  Accessibility,
+  ArrowRight,
+  CircleAlert,
+  Code2,
+  ExternalLink,
+  Eye,
+  FileText,
+  Image as ImageIcon,
+  Keyboard,
+  Mail,
+  MessageSquareMore,
+  Scale,
+  Settings,
+  Target,
+  Volume2,
+  type LucideIcon,
+} from "lucide-react";
+
+import { buildMeta } from "@/app/layout-meta";
+import { SiteShell } from "@/components/site/sections";
+import { BAND_PRIMARY, PANEL, PageBody, PageHero, PhotoBackdrop, Pink, TILE } from "@/components/site/pagekit";
+import { cn } from "@/components/site/ui";
+
+export const metadata = buildMeta(
+  "Accessibilité",
+  "L’engagement de SferaLuna pour une plateforme accessible : mesures prises, limites connues, comment signaler une difficulté.",
+  "/accessibilite"
+);
+
+const BG = "/images/guide-accessibilite-bg.webp";
+const CONTACT = "contact@sferaluna.com";
+
+const MEASURES: { icon: LucideIcon; tone: string; title: string; text: string }[] = [
+  { icon: Eye, tone: "text-violet-300 ring-violet-400/50", title: "Contrastes", text: "Des couleurs et contrastes pensés pour une bonne lisibilité, y compris sur fond sombre." },
+  { icon: Keyboard, tone: "text-pink-300 ring-pink-400/50", title: "Navigation clavier", text: "Les fonctionnalités principales sont conçues pour être utilisables au clavier." },
+  { icon: ImageIcon, tone: "text-amber-300 ring-amber-400/50", title: "Textes alternatifs", text: "Les images porteuses de sens disposent de textes alternatifs pour les lecteurs d’écran." },
+  { icon: Code2, tone: "text-fuchsia-300 ring-fuchsia-400/50", title: "Structure sémantique", text: "Une structure de page claire, avec des balises HTML appropriées et des attributs ARIA lorsque c’est nécessaire." },
+  { icon: FileText, tone: "text-pink-300 ring-pink-400/50", title: "Formulaires accessibles", text: "Des champs correctement labellisés, des instructions claires et des messages d’erreur explicites." },
+  { icon: Volume2, tone: "text-blue-300 ring-blue-400/50", title: "Lecteurs d’écran", text: "Des pages structurées pour être lues par les lecteurs d’écran comme VoiceOver et NVDA." },
+];
+
 export default function AccessibilitePage() {
-  const [openSection, setOpenSection] = useState<number | null>(0);
-
-  const sections = [
-    {
-      icon: <Heart className="h-4 w-4" />,
-      title: "Notre engagement",
-      summary: "Une plateforme accessible au plus grand nombre.",
-      content: (
-        <p>
-          SferaLuna s&apos;engage à rendre son service numérique accessible
-          conformément à la loi française n° 2005-102 pour l&apos;égalité des
-          droits et des chances. Nous visons la conformité avec les Règles pour
-          l&apos;Accessibilité des Contenus Web, WCAG 2.1, niveau AA.
-        </p>
-      ),
-    },
-    {
-      icon: <ShieldCheck className="h-4 w-4" />,
-      title: "Mesures prises",
-      summary: "Contrastes, clavier, textes alternatifs et lecteurs d’écran.",
-      content: (
-        <ul className="list-disc space-y-2 pl-5">
-          <li>Contrastes de couleurs conformes aux recommandations WCAG 2.1</li>
-          <li>Navigation au clavier sur l&apos;ensemble des interfaces</li>
-          <li>Textes alternatifs sur toutes les images significatives</li>
-          <li>Structure de pages sémantique avec titres et landmarks ARIA</li>
-          <li>Formulaires labellisés et messages d&apos;erreur explicites</li>
-          <li>Compatibilité avec les lecteurs d&apos;écran VoiceOver et NVDA</li>
-        </ul>
-      ),
-    },
-    {
-      icon: <Keyboard className="h-4 w-4" />,
-      title: "Limitations connues",
-      summary: "Certaines fonctionnalités sont encore en amélioration.",
-      content: (
-        <p>
-          Certaines fonctionnalités en cours de développement peuvent présenter
-          des limitations d&apos;accessibilité. Nous travaillons à les améliorer
-          en continu. Si vous rencontrez une difficulté, signalez-la nous.
-        </p>
-      ),
-    },
-    {
-      icon: <Mail className="h-4 w-4" />,
-      title: "Signaler un problème",
-      summary: "Contact dédié et formulaire de contact.",
-      content: (
-        <>
-          <p>
-            Si vous rencontrez un obstacle d&apos;accessibilité sur SferaLuna,
-            veuillez nous contacter :
-          </p>
-
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>
-              Email :{" "}
-              <a
-                href="mailto:contact@sferaluna.com"
-                className="font-medium text-[#8E7AB5] underline-offset-2 hover:underline"
-              >
-                contact@sferaluna.com
-              </a>
-            </li>
-            <li>
-              Via notre{" "}
-              <Link
-                href="/contact"
-                className="font-medium text-[#8E7AB5] underline-offset-2 hover:underline"
-              >
-                formulaire de contact
-              </Link>
-            </li>
-          </ul>
-
-          <p className="mt-3">
-            Nous nous engageons à vous répondre dans un délai de 5 jours
-            ouvrables.
-          </p>
-        </>
-      ),
-    },
-    {
-      icon: <Volume2 className="h-4 w-4" />,
-      title: "Voies de recours",
-      summary: "Que faire si la réponse n’est pas satisfaisante.",
-      content: (
-        <p>
-          Si vous n&apos;obtenez pas de réponse satisfaisante, vous pouvez
-          contacter le Défenseur des droits via defenseurdesdroits.fr.
-        </p>
-      ),
-    },
-  ];
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 sm:px-4 sm:pb-16 sm:pt-24">
-        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
-          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
-        </div>
-      <div className="mx-auto max-w-3xl">
-        {/* Hero */}
-        <motion.header
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 rounded-3xl border border-[#8E7AB5]/15 bg-white/75 p-4 text-center shadow-sm backdrop-blur sm:mb-10 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+    <SiteShell back moon={false}>
+      <PageBody>
+        <PhotoBackdrop src={BG} />
+
+        <PageHero
+          scene={false}
+          pill="Accessibilité"
+          pillIcon={Accessibility}
+          title={
+            <>
+              Engagement
+              <br />
+              <Pink>accessibilité</Pink>
+            </>
+          }
         >
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-1.5 text-xs font-medium text-[#8E7AB5] sm:mb-6 sm:px-4 sm:py-2 sm:text-sm">
-            <Accessibility size={14} />
-            Accessibilité
+          <p className="mt-4 max-w-md text-xl font-semibold leading-snug text-white">SferaLuna s’engage à rendre sa plateforme accessible à toutes.</p>
+          <p className="mt-3 max-w-lg text-[15px] leading-relaxed text-white/85">
+            Nous travaillons pour que chacune puisse profiter d’une expérience fluide, claire et agréable, quelles que soient ses capacités et ses besoins : navigation au clavier, lecteurs d’écran,
+            respect des standards d’accessibilité.
+          </p>
+        </PageHero>
+
+        {/* Engagement */}
+        <div className={cn(PANEL, "!mt-10 flex items-center gap-5 border-fuchsia-300/35 bg-gradient-to-r from-[#2a1158]/90 to-[#1b0d38]/85 p-5 sm:p-6")}>
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-fuchsia-300/60 bg-[#2a0f52] shadow-[0_0_24px_-4px_rgba(217,70,239,0.8)]">
+            <Target className="h-8 w-8 text-fuchsia-200" />
+          </span>
+          <div>
+            <h2 className="text-xl font-bold text-white">Notre engagement</h2>
+            <p className="mt-1.5 max-w-4xl text-[15px] leading-relaxed text-white/80">
+              SferaLuna vise une expérience conforme aux recommandations <strong className="font-semibold text-white">WCAG 2.1 niveau AA</strong> et s’inscrit dans les principes de{" "}
+              <strong className="font-semibold text-white">la loi française n° 2005-102</strong> pour l’égalité des droits et des chances, la participation et la citoyenneté des personnes en situation
+              de handicap.
+            </p>
           </div>
+        </div>
 
-          <h1 className="text-2xl font-bold leading-tight text-[#1C1C1C] sm:text-3xl">
-            Engagement accessibilité ♿
-          </h1>
-
-          <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-[#666] sm:text-base">
-            SferaLuna s&apos;engage à rendre sa plateforme accessible à toutes.
-          </p>
-        </motion.header>
-
-        {/* Résumé */}
-        <motion.section
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="mb-4 rounded-2xl border border-[#8E7AB5]/15 bg-white p-3 shadow-sm sm:mb-6 sm:p-4"
-        >
-          <p className="text-xs leading-relaxed text-[#666] sm:text-sm">
-            Notre objectif : permettre une navigation claire, lisible et
-            utilisable, y compris avec clavier, lecteurs d&apos;écran et besoins
-            d&apos;accessibilité spécifiques.
-          </p>
-        </motion.section>
-
-        {/* Mobile accordéon */}
-        <section className="space-y-2 sm:hidden">
-          {sections.map((section, index) => {
-            const isOpen = openSection === index;
-
-            return (
-              <motion.article
-                key={section.title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className="overflow-hidden rounded-2xl border border-[#E8E0FF] bg-white shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenSection(isOpen ? null : index)}
-                  className="flex w-full items-center gap-3 px-3 py-3 text-left"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-[#8E7AB5]">
-                    {section.icon}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-sm font-bold text-[#5B4B8A]">
-                      {section.title}
-                    </h2>
-
-                    <p className="truncate text-[11px] text-[#666]">
-                      {section.summary}
-                    </p>
-                  </div>
-
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.22 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-[#F0ECFA] px-3 pb-3 pt-2 text-xs leading-relaxed text-[#444]">
-                        {section.content}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.article>
-            );
-          })}
-        </section>
-
-        {/* Desktop */}
-        <motion.section
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-          className="hidden rounded-3xl border border-[#8E7AB5]/15 bg-white p-8 leading-relaxed text-[#444] shadow-lg sm:block md:p-12"
-        >
-          <div className="space-y-8">
-            {sections.map((section) => (
-              <section key={section.title}>
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-[#8E7AB5]">
-                    {section.icon}
-                  </span>
-
-                  <h2 className="text-xl font-bold text-[#5B4B8A]">
-                    {section.title}
-                  </h2>
-                </div>
-
-                <div>{section.content}</div>
-              </section>
+        {/* Mesures */}
+        <section className={cn(PANEL, "p-4 sm:p-5")}>
+          <div className="flex items-start gap-4">
+            <Settings className="mt-0.5 h-8 w-8 shrink-0 text-fuchsia-300" />
+            <div>
+              <h2 className="text-xl font-bold text-white">Mesures prises</h2>
+              <p className="text-sm text-white/70">Voici les principales actions mises en place pour améliorer l’accessibilité de SferaLuna.</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {MEASURES.map(({ icon: Icon, tone, title, text }) => (
+              <div key={title} className={cn(TILE, "border-fuchsia-300/20 bg-gradient-to-b from-[#241046]/90 to-[#170a30]/90 p-4")}>
+                <span className={cn("flex h-11 w-11 items-center justify-center rounded-full bg-[#150a2c] ring-1", tone)}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="mt-3 text-[15px] font-semibold text-white">{title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/70">{text}</p>
+              </div>
             ))}
           </div>
-        </motion.section>
+        </section>
 
-        {/* Liens */}
-        <footer className="mt-5 rounded-2xl border border-[#8E7AB5]/10 bg-white/70 p-3 text-center shadow-sm sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-          <div className="flex flex-col items-center justify-center gap-2 text-xs text-[#999] sm:flex-row sm:gap-6 sm:text-sm">
-            <Link
-              href="/confidentialite"
-              className="transition hover:text-[#8E7AB5]"
+        {/* Limites, signalement, recours */}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-3">
+          <section className={cn(PANEL, "flex gap-4 p-5")}>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#150a2c] ring-1 ring-orange-400/60">
+              <CircleAlert className="h-5 w-5 text-orange-300" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Limitations connues</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-white/75">
+                Le site n’a pas encore fait l’objet d’un audit d’accessibilité complet : sa conformité n’est donc pas établie. Certaines fonctionnalités sont encore en cours d’amélioration, et nous
+                corrigeons les obstacles au fur et à mesure qu’ils nous sont signalés.
+              </p>
+            </div>
+          </section>
+
+          <section className={cn(PANEL, "p-5")}>
+            <div className="flex gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/25 ring-1 ring-violet-300/40">
+                <Mail className="h-5 w-5 text-fuchsia-200" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-white">Signaler un problème</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/75">
+                  Si vous rencontrez une difficulté d’accessibilité sur SferaLuna, vous pouvez nous la signaler. Notre équipe s’engage à vous répondre dans un délai de 5 jours ouvrables.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col gap-2.5">
+              <a
+                href={`mailto:${CONTACT}?subject=Accessibilit%C3%A9`}
+                className="inline-flex h-11 min-w-0 items-center justify-center gap-2.5 rounded-full border border-violet-200/35 px-4 text-sm font-medium text-white transition hover:border-fuchsia-300/70"
+              >
+                <Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{CONTACT}</span>
+              </a>
+              <Link href="/contact" className={cn(BAND_PRIMARY, "h-11 rounded-full px-5 text-sm")}>
+                Accéder au formulaire <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </section>
+
+          <section className={cn(PANEL, "p-5")}>
+            <div className="flex gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/25 ring-1 ring-fuchsia-300/40">
+                <Scale className="h-5 w-5 text-fuchsia-200" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-white">Voies de recours</h2>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/75">
+                  Si vous avez signalé un défaut d’accessibilité sans obtenir de réponse satisfaisante, vous pouvez contacter le Défenseur des droits.
+                </p>
+              </div>
+            </div>
+            <a
+              href="https://www.defenseurdesdroits.fr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex h-11 items-center gap-2.5 rounded-full border border-violet-200/35 px-5 text-sm font-semibold text-white transition hover:border-fuchsia-300/70"
             >
-              Confidentialité
-            </Link>
+              Site du Défenseur des droits <ExternalLink className="h-4 w-4" />
+              <span className="sr-only">(nouvelle fenêtre)</span>
+            </a>
+          </section>
+        </div>
 
-            <span className="hidden sm:inline">·</span>
-
-            <Link
-              href="/conditions"
-              className="transition hover:text-[#8E7AB5]"
-            >
-              CGU
-            </Link>
-
-            <span className="hidden sm:inline">·</span>
-
-            <Link href="/contact" className="transition hover:text-[#8E7AB5]">
-              Contact
-            </Link>
-
-            <span className="hidden sm:inline">·</span>
-
-            <Link
-              href="/"
-              className="flex items-center gap-1 transition hover:text-[#8E7AB5]"
-            >
-              <Moon size={13} />
-              Accueil
-            </Link>
+        {/* Centre d'aide */}
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-fuchsia-300/35 p-5 md:flex-row md:items-center">
+          <div className="absolute inset-0 bg-cover" style={{ backgroundImage: `url(${BG})`, backgroundPosition: "center 52%" }} aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1b0d38]/75 via-[#1b0d38]/85 to-[#1b0d38]/75" aria-hidden />
+          <div className="relative flex min-w-0 flex-1 items-center gap-4 md:pl-[22%]">
+            <MessageSquareMore className="h-9 w-9 shrink-0 text-fuchsia-300 drop-shadow-[0_0_12px_rgba(217,70,239,0.8)]" />
+            <div>
+              <h2 className="text-xl font-bold text-white">Une question sur l’accessibilité ?</h2>
+              <p className="mt-0.5 text-sm text-white/80">Notre centre d’aide contient de nombreuses réponses aux questions fréquentes.</p>
+            </div>
           </div>
-        </footer>
-      </div>
-    </main>
+          <Link href="/faq" className={cn(BAND_PRIMARY, "relative rounded-full")}>
+            Accéder au centre d’aide <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </PageBody>
+    </SiteShell>
   );
 }

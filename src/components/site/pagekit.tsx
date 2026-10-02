@@ -2,7 +2,8 @@
 
 /**
  * Briques communes aux pages éditoriales du site public
- * (histoire, valeurs, équipe, témoignages, FAQ, communauté, cookies) :
+ * (histoire, valeurs, équipe, témoignages, FAQ, communauté, cookies, guide,
+ * accessibilité) :
  * en-tête illustré, titres de section, bandeau d'appel à l'action.
  *
  * Aucun hook ici : utilisable depuis une page serveur comme cliente.
@@ -112,6 +113,33 @@ export function LakeScene({ className = "", id = "lk" }: { className?: string; i
 }
 
 // ─────────────────────────────────────────────
+// Illustration peinte en fond d'en-tête
+// ─────────────────────────────────────────────
+
+/**
+ * Illustration plein écran placée derrière l'en-tête (et sous la barre de
+ * navigation), fondue vers le fond de page. À poser en premier enfant de
+ * <PageBody>. Le voile sombre à gauche garde le titre lisible.
+ */
+export function PhotoBackdrop({ src, position = "center 38%" }: { src: string; position?: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 -top-48 -z-10 h-[640px] sm:h-[700px]" aria-hidden>
+      <div
+        className="absolute inset-0 bg-cover"
+        style={{
+          backgroundImage: `url(${src})`,
+          backgroundPosition: position,
+          WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%)",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#12081f]/85 via-[#12081f]/30 to-transparent" />
+      <div className="absolute inset-0 bg-[#12081f]/35 lg:hidden" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // En-tête de page
 // ─────────────────────────────────────────────
 
@@ -122,6 +150,7 @@ export function PageHero({
   text,
   note,
   id,
+  scene = true,
   children,
 }: {
   pill: string;
@@ -131,14 +160,18 @@ export function PageHero({
   /** Note manuscrite affichée à droite sur grand écran. */
   note?: ReactNode;
   id?: string;
+  /** false quand la page pose sa propre illustration (<PhotoBackdrop />). */
+  scene?: boolean;
   children?: ReactNode;
 }) {
   return (
     <header className="relative">
-      <LakeScene
-        id={id}
-        className="pointer-events-none absolute -top-20 right-0 -z-10 h-[320px] w-[150%] max-w-none opacity-50 sm:w-full sm:opacity-75 lg:right-[9%] lg:h-[400px] lg:w-[64%] lg:opacity-100"
-      />
+      {scene && (
+        <LakeScene
+          id={id}
+          className="pointer-events-none absolute -top-20 right-0 -z-10 h-[320px] w-[150%] max-w-none opacity-50 sm:w-full sm:opacity-75 lg:right-[9%] lg:h-[400px] lg:w-[64%] lg:opacity-100"
+        />
+      )}
       <div className="relative max-w-3xl">
         <span className="inline-flex items-center gap-2 rounded-full border border-violet-300/30 bg-[#1b0d38]/70 px-4 py-1.5 text-sm text-white/90 backdrop-blur">
           {PillIcon && <PillIcon className="h-4 w-4 text-fuchsia-300" />} {pill}

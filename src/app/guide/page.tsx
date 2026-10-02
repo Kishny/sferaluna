@@ -1,833 +1,302 @@
-'use client';
+// src/app/guide/page.tsx
 
-import { useState } from 'react';
-import BackButton from "@/components/BackButton";
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ChevronDown,
-  ChevronRight,
-  Sparkles,
-  Users,
-  MessageCircle,
-  Heart,
-  Shield,
-  Star,
-  Zap,
-  Moon,
-} from 'lucide-react';
-
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import Link from 'next/link';
+"use client";
 
 /**
- * Motif orbite décoratif (cercles concentriques + points d'accent),
- * écho visuel du nom "Sfera".
+ * Guide du débutant : les cinq étapes pour bien démarrer, quelques questions
+ * fréquentes (réponses partagées avec /faq) et des conseils.
+ *
+ * Les puces de chaque étape décrivent des fonctionnalités réelles du site :
+ * les tenir à jour quand une fonctionnalité change.
  */
-function OrbitGlow({
-  className = '',
-  variant = 'default',
-}: {
-  className?: string;
-  variant?: 'default' | 'light';
-}) {
-  const stroke = variant === 'light' ? '#FFFFFF' : '#8E7AB5';
-  const dot = variant === 'light' ? '#FFFFFF' : '#5B4B8A';
 
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none absolute opacity-[0.14] ${className}`}
-      aria-hidden="true"
-    >
-      <circle cx="100" cy="100" r="90" fill="none" stroke={stroke} strokeWidth="1" />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        fill="none"
-        stroke={stroke}
-        strokeWidth="1"
-        strokeDasharray="4 6"
-      />
-      <circle cx="100" cy="100" r="34" fill="none" stroke={stroke} strokeWidth="1" />
-      <circle cx="100" cy="10" r="3" fill={dot} />
-      <circle cx="190" cy="100" r="3" fill={dot} />
-      <circle cx="100" cy="190" r="3" fill={dot} />
-      <circle cx="10" cy="100" r="3" fill={dot} />
-    </svg>
-  );
-}
+import { useState } from "react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  ChevronDown,
+  CircleCheck,
+  Clock,
+  Ghost,
+  Heart,
+  HelpCircle,
+  Music,
+  Send,
+  Star,
+  User,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
+
+import { SiteShell, useIsLoggedIn } from "@/components/site/sections";
+import { SceneArt, type SceneVariant } from "@/components/site/art";
+import { FAQS } from "@/components/site/faq";
+import { BAND_GHOST, BAND_PRIMARY, PANEL, PageBody, PageHero, PhotoBackdrop, TILE } from "@/components/site/pagekit";
+import { cn } from "@/components/site/ui";
+
+const BG = "/images/guide-accessibilite-bg.webp";
+
+type Step = {
+  short: string;
+  duration: string;
+  title: string;
+  text: string;
+  points: string[];
+  icon: LucideIcon;
+  scene: SceneVariant;
+  cta: string;
+  /** Lien pour une visiteuse / pour une membre connectée. */
+  href: string;
+  appHref: string;
+};
+
+const STEPS: Step[] = [
+  {
+    short: "Profil Luna",
+    duration: "5 – 10 minutes",
+    title: "Crée ton profil Luna",
+    text: "Ajoute tes photos, quelques mots sur toi, tes centres d’intérêt et tes valeurs. Tu restes toujours en contrôle de ta visibilité.",
+    points: ["Photos et présentation", "Intérêts et valeurs", "Préférences de rencontre", "Paramètres de confidentialité"],
+    icon: User,
+    scene: "dusk",
+    cta: "Créer mon profil",
+    href: "/auth?mode=register",
+    appHref: "/mon-compte",
+  },
+  {
+    short: "Circle of Six",
+    duration: "À ton rythme",
+    title: "Découvre ton Circle of Six",
+    text: "Chaque semaine, nous te proposons 6 profils soigneusement sélectionnés en fonction de tes affinités, de tes intentions et de ta vibe.",
+    points: ["6 suggestions personnalisées", "Profils compatibles", "Renouvellement chaque semaine", "Aucun swipe, plus de sens"],
+    icon: UsersRound,
+    scene: "rooftop",
+    cta: "En savoir plus",
+    href: "/fonctionnalites#circle",
+    appHref: "/circle",
+  },
+  {
+    short: "VibeSphere",
+    duration: "Continuel",
+    title: "Personnalise ta VibeSphere",
+    text: "Exprime ta personnalité à travers ton humeur et ton univers. La VibeSphere permet de mieux te connaître au-delà des photos.",
+    points: ["Partage ton humeur du moment", "Remplis ton journal émotionnel", "Découvre les vibes des autres membres", "Montre ce qui t’anime vraiment"],
+    icon: Music,
+    scene: "river",
+    cta: "Découvrir VibeSphere",
+    href: "/fonctionnalites#vibesphere",
+    appHref: "/vibesphere",
+  },
+  {
+    short: "Interactions",
+    duration: "Quand tu te sens prête",
+    title: "Commence à interagir",
+    text: "Échange facilement avec tes matchs grâce à nos outils pensés pour des discussions plus authentiques et respectueuses.",
+    points: ["Brise-glace et idées de message", "Intérêts communs mis en avant", "Planifie une rencontre avec VibePlanner", "Des échanges dans un cadre sécurisé"],
+    icon: Heart,
+    scene: "night",
+    cta: "Voir comment",
+    href: "/fonctionnalites#messages",
+    appHref: "/matches",
+  },
+  {
+    short: "Événements Luna",
+    duration: "Selon tes envies",
+    title: "Participe aux événements Luna",
+    text: "En ligne ou en présentiel, rejoins nos LunaGather pour vivre des expériences uniques et rencontrer des personnes inspirantes.",
+    points: ["LunaGather en ligne et en ville", "Ateliers thématiques", "Sorties entre membres", "Une communauté bienveillante"],
+    icon: CalendarDays,
+    scene: "hills",
+    cta: "Voir les événements",
+    href: "/fonctionnalites#lunagather",
+    appHref: "/evenements",
+  },
+];
+
+/** Questions du guide : l'intitulé est propre au guide, la réponse vient de la FAQ. */
+const QUESTIONS: { question: string; faq: string }[] = [
+  { question: "SferaLuna est-il gratuit ?", faq: "gratuit" },
+  { question: "Comment fonctionne le Circle of Six ?", faq: "circle" },
+  { question: "Mes données sont-elles sécurisées ?", faq: "donnees" },
+  { question: "Puis-je utiliser SferaLuna de manière discrète ?", faq: "anonyme" },
+  { question: "Comment participer aux événements ?", faq: "lunagather" },
+];
+
+const TIPS: { icon: LucideIcon; tone: string; title: string; text: string; featured?: boolean }[] = [
+  { icon: Star, tone: "fill-amber-300 text-amber-300", title: "Complète ton profil à 100 %", text: "Plus ton profil est complet, plus tu recevras des suggestions pertinentes.", featured: true },
+  { icon: Ghost, tone: "text-violet-300", title: "Utilise le Mode Fantôme si besoin", text: "Tu restes maître de ta visibilité. Prends le temps et avance à ton rythme." },
+  { icon: Heart, tone: "text-pink-400", title: "Participe aux événements", text: "C’est l’occasion idéale de faire des rencontres dans un cadre bienveillant et de partager tes passions." },
+];
 
 export default function GuidePage() {
-  /**
-   * FAQ ouverte.
-   * On garde un tableau pour permettre plusieurs FAQ ouvertes en même temps.
-   */
-  const [openSections, setOpenSections] = useState<number[]>([0]);
-
-  /**
-   * Accordéon mobile des étapes.
-   * Sur mobile, on ouvre seulement la première par défaut pour garder la page compacte.
-   */
-  const [openStepIndex, setOpenStepIndex] = useState<number | null>(0);
-
-  /**
-   * Accordéon mobile des conseils communauté.
-   */
-  const [openTipIndex, setOpenTipIndex] = useState<number | null>(null);
-
-  /**
-   * Ouvre / ferme une FAQ.
-   */
-  const toggleSection = (index: number) => {
-    setOpenSections((prev) =>
-      prev.includes(index)
-        ? prev.filter((i) => i !== index)
-        : [...prev, index]
-    );
-  };
-
-  /**
-   * Étapes du guide débutant.
-   */
-  const steps = [
-    {
-      title: '1. Création de ton profil Luna',
-      shortTitle: 'Profil Luna',
-      emoji: '✨',
-      icon: <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />,
-      content:
-        "Commence par partager ce qui te définit vraiment. Ton profil Luna est plus qu'une photo : c'est l'expression de ta vibe intérieure.",
-      details: [
-        'Ajoute des photos qui te représentent authentiquement',
-        'Partage tes intérêts, passions et valeurs',
-        'Définis ce que tu recherches sur SferaLuna',
-        'Configure tes préférences de confidentialité',
-      ],
-      color: 'from-[#8E7AB5] to-[#D9B8FF]',
-      duration: '5-10 minutes',
-      tip: 'Astuce : sois toi-même. Les profils authentiques reçoivent plus de réponses.',
-    },
-    {
-      title: '2. Découverte du Circle of Six',
-      shortTitle: 'Circle of Six',
-      emoji: '💜',
-      icon: <Users className="h-5 w-5 sm:h-6 sm:w-6" />,
-      content:
-        'Chaque semaine, notre algorithme te présente 6 femmes qui partagent tes valeurs et intérêts.',
-      details: [
-        'Reçois 6 suggestions personnalisées chaque dimanche',
-        'Chaque profil est pré-sélectionné selon tes critères',
-        'Prends ton temps pour découvrir chaque personne',
-        'Pas de pression : tu décides du rythme',
-      ],
-      color: 'from-[#FF6B6B] to-[#FF8E8E]',
-      duration: 'À ton rythme',
-    },
-    {
-      title: '3. Personnalisation de ton VibeSphere',
-      shortTitle: 'VibeSphere',
-      emoji: '🌙',
-      icon: <Moon className="h-5 w-5 sm:h-6 sm:w-6" />,
-      content:
-        'Crée ton espace émotionnel unique pour exprimer ton humeur du jour.',
-      details: [
-        'Choisis ta playlist Luna personnalisée',
-        'Sélectionne tes couleurs et ambiance préférées',
-        "Partage tes humeurs avec des avatars expressifs",
-        "Utilise le journal émotionnel pour suivre ton évolution",
-      ],
-      color: 'from-[#4ECDC4] to-[#44A08D]',
-      duration: 'Continuel',
-    },
-    {
-      title: '4. Premières interactions',
-      shortTitle: 'Interactions',
-      emoji: '💬',
-      icon: <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />,
-      content:
-        'Engage la conversation de manière authentique et bienveillante.',
-      details: [
-        'Utilise nos prompts de conversation pour briser la glace',
-        'Partage tes intérêts communs pour créer un lien',
-        'Propose un rendez-vous VibePlanner créatif',
-        'Respecte toujours les limites et le consentement',
-      ],
-      color: 'from-[#FFD166] to-[#FF9A3C]',
-      duration: 'Quand tu te sens prête',
-    },
-    {
-      title: '5. Participation aux événements Luna',
-      shortTitle: 'Événements Luna',
-      emoji: '⭐',
-      icon: <Star className="h-5 w-5 sm:h-6 sm:w-6" />,
-      content:
-        "Rejoins notre communauté lors d'événements exclusifs et enrichissants.",
-      details: [
-        'Participe aux LunaGather en ligne ou en présentiel',
-        'Rejoins des ateliers thématiques',
-        'Assiste à des conférences sur des sujets LGBTQ+',
-        "Rencontre d'autres membres lors de soirées détente",
-      ],
-      color: 'from-[#9D4EDD] to-[#7B2CBF]',
-      duration: 'Selon tes envies',
-    },
-  ];
-
-  /**
-   * FAQ du guide.
-   */
-  const faqs = [
-    {
-      question:
-        'Combien de temps faut-il pour commencer à rencontrer des personnes ?',
-      answer:
-        'La plupart de nos membres font leur première connexion significative dans les 48h après avoir complété leur profil. Le Circle of Six te présente des suggestions chaque semaine, donc tu as toujours de nouvelles opportunités.',
-    },
-    {
-      question: 'Dois-je révéler mon identité réelle ?',
-      answer:
-        "Non. Tu as le contrôle total sur ton anonymat. Le Mode Fantôme te permet d'utiliser un pseudonyme, de flouter tes photos et de ne révéler ton identité que quand tu le décides.",
-    },
-    {
-      question: 'Comment fonctionne la modération sur SferaLuna ?',
-      answer:
-        'Un filtre bloque automatiquement les messages abusifs dans la messagerie, et notre équipe de modération examine chaque signalement en journée. Selon la situation, le signalement est classé ou le compte en cause est suspendu.',
-    },
-    {
-      question: 'Puis-je utiliser SferaLuna si je suis en couple ?',
-      answer:
-        "Oui. SferaLuna accueille toutes les femmes, quelle que soit leur situation amoureuse. Que tu cherches des amitiés, des relations polyamoureuses ou simplement à élargir ton cercle social, tu es la bienvenue.",
-    },
-    {
-      question:
-        'Comment gérer les rencontres qui ne correspondent pas à mes attentes ?',
-      answer:
-        "Tu peux ajuster tes préférences, prendre une pause ou simplement passer. L'objectif est que tu gardes toujours le contrôle de ton rythme et de ton expérience.",
-    },
-  ];
-
-  /**
-   * Palette de couleurs cycliques pour les cards FAQ et conseils.
-   */
-  const accentThemes = [
-    'from-[#8E7AB5] to-[#D9B8FF]',
-    'from-[#FF6B6B] to-[#FF8E8E]',
-    'from-[#4ECDC4] to-[#44A08D]',
-    'from-[#FFD166] to-[#FF9A3C]',
-    'from-[#9D4EDD] to-[#7B2CBF]',
-  ];
-
-  /**
-   * Conseils de la communauté.
-   */
-  const communityTips = [
-    {
-      tip: 'Prends le temps de remplir ton profil à 100%',
-      details:
-        'Un profil complet avec tes vraies passions attire des connexions bien plus alignées avec toi.',
-      author: 'Conseil de la communauté',
-      emoji: '📝',
-    },
-    {
-      tip: 'Utilise le Mode Fantôme pour commencer en douceur',
-      details:
-        "Cela permet de s'habituer à la plateforme sans pression et de révéler ton identité quand tu te sens prête.",
-      author: 'Conseil de la communauté',
-      emoji: '👻',
-    },
-    {
-      tip: 'Participe aux événements pour rencontrer plusieurs personnes',
-      details:
-        "C'est souvent moins intimidant que les échanges en tête-à-tête, et l'ambiance est toujours bienveillante.",
-      author: 'Conseil de la communauté',
-      emoji: '🎉',
-    },
-  ];
+  const loggedIn = useIsLoggedIn();
+  const [open, setOpen] = useState<string | null>(null);
 
   return (
-    <>
-      <Header />
+    <SiteShell back moon={false}>
+      <PageBody>
+        <PhotoBackdrop src={BG} />
 
-      <main className="min-h-screen overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white text-[#1C1C1C]">
-        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 pt-20 sm:pt-24 sm:px-4">
-          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
-        </div>
-        {/* Hero Section compact mobile */}
-        <section className="relative overflow-hidden px-4 pb-6 pt-20 sm:px-6 sm:pb-12 sm:pt-28">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
-
-          {/* Orbes décoratives légères */}
-          <motion.div
-            animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.45, 0.25] }}
-            transition={{ duration: 8, repeat: Infinity }}
-            className="absolute -left-12 top-16 h-40 w-40 rounded-full bg-white/15 blur-3xl sm:h-64 sm:w-64"
-          />
-
-          <motion.div
-            animate={{ scale: [1.1, 1, 1.1], opacity: [0.2, 0.35, 0.2] }}
-            transition={{ duration: 10, repeat: Infinity }}
-            className="absolute -right-16 bottom-0 h-52 w-52 rounded-full bg-pink-200/20 blur-3xl sm:h-80 sm:w-80"
-          />
-
-          <OrbitGlow
-            variant="light"
-            className="left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 sm:h-[32rem] sm:w-[32rem]"
-          />
-
-          <div className="relative z-10 mx-auto max-w-6xl text-center text-white">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55 }}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-medium backdrop-blur-sm sm:mb-8 sm:px-4 sm:py-2 sm:text-sm"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Guide débutant
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.6 }}
-              className="mb-3 text-3xl font-black leading-tight sm:mb-6 sm:text-5xl md:text-7xl"
-            >
-              Guide du débutant
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="mx-auto mb-4 max-w-3xl text-sm leading-relaxed opacity-90 sm:mb-8 sm:text-xl"
-            >
-              Ton parcours étape par étape pour créer des connexions
-              authentiques sur SferaLuna.
-            </motion.p>
-
-            {/* Badges compact mobile */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35, duration: 0.6 }}
-              className="mx-auto grid max-w-md grid-cols-2 gap-2 text-xs sm:flex sm:max-w-none sm:items-center sm:justify-center sm:gap-4 sm:text-sm"
-            >
-              <div className="flex items-center justify-center gap-2 rounded-full bg-white/10 px-3 py-2 backdrop-blur-sm">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                <span>30 min</span>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 rounded-full bg-white/10 px-3 py-2 backdrop-blur-sm">
-                <Sparkles size={14} />
-                <span>Débutant</span>
-              </div>
-            </motion.div>
+        <PageHero
+          scene={false}
+          pill="Guide débutant"
+          pillIcon={BookOpen}
+          title={
+            <>
+              Guide du <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">débutant</span>
+            </>
+          }
+          text="Ton parcours étape par étape pour créer des connexions authentiques sur SferaLuna."
+        >
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            {[
+              { icon: Clock, label: "30 min" },
+              { icon: BarChart3, label: "Débutant" },
+            ].map(({ icon: Icon, label }) => (
+              <span key={label} className="inline-flex h-9 items-center gap-2 rounded-full border border-violet-300/35 bg-[#1b0d38]/70 px-4 text-sm font-medium text-white backdrop-blur">
+                <Icon className="h-4 w-4 text-fuchsia-300" /> {label}
+              </span>
+            ))}
           </div>
-        </section>
+          <h2 className="mt-6 text-xl font-bold text-white">Bienvenue dans l’univers Luna</h2>
+          <p className="mt-1.5 max-w-xl text-[15px] leading-relaxed text-white/80">
+            Que tu sois ici pour faire de nouvelles rencontres, élargir ton cercle ou vivre des expériences uniques, ce guide t’accompagne pas à pas.
+          </p>
+        </PageHero>
 
-        {/* Introduction compacte */}
-        <section className="px-4 py-5 sm:px-6 sm:py-12">
-          <div className="mx-auto max-w-4xl">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="rounded-2xl border border-[#E8E0FF] bg-gradient-to-r from-[#F9F7FC] to-white p-4 shadow-sm sm:rounded-3xl sm:p-6"
-            >
-              <h2 className="mb-2 text-xl font-bold text-[#5B4B8A] sm:mb-4 sm:text-3xl">
-                ✨ Bienvenue dans l’univers Luna
-              </h2>
+        {/* Fil des étapes */}
+        <ol className="relative !mt-10 hidden grid-cols-5 gap-4 xl:grid">
+          <span className="absolute left-[4%] right-[16%] top-[21px] h-px bg-gradient-to-r from-fuchsia-400/80 via-violet-400/70 to-fuchsia-400/80" aria-hidden />
+          {STEPS.map(({ short, duration }, i) => (
+            <li key={short} className="relative flex items-center gap-4 pl-[4%]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-fuchsia-300/80 bg-gradient-to-br from-violet-600 to-fuchsia-600 text-lg font-bold text-white shadow-[0_0_22px_-2px_rgba(217,70,239,0.9)]">
+                {i + 1}
+              </span>
+              <span>
+                <span className="block font-semibold text-white">{short}</span>
+                <span className="block text-sm text-white/65">{duration}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
 
-              <p className="mb-4 text-sm leading-relaxed text-[#666] sm:mb-6 sm:text-lg">
-                Ce guide t’accompagne dans tes premiers pas sur SferaLuna. Ici,
-                le but n’est pas d’aller vite, mais de créer des connexions qui
-                ont du sens.
-              </p>
-
-              <div className="flex items-start gap-2 rounded-xl bg-[#8E7AB5]/10 px-3 py-2 text-sm text-[#8E7AB5]">
-                <Shield size={17} className="mt-0.5 shrink-0" />
-                <span className="font-medium">
-                  Conseil : avance à ton rythme. Tu gardes toujours le contrôle.
+        {/* Étapes */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:!mt-5 xl:grid-cols-5">
+          {STEPS.map(({ title, text, points, icon: Icon, scene, cta, href, appHref, duration }, i) => (
+            <article key={title} className={cn(PANEL, "flex flex-col overflow-hidden border-fuchsia-300/25")}>
+              <div className="relative h-24">
+                <SceneArt variant={scene} seed={i + 11} className="absolute inset-0" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#1b0d38] to-transparent" />
+                <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-fuchsia-200/70 bg-gradient-to-br from-violet-600 to-fuchsia-600 text-sm font-bold text-white">{i + 1}</span>
+                <span className="absolute bottom-2 right-3 flex h-11 w-11 items-center justify-center rounded-xl border border-fuchsia-300/50 bg-[#2a0f52]/85 backdrop-blur">
+                  <Icon className="h-5 w-5 text-fuchsia-200" />
                 </span>
               </div>
-            </motion.div>
-          </div>
-        </section>
+              <div className="flex flex-1 flex-col p-4 pt-2">
+                <h3 className="text-[17px] font-semibold leading-snug text-white">{title}</h3>
+                <p className="mt-1 text-xs text-pink-300 xl:hidden">{duration}</p>
+                <p className="mt-2 text-sm leading-relaxed text-white/70">{text}</p>
+                <ul className="mt-3 flex-1 space-y-2">
+                  {points.map((point) => (
+                    <li key={point} className="flex items-start gap-2.5 text-sm text-white/80">
+                      <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-300" /> {point}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={loggedIn ? appHref : href}
+                  className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-full border border-violet-200/35 text-sm font-medium text-white transition hover:border-fuchsia-300/70 hover:bg-fuchsia-500/10"
+                >
+                  {i === 0 && loggedIn ? "Voir mon profil" : cta} <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
 
-        {/* Étapes détaillées */}
-        <section className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-14">
-          <OrbitGlow className="right-[-8%] top-10 h-72 w-72 sm:h-96 sm:w-96" />
-          <OrbitGlow className="left-[-10%] top-[60%] h-80 w-80 sm:h-[28rem] sm:w-[28rem]" />
-
-          <div className="relative z-10 mx-auto max-w-6xl">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-4 text-center sm:mb-8"
-            >
-              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-4xl">
-                Ton parcours en <span className="text-[#8E7AB5]">5 étapes</span>
+        {/* Questions + conseils */}
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-2 xl:items-start">
+          <section className={cn(PANEL, "p-4 sm:p-5")}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-3 text-lg font-bold text-white">
+                <HelpCircle className="h-6 w-6 text-fuchsia-300" /> Questions fréquentes
               </h2>
-
-              <p className="mx-auto mt-1 max-w-2xl text-xs leading-relaxed text-[#666] sm:mt-3 sm:text-lg">
-                Une progression simple, claire et rassurante.
-              </p>
-            </motion.div>
-
-            {/* Mobile : accordéons compacts */}
-            <div className="space-y-2 sm:hidden">
-              {steps.map((step, index) => {
-                const isOpen = openStepIndex === index;
-
+              <Link href="/faq" className="inline-flex items-center gap-1.5 text-sm text-pink-300 hover:underline">
+                Voir toutes les FAQs <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="mt-3 space-y-2">
+              {QUESTIONS.map(({ question, faq }) => {
+                const answer = FAQS.find((f) => f.id === faq)?.answer;
+                if (!answer) return null;
+                const isOpen = open === faq;
                 return (
-                  <motion.div
-                    key={step.title}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.04 }}
-                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
-                  >
-                    <div
-                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${step.color}`}
-                    />
-
+                  <div key={faq} className={cn(TILE, "transition", isOpen && "border-fuchsia-300/45")}>
                     <button
                       type="button"
-                      onClick={() => setOpenStepIndex(isOpen ? null : index)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+                      onClick={() => setOpen(isOpen ? null : faq)}
+                      aria-expanded={isOpen}
+                      aria-controls={`guide-faq-${faq}`}
+                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm font-medium text-white"
                     >
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r ${step.color} text-sm font-bold text-white`}
-                      >
-                        {index + 1}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-[#5B4B8A]">
-                          {step.shortTitle}
-                        </h3>
-
-                        <p className="truncate text-[11px] text-[#666]">
-                          {step.duration}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? 'rotate-180' : ''
-                        }`}
-                      />
+                      {question}
+                      <ChevronDown className={cn("h-4 w-4 shrink-0 text-white/70 transition-transform", isOpen && "rotate-180")} />
                     </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.22, ease: 'easeOut' }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#F0ECFA] px-3 pb-3 pt-2">
-                            <p className="text-xs font-medium leading-relaxed text-[#1C1C1C]">
-                              {step.content}
-                            </p>
-
-                            <div className="mt-2 space-y-1.5">
-                              {step.details.map((detail) => (
-                                <div
-                                  key={detail}
-                                  className="flex items-start gap-2 text-xs leading-relaxed text-[#666]"
-                                >
-                                  <ChevronRight
-                                    size={14}
-                                    className="mt-0.5 shrink-0 text-[#8E7AB5]"
-                                  />
-                                  <span>{detail}</span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {step.tip && (
-                              <div className="mt-3 rounded-xl border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-2 text-xs font-medium leading-relaxed text-[#5B4B8A]">
-                                💜 {step.tip}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
+                    {isOpen && (
+                      <p id={`guide-faq-${faq}`} className="border-t border-white/10 px-4 py-3 text-sm leading-relaxed text-white/75">
+                        {answer}
+                      </p>
+                    )}
+                  </div>
                 );
               })}
             </div>
+          </section>
 
-            {/* Desktop/tablette : version complète */}
-            <div className="hidden space-y-6 sm:block">
-              {steps.map((step, index) => (
-                <motion.div
-                  key={step.title}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  className="relative"
-                >
-                  <div className="relative overflow-hidden flex flex-col gap-8 rounded-3xl border border-[#F0F0F0] bg-white p-6 shadow-lg transition-shadow hover:shadow-xl lg:flex-row">
-                    <div
-                      className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${step.color}`}
-                    />
-                    {/* Numéro et icône */}
-                    <div className="lg:w-1/4">
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r ${step.color} text-xl font-bold text-white`}
-                        >
-                          {index + 1}
-                        </div>
-
-                        <div className="lg:hidden">
-                          <h3 className="text-xl font-semibold text-[#1C1C1C]">
-                            {step.title}
-                          </h3>
-
-                          <div className="mt-2 flex items-center gap-2 text-sm text-[#666]">
-                            <Zap size={14} />
-                            <span>{step.duration}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 text-[#8E7AB5]">{step.icon}</div>
-                    </div>
-
-                    {/* Contenu */}
-                    <div className="lg:w-3/4">
-                      <div className="hidden lg:block">
-                        <h3 className="mb-2 text-2xl font-semibold text-[#1C1C1C]">
-                          {step.title}
-                        </h3>
-
-                        <div className="mb-4 flex items-center gap-2 text-[#666]">
-                          <Zap size={14} />
-                          <span>{step.duration}</span>
-                        </div>
-                      </div>
-
-                      <p className="mb-6 text-lg text-[#4B4B4B]">
-                        {step.content}
-                      </p>
-
-                      <div className="space-y-3">
-                        {step.details.map((detail) => (
-                          <div key={detail} className="flex items-start gap-3">
-                            <ChevronRight
-                              size={18}
-                              className="mt-1 shrink-0 text-[#8E7AB5]"
-                            />
-                            <span className="text-[#666]">{detail}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {step.tip && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 1 }}
-                          className="mt-6 rounded-xl border border-[#8E7AB5]/20 bg-gradient-to-r from-[#8E7AB5]/10 to-[#D9B8FF]/10 p-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Heart size={18} className="text-[#8E7AB5]" />
-                            <span className="font-medium text-[#5B4B8A]">
-                              {step.tip}
-                            </span>
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
+          <section className={cn(PANEL, "p-4 sm:p-5")}>
+            <h2 className="flex items-center gap-3 text-lg font-bold text-white">
+              <UsersRound className="h-6 w-6 text-fuchsia-300" /> Nos conseils pour bien démarrer
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {TIPS.map(({ icon: Icon, tone, title, text, featured }) => (
+                <div key={title} className={cn(TILE, "flex gap-3 p-4", featured && "border-amber-300/40 bg-gradient-to-br from-[#3a2440]/80 to-[#2a1438]/80")}>
+                  <Icon className={cn("mt-0.5 h-7 w-7 shrink-0", tone)} />
+                  <div>
+                    <h3 className="text-sm font-semibold leading-snug text-white">{title}</h3>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-white/70">{text}</p>
                   </div>
-
-                  {/* Ligne de connexion desktop */}
-                  {index < steps.length - 1 && (
-                    <div className="absolute left-1/4 top-full ml-6 hidden h-8 w-0.5 bg-gradient-to-b from-[#8E7AB5] to-transparent lg:block" />
-                  )}
-                </motion.div>
+                </div>
               ))}
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        {/* FAQ Interactive */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-white to-[#F9F7FC] px-4 py-5 sm:px-6 sm:py-14">
-          <OrbitGlow className="left-1/2 top-0 h-72 w-72 -translate-x-1/2 sm:h-96 sm:w-96" />
-
-          <div className="relative z-10 mx-auto max-w-4xl">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-4 text-center sm:mb-8"
-            >
-              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-4xl">
-                Questions <span className="text-[#8E7AB5]">fréquentes</span>
+        {/* Appel à l'action */}
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-fuchsia-300/35 p-5 md:flex-row md:items-center">
+          <div className="absolute inset-0 bg-cover" style={{ backgroundImage: `url(${BG})`, backgroundPosition: "center 52%" }} aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1b0d38]/75 via-[#1b0d38]/85 to-[#1b0d38]/75" aria-hidden />
+          <div className="relative flex min-w-0 flex-1 items-center gap-4 md:pl-[22%]">
+            <Send className="h-9 w-9 shrink-0 text-fuchsia-300 drop-shadow-[0_0_12px_rgba(217,70,239,0.8)]" />
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                Prête à commencer <span className="bg-gradient-to-r from-violet-300 to-fuchsia-400 bg-clip-text text-transparent">ton voyage</span> ?
               </h2>
-            </motion.div>
-
-            <div className="space-y-2 sm:space-y-4">
-              {faqs.map((faq, index) => {
-                const isOpen = openSections.includes(index);
-                const theme = accentThemes[index % accentThemes.length];
-
-                return (
-                  <motion.div
-                    key={faq.question}
-                    initial={{ opacity: 0, y: 14 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.05 }}
-                    className="relative overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white"
-                  >
-                    <div
-                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme}`}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(index)}
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:border-[#8E7AB5]/30 sm:px-6 sm:py-5"
-                    >
-                      <div
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r ${theme} text-sm font-bold text-white sm:h-8 sm:w-8`}
-                      >
-                        ?
-                      </div>
-
-                      <h3 className="min-w-0 flex-1 text-sm font-semibold text-[#1C1C1C] sm:text-lg">
-                        {faq.question}
-                      </h3>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.22 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#F0ECFA] bg-white/60 px-3 pb-3 pt-2 sm:px-6 sm:pb-5 sm:pt-4">
-                            <p className="text-xs leading-relaxed text-[#666] sm:text-base">
-                              {faq.answer}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
+              <p className="mt-0.5 text-sm text-white/80">Rejoins une communauté bienveillante et vis des rencontres authentiques.</p>
             </div>
           </div>
-        </section>
-
-        {/* Conseils de la communauté */}
-        <section className="relative overflow-hidden px-4 py-5 sm:px-6 sm:py-14">
-          <OrbitGlow className="right-[-10%] top-0 h-72 w-72 sm:h-96 sm:w-96" />
-
-          <div className="relative z-10 mx-auto max-w-6xl">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-4 text-center sm:mb-8"
-            >
-              <h2 className="text-xl font-bold text-[#1C1C1C] sm:text-4xl">
-                Conseils de la{' '}
-                <span className="text-[#8E7AB5]">communauté</span>
-              </h2>
-            </motion.div>
-
-            {/* Mobile : accordéons */}
-            <div className="space-y-2 sm:hidden">
-              {communityTips.map((tip, index) => {
-                const isOpen = openTipIndex === index;
-                const theme = accentThemes[index % accentThemes.length];
-
-                return (
-                  <motion.div
-                    key={tip.tip}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.04 }}
-                    className="relative overflow-hidden rounded-2xl border border-[#E9E3F5] bg-white shadow-sm"
-                  >
-                    <div
-                      className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${theme}`}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setOpenTipIndex(isOpen ? null : index)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
-                    >
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme} text-xl`}
-                      >
-                        {tip.emoji}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-[#5B4B8A]">
-                          {tip.tip}
-                        </h3>
-
-                        <p className="truncate text-[11px] text-[#666]">
-                          {tip.author}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.22, ease: 'easeOut' }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#F0ECFA] px-3 pb-3 pt-2">
-                            <p className="text-xs leading-relaxed text-[#666]">
-                              {tip.details}
-                            </p>
-
-                            <p className="mt-2 text-xs font-medium text-[#8E7AB5]">
-                              — {tip.author}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Desktop : cards */}
-            <div className="hidden grid-cols-1 gap-6 sm:grid md:grid-cols-3">
-              {communityTips.map((tip, index) => {
-                const theme = accentThemes[index % accentThemes.length];
-
-                return (
-                <motion.div
-                  key={tip.tip}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.12 }}
-                  className="relative overflow-hidden rounded-3xl border border-[#E8E0FF] bg-gradient-to-b from-white to-[#F9F7FC] p-6"
-                >
-                  <div
-                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${theme}`}
-                  />
-
-                  <div className="mb-4 text-4xl">{tip.emoji}</div>
-
-                  <h3 className="mb-3 text-xl font-semibold text-[#1C1C1C]">
-                    {tip.tip}
-                  </h3>
-
-                  <p className="mb-6 text-[#666]">{tip.details}</p>
-
-                  <div className="text-sm font-medium text-[#8E7AB5]">
-                    — {tip.author}
-                  </div>
-                </motion.div>
-                );
-              })}
-            </div>
+          <div className="relative flex flex-col gap-3 sm:flex-row">
+            <Link href={loggedIn ? "/explorer" : "/auth?mode=register"} className={cn(BAND_PRIMARY, "rounded-full")}>
+              {loggedIn ? "Explorer librement" : "Commencer maintenant"} <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/faq" className={cn(BAND_GHOST, "rounded-full bg-[#1b0d38]/60")}>
+              Voir toutes les FAQs
+            </Link>
           </div>
-        </section>
-
-        {/* Call to Action compact mobile */}
-        <section className="relative overflow-hidden px-4 py-7 sm:px-6 sm:py-14">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#8E7AB5] via-[#A68BC9] to-[#D9B8FF]" />
-
-          <OrbitGlow
-            variant="light"
-            className="right-[-10%] top-[-20%] h-72 w-72 sm:h-96 sm:w-96"
-          />
-
-          <div className="relative z-10 mx-auto max-w-4xl text-center text-white">
-            <motion.h2
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-3 text-2xl font-bold leading-tight sm:mb-6 sm:text-4xl md:text-5xl"
-            >
-              Prête à commencer ton{' '}
-              <span className="text-white">voyage</span> ?
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.15 }}
-              className="mx-auto mb-5 max-w-2xl text-sm leading-relaxed opacity-90 sm:mb-10 sm:text-xl"
-            >
-              Rejoins des femmes qui créent des connexions authentiques grâce à
-              SferaLuna.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.25 }}
-              className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-4"
-            >
-              <Link
-                href="/auth?mode=register"
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#8E7AB5] shadow-2xl transition-all duration-300 hover:scale-105 sm:w-auto sm:px-8 sm:py-4 sm:text-lg"
-              >
-                <span>Commencer maintenant</span>
-                <Sparkles className="h-4 w-4" />
-              </Link>
-
-              <Link
-                href="/faq"
-                className="w-full rounded-full border-2 border-white px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-white/10 sm:w-auto sm:px-8 sm:py-4 sm:text-lg"
-              >
-                Voir toutes les FAQs
-              </Link>
-            </motion.div>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer masqué sur mobile pour rester cohérent avec les pages compactes */}
-      <div className="hidden sm:block">
-        <Footer />
-      </div>
-    </>
+        </div>
+      </PageBody>
+    </SiteShell>
   );
 }
