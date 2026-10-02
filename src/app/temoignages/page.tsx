@@ -1,10 +1,10 @@
 // src/app/temoignages/page.tsx
 
 import Link from "next/link";
-import BackButton from "@/components/BackButton";
+import { ArrowRight, MessageCircle, ShieldCheck, Star, UsersRound } from "lucide-react";
 
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { SiteShell } from "@/components/site/sections";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink } from "@/components/site/pagekit";
 import JsonLd from "@/components/JsonLd";
 import { PublicTestimonial } from "@/components/testimonials/TestimonialCard";
 import TestimonialsExplorer from "@/components/testimonials/TestimonialsExplorer";
@@ -107,93 +107,72 @@ export default async function TemoignagesPage() {
     })),
   };
 
+  const facts = [
+    {
+      icon: Star,
+      gold: true,
+      title: avgRating ? `${String(avgRating).replace(".", ",")}/5` : "—",
+      line: "Note moyenne",
+      hint: "Basée sur les témoignages publiés",
+    },
+    {
+      icon: MessageCircle,
+      title: String(count),
+      line: `Témoignage${count > 1 ? "s" : ""} publié${count > 1 ? "s" : ""}`,
+      hint: "Relus avant publication",
+    },
+    { icon: ShieldCheck, title: "Profils vérifiés", line: "Identité confirmée", hint: "Pièce d’identité et selfie" },
+    { icon: UsersRound, title: "Modération active", line: "Un espace respectueux", hint: "et bienveillant" },
+  ];
+
   return (
-    <>
-      <Header />
-      <JsonLd data={jsonLd} />
+    <SiteShell back moon={false}>
+      <PageBody>
+        <PageHero
+          id="tem"
+          pill="Paroles de membres"
+          pillIcon={MessageCircle}
+          title={
+            <>
+              Elles parlent de <Pink>SferaLuna</Pink>
+            </>
+          }
+          text="Des mots sincères, des expériences réelles. Découvre ce que les femmes de notre communauté pensent de SferaLuna."
+        />
 
-      <main className="overflow-hidden bg-gradient-to-b from-[#F5F3F7] to-white pt-16 text-[#1C1C1C] sm:pt-20">
-        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
-          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
-        </div>
-        {/* Hero */}
-        <section className="relative px-4 py-8 text-center sm:px-6 sm:py-14">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#FDF7FA] via-[#F5F0FF] to-transparent" />
-
-          <div className="relative z-10 mx-auto max-w-3xl">
-            <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-white/80 px-3 py-1.5 text-xs font-medium text-[#5B4B8A] sm:text-sm">
-              💜 Paroles de membres
-            </span>
-
-            <h1 className="text-2xl font-bold leading-tight text-[#1C1C1C] sm:text-5xl">
-              Elles parlent de{" "}
-              <span className="bg-gradient-to-r from-[#5B4B8A] via-[#8E7AB5] to-[#D9B8FF] bg-clip-text text-transparent">
-                SferaLuna
+        {/* Repères */}
+        <div className={`${PANEL} !mt-10 grid gap-5 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4 xl:divide-x xl:divide-violet-300/15`}>
+          {facts.map(({ icon: Icon, gold, title, line, hint }) => (
+            <div key={line} className="flex items-center gap-4 xl:pl-6 xl:first:pl-0">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-500/20 ring-1 ring-violet-300/20">
+                <Icon className={gold ? "h-7 w-7 fill-amber-300 text-amber-300" : "h-7 w-7 text-fuchsia-300"} />
               </span>
-            </h1>
-
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#666] sm:text-lg">
-              Des vrais mots, de vraies femmes. Voici ce que vivent les membres
-              de notre communauté — avant même de t&apos;inscrire.
-            </p>
-
-            {avgRating && count > 0 && (
-              <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-[#E8E0FF] bg-white px-4 py-2 text-sm text-[#5B4B8A] shadow-sm">
-                <span className="text-amber-400">★</span>
-                <span className="font-bold">{avgRating}/5</span>
-                <span className="text-[#999]">
-                  · {count} témoignage{count > 1 ? "s" : ""}
-                </span>
+              <div className="min-w-0">
+                <p className="text-xl font-bold leading-tight text-white">{title}</p>
+                <p className="text-sm text-white/85">{line}</p>
+                <p className="text-xs text-white/55">{hint}</p>
               </div>
-            )}
-          </div>
-        </section>
-
-        {/* Grille de témoignages */}
-        <section className="relative px-4 pb-10 sm:px-6 sm:pb-16">
-          <div className="mx-auto max-w-6xl">
-            {count > 0 ? (
-              <TestimonialsExplorer testimonials={testimonials} pageSize={12} />
-            ) : (
-              <div className="mx-auto max-w-xl rounded-3xl border border-dashed border-[#E8E0FF] bg-white px-4 py-10 text-center">
-                <div className="mb-3 text-5xl">💜</div>
-                <p className="text-lg font-semibold text-[#5B4B8A]">
-                  Les premiers témoignages arrivent bientôt
-                </p>
-                <p className="mt-1 text-sm text-[#666]">
-                  Sois parmi les premières à partager ton expérience.
-                </p>
-              </div>
-            )}
-
-            {/* Partager son expérience */}
-            <div className="mt-10 rounded-3xl border border-[#E8E0FF] bg-gradient-to-br from-[#F9F7FC] to-[#F0ECFF] p-5 sm:mt-14 sm:p-8">
-              <div className="mb-2 text-center">
-                <h2 className="text-lg font-bold text-[#1C1C1C] sm:text-2xl">
-                  Tu fais partie de l&apos;aventure ?
-                </h2>
-                <p className="mt-1 text-sm text-[#666]">
-                  Partage ton expérience pour rassurer les futures membres.
-                </p>
-              </div>
-
-              <TestimonialSubmitSection />
             </div>
+          ))}
+        </div>
 
-            {/* CTA inscription */}
-            <div className="mt-10 text-center">
-              <Link
-                href="/auth?mode=register"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-7 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 sm:text-base"
-              >
-                Rejoindre SferaLuna ✨
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
+        <div className="!mt-8">
+          <TestimonialsExplorer testimonials={testimonials} pageSize={12} />
+        </div>
 
-      <Footer />
-    </>
+        <TestimonialSubmitSection />
+
+        <CtaBand title="Prête à rejoindre la vibe ?" text="Des rencontres plus vraies, dans un espace bienveillant et sécurisé.">
+          <Link href="/fonctionnalites" className={BAND_GHOST}>
+            Découvrir les fonctionnalités
+          </Link>
+          <Link href="/auth?mode=register" className={BAND_PRIMARY}>
+            Créer mon profil gratuit <ArrowRight className="h-4 w-4" />
+          </Link>
+        </CtaBand>
+      </PageBody>
+
+      <JsonLd data={jsonLd} />
+    </SiteShell>
   );
 }

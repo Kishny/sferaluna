@@ -1,3 +1,5 @@
+import { MapPin, Star } from "lucide-react";
+
 import StarRating from "./StarRating";
 
 /**
@@ -16,75 +18,61 @@ export interface PublicTestimonial {
   createdAt?: string;
 }
 
+function formatDate(iso?: string) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" });
+}
+
 /**
- * Carte de témoignage SferaLuna (thème clair).
- *
- * Composant présentational réutilisé sur :
- * - la page d'accueil ;
- * - la page dédiée /temoignages ;
- * - la page /valeurs.
+ * Carte de témoignage SferaLuna (thème nuit), utilisée sur /temoignages.
+ * N'affiche que ce que la membre a écrit : aucune étiquette ajoutée.
  */
-export default function TestimonialCard({
-  testimonial,
-  className = "",
-}: {
-  testimonial: PublicTestimonial;
-  className?: string;
-}) {
-  const { authorName, age, city, content, rating, avatar, featured } =
-    testimonial;
+export default function TestimonialCard({ testimonial, className = "" }: { testimonial: PublicTestimonial; className?: string }) {
+  const { authorName, age, city, content, rating, avatar, featured, createdAt } = testimonial;
   const initial = authorName?.[0]?.toUpperCase() ?? "L";
+  const date = formatDate(createdAt);
 
   return (
     <figure
-      className={`relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white p-5 sm:p-6 ${
-        featured
-          ? "border-amber-300/60 shadow-[0_12px_34px_-12px_rgba(245,158,11,0.35)] ring-1 ring-amber-300/40"
-          : "border-[#E8E0FF] shadow-[0_10px_30px_-12px_rgba(142,122,181,0.3)]"
+      className={`relative flex h-full flex-col rounded-3xl border bg-[#1b0d38]/80 p-5 backdrop-blur-xl sm:p-7 ${
+        featured ? "border-fuchsia-400/70 shadow-[0_0_0_1px_rgba(232,121,249,0.3),0_20px_60px_-20px_rgba(192,38,211,0.6)]" : "border-violet-300/[0.16]"
       } ${className}`}
     >
-      {/* Guillemet décoratif */}
-      <span className="pointer-events-none absolute right-4 top-2 select-none text-5xl text-[#8E7AB5]/10 sm:text-6xl">
-        &quot;
-      </span>
-
-      {featured && (
-        <span className="relative z-10 mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-sm">
-          ⭐ À la une
-        </span>
-      )}
-
-      <StarRating value={rating} readOnly size={16} className="relative z-10 mb-3" />
-
-      <blockquote className="relative z-10 mb-5 flex-1 text-sm font-light leading-relaxed text-[#1C1C1C] sm:text-base">
-        « {content} »
-      </blockquote>
-
-      <figcaption className="relative z-10 flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#D9B8FF] text-base font-bold text-white">
+      <div className="flex items-start gap-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-xl font-bold text-white">
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatar}
-              alt={authorName}
-              className="h-full w-full object-cover"
-            />
+            <img src={avatar} alt={authorName} className="h-full w-full object-cover" />
           ) : (
             initial
           )}
         </div>
 
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-[#1C1C1C]">
-            {authorName}
+        <figcaption className="min-w-0 flex-1">
+          <p className="truncate text-lg text-white">
+            <span className="font-semibold">{authorName}</span>
             {age ? `, ${age} ans` : ""}
-          </div>
+          </p>
+          {city && (
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-white/70">
+              <MapPin className="h-3.5 w-3.5 text-fuchsia-300" /> {city}
+            </p>
+          )}
+          <StarRating value={rating} readOnly size={18} className="mt-2" />
+        </figcaption>
 
-          <div className="truncate text-xs text-[#8E7AB5]">
-            {city ? `${city} · ` : ""}Membre SferaLuna
-          </div>
-        </div>
-      </figcaption>
+        {featured && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-fuchsia-500/25 px-3 py-1 text-xs font-semibold text-white ring-1 ring-fuchsia-300/40">
+            <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" /> À la une
+          </span>
+        )}
+      </div>
+
+      <blockquote className="mt-4 flex-1 text-base italic leading-relaxed text-white/90 sm:text-lg">« {content} »</blockquote>
+
+      {date && <p className="mt-4 border-t border-white/10 pt-3 text-right text-sm text-white/55">{date}</p>}
     </figure>
   );
 }

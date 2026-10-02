@@ -17,7 +17,6 @@ export interface TestimonialFormInitial {
  * Formulaire de témoignage partagé SferaLuna.
  *
  * Réutilisé sur :
- * - /valeurs ;
  * - /temoignages ;
  * - la bannière d'incitation dans Mon Compte (en modal).
  *
@@ -86,7 +85,7 @@ export default function TestimonialForm({
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="flex items-center justify-center gap-2 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700"
+        className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-200"
       >
         <CheckCircle size={18} />
         Merci ! Ton témoignage sera visible après validation. 💜
@@ -97,16 +96,16 @@ export default function TestimonialForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-[#E8E0FF] bg-white p-4 shadow-lg sm:p-6"
+      className="rounded-3xl border border-violet-300/20 bg-[#1b0d38] p-4 text-left shadow-2xl sm:p-6"
     >
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#5B4B8A] sm:mb-4 sm:text-base">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
         <MessageSquarePlus size={18} />
         Partage ton expérience
       </h3>
 
       {/* Note en étoiles */}
       <div className="mb-3 flex items-center gap-3">
-        <span className="text-xs font-medium text-[#666]">Ta note</span>
+        <span className="text-xs font-medium text-white/70">Ta note</span>
         <StarRating value={rating} onChange={setRating} size={24} />
       </div>
 
@@ -116,10 +115,10 @@ export default function TestimonialForm({
         placeholder="Raconte-nous ton expérience… 20 à 500 caractères."
         rows={3}
         maxLength={500}
-        className="mb-1 w-full resize-none rounded-xl border border-[#E8E0FF] px-3 py-2.5 text-sm text-[#1C1C1C] placeholder-[#999] outline-none transition focus:border-[#8E7AB5] focus:ring-2 focus:ring-[#8E7AB5]/20 sm:px-4 sm:py-3"
+        className="mb-1 w-full resize-none rounded-xl border border-violet-300/20 bg-white/[0.05] px-3 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-fuchsia-300/60 focus:ring-2 focus:ring-fuchsia-500/20 sm:px-4 sm:py-3"
       />
 
-      <p className="mb-3 text-right text-xs text-[#999] sm:mb-4">
+      <p className="mb-3 text-right text-xs text-white/50 sm:mb-4">
         {content.length}/500
       </p>
 
@@ -130,7 +129,7 @@ export default function TestimonialForm({
           onChange={(event) => setCity(event.target.value)}
           placeholder="Ville (optionnel)"
           maxLength={60}
-          className="w-full rounded-xl border border-[#E8E0FF] px-3 py-2 text-sm text-[#1C1C1C] placeholder-[#999] outline-none focus:border-[#8E7AB5] sm:px-4"
+          className="h-11 w-full rounded-xl border border-violet-300/20 bg-white/[0.05] px-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-fuchsia-300/60 sm:px-4"
         />
 
         <input
@@ -138,19 +137,20 @@ export default function TestimonialForm({
           value={age}
           onChange={(event) => setAge(event.target.value)}
           placeholder="Âge (optionnel)"
-          min={18}
+          aria-label="Âge (optionnel)"
+          min={28}
           max={99}
-          className="w-full rounded-xl border border-[#E8E0FF] px-3 py-2 text-sm text-[#1C1C1C] placeholder-[#999] outline-none focus:border-[#8E7AB5] sm:w-44 sm:px-4"
+          className="h-11 w-full rounded-xl border border-violet-300/20 bg-white/[0.05] px-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-fuchsia-300/60 sm:w-52 sm:px-4"
         />
       </div>
 
       {/* Consentement photo */}
-      <label className="mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-[#F0ECFA] bg-[#faf9ff] px-3 py-2.5">
+      <label className="mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-violet-300/15 bg-white/[0.03] px-3 py-2.5">
         <input
           type="checkbox"
           checked={showAvatar}
           onChange={(event) => setShowAvatar(event.target.checked)}
-          className="h-4 w-4 shrink-0 accent-[#8E7AB5]"
+          className="h-4 w-4 shrink-0 accent-fuchsia-500"
         />
 
         {showAvatar && profileImage ? (
@@ -162,10 +162,10 @@ export default function TestimonialForm({
           />
         ) : null}
 
-        <span className="text-xs leading-snug text-[#5B4B8A]">
+        <span className="text-xs leading-snug text-white/80">
           Afficher ma photo de profil avec mon témoignage
           {!profileImage && (
-            <span className="block text-[#999]">
+            <span className="block text-white/50">
               (ajoute d&apos;abord une photo de profil pour l&apos;activer)
             </span>
           )}
@@ -173,14 +173,14 @@ export default function TestimonialForm({
       </label>
 
       {status === "error" && (
-        <p className="mb-3 text-sm text-red-500">{error}</p>
+        <p className="mb-3 text-sm text-red-300">{error}</p>
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
         <button
           type="submit"
           disabled={status === "loading" || content.trim().length < 20}
-          className="rounded-full bg-gradient-to-r from-[#8E7AB5] to-[#A68BC9] px-5 py-2.5 text-sm font-medium text-white transition-all hover:shadow-lg disabled:opacity-50 sm:px-6"
+          className="rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50 sm:px-6"
         >
           {status === "loading" ? "Envoi…" : "Envoyer"}
         </button>
@@ -189,7 +189,7 @@ export default function TestimonialForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-[#E8E0FF] px-5 py-2.5 text-sm text-[#666] transition-all hover:border-[#8E7AB5] sm:px-6"
+            className="rounded-full border border-violet-300/30 px-5 py-2.5 text-sm text-white/80 transition hover:border-fuchsia-300/60 sm:px-6"
           >
             Annuler
           </button>

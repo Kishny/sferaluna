@@ -2,459 +2,293 @@
 
 "use client";
 
-import { useState } from "react";
-import BackButton from "@/components/BackButton";
+/**
+ * Politique des cookies + réglages.
+ *
+ * Les interrupteurs écrivent le même choix que le bandeau de consentement
+ * (useCookieConsent). La catégorie « analytiques » est réellement appliquée
+ * par <ConsentAnalytics /> dans le layout racine.
+ *
+ * Le contenu décrit ce que le site dépose vraiment : à tenir à jour si un
+ * nouvel outil (mesure d'audience, publicité…) est ajouté.
+ */
+
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronDown,
+  ArrowRight,
+  BarChart3,
+  Check,
+  Clock,
   Cookie,
+  Database,
+  Globe,
+  Lightbulb,
+  Lock,
   Mail,
-  Moon,
+  MegaphoneOff,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  type LucideIcon,
 } from "lucide-react";
 
-/**
- * Metadata de la page.
- *
- * Important :
- * Comme cette page utilise "use client", Next.js ne permet pas d'exporter
- * directement metadata depuis ce fichier client.
- *
- * Solution recommandée :
- * - soit tu gardes cette page en client component et tu mets la metadata
- *   dans un fichier layout.tsx parent ;
- * - soit tu sépares le contenu interactif dans un composant client.
- *
- * Pour éviter une erreur Next.js, je ne laisse PAS :
- * export const metadata = ...
- *
- * Tu peux créer :
- * src/app/cookies/layout.tsx
- *
- * avec :
- * export const metadata = { title: "Politique des cookies — SferaLuna" };
- * export default function Layout({ children }: { children: React.ReactNode }) {
- *   return <>{children}</>;
- * }
- */
+import { useCookieConsent } from "@/hooks/useCookieConsent";
+import { SiteShell } from "@/components/site/sections";
+import { BAND_GHOST, BAND_PRIMARY, CtaBand, PANEL, PageBody, PageHero, Pink, TILE } from "@/components/site/pagekit";
+import { cn } from "@/components/site/ui";
 
-/**
- * Données des cookies utilisés par SferaLuna.
- */
-const cookiesList = [
+const UPDATED = "2 octobre 2026";
+const CONTACT = "contact@sferaluna.com";
+
+type Key = "personalization" | "analytics";
+
+const KINDS: { icon: LucideIcon; title: string; badge: string; text: string; duration: string; key?: Key }[] = [
   {
-    emoji: "🔐",
-    name: "Cookies d'authentification",
-    desc: "Gèrent votre session de connexion avec NextAuth. Ils sont indispensables au fonctionnement sécurisé du site.",
-    type: "Essentiels",
-    duree: "Session",
+    icon: ShieldCheck,
+    title: "Cookies d’authentification",
+    badge: "Essentiels",
+    text: "Nécessaires à la connexion sécurisée et au bon fonctionnement du site : ils maintiennent ta session ouverte.",
+    duration: "30 jours maximum",
   },
   {
-    emoji: "⚙️",
-    name: "Cookies de préférences",
-    desc: "Mémorisent vos paramètres comme la langue, les préférences d'affichage ou certains choix d'interface.",
-    type: "Fonctionnels",
-    duree: "1 an",
+    icon: Settings,
+    title: "Préférences",
+    badge: "Fonctionnels",
+    text: "Mémorisent sur ton appareil tes choix d’interface et ton choix concernant les cookies.",
+    duration: "jusqu’à effacement",
+    key: "personalization",
   },
   {
-    emoji: "📊",
-    name: "Cookies analytiques",
-    desc: "Nous aident à comprendre comment SferaLuna est utilisé : pages visitées, temps passé, navigation globale. Ces données sont anonymisées.",
-    type: "Analytiques",
-    duree: "6 mois",
+    icon: BarChart3,
+    title: "Mesure d’audience",
+    badge: "Analytiques",
+    text: "Nous aide à comprendre comment la plateforme est utilisée, de façon anonyme et sans déposer de cookie.",
+    duration: "aucun cookie déposé",
+    key: "analytics",
   },
 ];
 
-/**
- * Sections principales de la politique cookies.
- * Sur mobile, elles s'affichent en accordéons.
- */
-const policySections = [
-  {
-    id: "definition",
-    icon: <Cookie className="h-4 w-4" />,
-    title: "Qu'est-ce qu'un cookie ?",
-    content:
-      "Un cookie est un petit fichier texte stocké sur votre appareil lors de votre visite sur SferaLuna. Il permet de mémoriser certaines informations pour améliorer votre expérience, sécuriser votre session et simplifier votre navigation.",
-  },
-  {
-    id: "gestion",
-    icon: <Settings className="h-4 w-4" />,
-    title: "Gestion des cookies",
-    content:
-      "Vous pouvez configurer votre navigateur pour refuser les cookies ou être alerté de leur dépôt. Cependant, certaines fonctionnalités de SferaLuna, notamment la connexion, nécessitent des cookies essentiels pour fonctionner correctement.",
-  },
-  {
-    id: "navigateurs",
-    icon: <SlidersHorizontal className="h-4 w-4" />,
-    title: "Réglages navigateur",
-    content:
-      "Chrome : Paramètres → Confidentialité et sécurité → Cookies. Firefox : Options → Vie privée et sécurité. Safari : Préférences → Confidentialité.",
-  },
-  {
-    id: "contact",
-    icon: <Mail className="h-4 w-4" />,
-    title: "Contact",
-    content:
-      "Pour toute question liée aux cookies ou à la confidentialité, vous pouvez nous contacter à l'adresse contact@sferaluna.com.",
-  },
+const BROWSERS = [
+  { name: "Google Chrome", href: "https://support.google.com/chrome/answer/95647?hl=fr" },
+  { name: "Mozilla Firefox", href: "https://support.mozilla.org/fr/kb/effacer-cookies-donnees-site-firefox" },
+  { name: "Safari", href: "https://support.apple.com/fr-fr/guide/safari/sfri11471/mac" },
 ];
+
+function Switch({ checked, onChange, disabled, label }: { checked: boolean; onChange?: (v: boolean) => void; disabled?: boolean; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange?.(!checked)}
+      className={cn(
+        "relative h-7 w-12 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-300",
+        checked ? "bg-gradient-to-r from-fuchsia-500 to-violet-500" : "bg-white/15",
+        disabled && "cursor-not-allowed opacity-70"
+      )}
+    >
+      <span className={cn("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "left-6" : "left-1")} />
+    </button>
+  );
+}
 
 export default function CookiesPage() {
-  /**
-   * Accordéon mobile des sections principales.
-   * Par défaut, on ouvre la première section.
-   */
-  const [openSection, setOpenSection] = useState<string | null>("definition");
+  const { mounted, hasConsented, preferences, savePreferences } = useCookieConsent();
 
-  /**
-   * Accordéon mobile des cookies utilisés.
-   * null = aucun cookie ouvert.
-   */
-  const [openCookie, setOpenCookie] = useState<string | null>(null);
+  // La mesure d'audience (anonyme, sans cookie) est active tant qu'elle n'a
+  // pas été refusée ; les préférences ne le sont qu'après accord.
+  const current: Record<Key, boolean> = {
+    analytics: hasConsented ? preferences.analytics : true,
+    personalization: preferences.personalization,
+  };
+
+  const set = (key: Key, value: boolean) =>
+    savePreferences({
+      ...current,
+      marketing: false, // aucun cookie publicitaire sur SferaLuna
+      [key]: value,
+    });
+
+  const isOn = (key: Key) => mounted && current[key];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#faf9ff] via-white to-[#f0ecff] px-3 pb-8 pt-20 text-[#1C1C1C] sm:px-4 sm:pb-16 sm:pt-24">
-        <div className="relative z-20 mx-auto max-w-6xl px-1 pb-3 sm:px-4">
-          <BackButton tone="light" fallbackHref="/" fallbackLabel="Retour à l’accueil" />
-        </div>
-      <div className="mx-auto max-w-3xl">
-        {/* Hero compact */}
-        <motion.header
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="mb-4 rounded-3xl border border-[#8E7AB5]/15 bg-white/75 p-4 text-center shadow-sm backdrop-blur sm:mb-8 sm:p-0 sm:border-0 sm:bg-transparent sm:shadow-none"
+    <SiteShell back moon={false}>
+      <PageBody>
+        <PageHero
+          id="ck"
+          pill="Politique des cookies"
+          pillIcon={Cookie}
+          title={
+            <>
+              Utilisation des <Pink>cookies</Pink>
+            </>
+          }
+          text="Les cookies nous aident à faire fonctionner SferaLuna et à comprendre comment la plateforme est utilisée. Tu gardes la main sur tout ce qui n’est pas indispensable."
+          note={
+            <>
+              Une expérience plus claire,
+              <br />
+              pour une confiance durable ♡
+            </>
+          }
         >
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#8E7AB5]/20 bg-[#8E7AB5]/10 px-3 py-1.5 text-xs font-medium text-[#8E7AB5] sm:mb-6 sm:px-4 sm:py-2 sm:text-sm">
-            <Cookie className="h-3.5 w-3.5" />
-            Politique des cookies
-          </div>
+          <p className="mt-3 text-sm text-white/60">Dernière mise à jour : {UPDATED}</p>
+        </PageHero>
 
-          <h1 className="text-2xl font-bold text-[#1C1C1C] sm:text-3xl">
-            Utilisation des cookies 🍪
-          </h1>
-
-          <p className="mt-1 text-xs text-[#666] sm:mt-3 sm:text-sm">
-            Dernière mise à jour : juin 2025
-          </p>
-
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:mx-auto sm:mt-6 sm:max-w-md">
-            <div className="rounded-2xl bg-[#F9F7FC] px-2 py-2">
-              <p className="text-sm font-bold text-[#5B4B8A] sm:text-base">
-                3
-              </p>
-              <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
-                catégories
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-[#F9F7FC] px-2 py-2">
-              <p className="text-sm font-bold text-[#5B4B8A] sm:text-base">
-                RGPD
-              </p>
-              <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
-                conforme
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-[#F9F7FC] px-2 py-2">
-              <p className="text-sm font-bold text-[#5B4B8A] sm:text-base">
-                Safe
-              </p>
-              <p className="text-[10px] text-[#8E7AB5] sm:text-xs">
-                sécurisé
-              </p>
-            </div>
-          </div>
-        </motion.header>
-
-        {/* Contenu principal */}
-        <section className="rounded-3xl border border-[#8E7AB5]/15 bg-white p-4 text-[#444] shadow-lg sm:p-8 md:p-12">
-          {/* Résumé rapide mobile */}
-          <div className="mb-4 rounded-2xl border border-[#E8E0FF] bg-[#FDFCFF] p-3 sm:hidden">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-[#8E7AB5]">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-
+        {/* Repères */}
+        <div className={cn(PANEL, "!mt-8 grid gap-4 p-4 sm:grid-cols-3 sm:divide-x sm:divide-violet-300/15 lg:ml-auto lg:max-w-3xl")}>
+          {[
+            { icon: Database, title: "3 catégories", text: "Essentiels, fonctionnels et analytiques" },
+            { icon: MegaphoneOff, title: "Sans publicité", text: "Aucun cookie publicitaire ni revente de données" },
+            { icon: Lock, title: "Ton choix", text: "Modifiable à tout moment sur cette page" },
+          ].map(({ icon: Icon, title, text }) => (
+            <div key={title} className="flex items-center gap-3 sm:pl-4 sm:first:pl-0">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/20">
+                <Icon className="h-5 w-5 text-fuchsia-300" />
+              </span>
               <div>
-                <p className="text-sm font-semibold text-[#5B4B8A]">
-                  À retenir
-                </p>
-
-                <p className="mt-1 text-xs leading-relaxed text-[#666]">
-                  Les cookies essentiels permettent la connexion. Les autres
-                  servent à améliorer ton expérience et comprendre l’usage du
-                  site.
-                </p>
+                <p className="text-sm font-bold text-white">{title}</p>
+                <p className="text-xs leading-snug text-white/65">{text}</p>
               </div>
             </div>
+          ))}
+        </div>
+
+        {/* À retenir */}
+        <div className={cn(PANEL, "flex items-start gap-4 bg-gradient-to-r from-[#2a1158]/85 to-[#1b0d38]/85 p-5")}>
+          <Lightbulb className="mt-0.5 h-8 w-8 shrink-0 text-amber-300" />
+          <div>
+            <h2 className="text-lg font-bold text-white">À retenir</h2>
+            <p className="mt-1 text-sm leading-relaxed text-white/75">
+              Les cookies essentiels permettent le bon fonctionnement de SferaLuna et te donnent accès à ton compte : ils ne peuvent pas être désactivés. Le reste est facultatif : tu peux
+              l’activer ou le couper ci-dessous, sans conséquence sur ton compte.
+            </p>
           </div>
+        </div>
 
-          {/* Desktop : sections classiques */}
-          <div className="hidden space-y-8 leading-relaxed sm:block">
-            <section>
-              <h2 className="mb-3 text-xl font-bold text-[#5B4B8A]">
-                Qu&apos;est-ce qu&apos;un cookie ?
-              </h2>
-
-              <p>
-                Un cookie est un petit fichier texte stocké sur votre appareil
-                lors de votre visite sur SferaLuna. Il nous permet de mémoriser
-                certaines informations vous concernant pour améliorer votre
-                expérience.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mb-3 text-xl font-bold text-[#5B4B8A]">
-                Cookies utilisés
-              </h2>
-
-              <div className="space-y-4">
-                {cookiesList.map((cookie) => (
-                  <div
-                    key={cookie.name}
-                    className="rounded-xl border border-[#E8E0FF] bg-[#FDFCFF] p-4"
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span>{cookie.emoji}</span>
-
-                      <span className="font-semibold text-[#5B4B8A]">
-                        {cookie.name}
-                      </span>
-
-                      <span className="ml-auto rounded-full bg-[#8E7AB5]/10 px-2 py-0.5 text-xs text-[#8E7AB5]">
-                        {cookie.type}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-[#666]">{cookie.desc}</p>
-
-                    <p className="mt-1 text-xs text-[#999]">
-                      Durée : {cookie.duree}
-                    </p>
+        {/* Catégories */}
+        <div className="grid gap-3 lg:grid-cols-3">
+          {KINDS.map(({ icon: Icon, title, badge, text, duration, key }) => (
+            <article key={title} className={cn(PANEL, "flex flex-col p-5")}>
+              <div className="flex items-start gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-violet-500/20 ring-1 ring-fuchsia-300/30">
+                  <Icon className="h-6 w-6 text-fuchsia-300" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="font-semibold text-white">{title}</h2>
+                    <span className="rounded-full bg-fuchsia-500/25 px-3 py-0.5 text-xs font-medium text-fuchsia-100 ring-1 ring-fuchsia-300/30">{badge}</span>
                   </div>
-                ))}
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/70">{text}</p>
+                </div>
               </div>
-            </section>
+              <div className="mt-4 flex flex-1 flex-wrap items-end justify-between gap-3 text-sm text-white/75">
+                <span className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-white/60" /> Durée : {duration}
+                </span>
+                {key ? (
+                  <span className="flex items-center gap-2.5">
+                    <Switch checked={isOn(key)} onChange={(v) => set(key, v)} label={title} />
+                    {isOn(key) ? "Activé" : "Désactivé"}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 text-emerald-300">
+                    <Check className="h-4 w-4" /> Toujours activés
+                  </span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
 
-            <section>
-              <h2 className="mb-3 text-xl font-bold text-[#5B4B8A]">
-                Gestion des cookies
-              </h2>
-
-              <p>
-                Vous pouvez configurer votre navigateur pour refuser les cookies
-                ou être alerté de leur dépôt. Cependant, certaines
-                fonctionnalités de SferaLuna, notamment la connexion,
-                nécessitent des cookies essentiels pour fonctionner
-                correctement.
-              </p>
-
-              <p className="mt-3">
-                Instructions pour les principaux navigateurs :
-              </p>
-
-              <ul className="mt-2 list-disc space-y-1 pl-6 text-sm">
-                <li>
-                  Chrome : Paramètres → Confidentialité et sécurité → Cookies
-                </li>
-                <li>Firefox : Options → Vie privée et sécurité</li>
-                <li>Safari : Préférences → Confidentialité</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="mb-3 text-xl font-bold text-[#5B4B8A]">
-                Contact
-              </h2>
-
-              <p>
-                Pour toute question :{" "}
-                <a
-                  href="mailto:contact@sferaluna.com"
-                  className="text-[#8E7AB5] hover:underline"
-                >
-                  contact@sferaluna.com
-                </a>
-              </p>
-            </section>
-          </div>
-
-          {/* Mobile : cookies utilisés en accordéons */}
-          <div className="sm:hidden">
-            <h2 className="mb-3 text-base font-bold text-[#5B4B8A]">
-              Cookies utilisés
+        {/* Explications + réglages */}
+        <div className="grid gap-3 lg:grid-cols-3">
+          <article className={cn(PANEL, "p-5")}>
+            <h2 className="flex items-center gap-3 text-lg font-bold text-white">
+              <Cookie className="h-6 w-6 text-amber-300" /> Qu’est-ce qu’un cookie ?
             </h2>
-
-            <div className="space-y-2">
-              {cookiesList.map((cookie) => {
-                const isOpen = openCookie === cookie.name;
-
-                return (
-                  <div
-                    key={cookie.name}
-                    className="overflow-hidden rounded-2xl border border-[#E8E0FF] bg-[#FDFCFF]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenCookie(isOpen ? null : cookie.name)
-                      }
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-lg">
-                        {cookie.emoji}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-semibold text-[#5B4B8A]">
-                          {cookie.name}
-                        </h3>
-
-                        <p className="text-[11px] text-[#999]">
-                          {cookie.type} · {cookie.duree}
-                        </p>
-                      </div>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2, ease: "easeOut" }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#E8E0FF] px-3 pb-3 pt-2">
-                            <p className="text-xs leading-relaxed text-[#666]">
-                              {cookie.desc}
-                            </p>
-
-                            <p className="mt-2 text-[11px] text-[#999]">
-                              Durée : {cookie.duree}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Mobile : sections générales en accordéons */}
-            <div className="mt-5 space-y-2">
-              {policySections.map((section) => {
-                const isOpen = openSection === section.id;
-
-                return (
-                  <div
-                    key={section.id}
-                    className="overflow-hidden rounded-2xl border border-[#E8E0FF] bg-white"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenSection(isOpen ? null : section.id)
-                      }
-                      className="flex w-full items-center gap-3 px-3 py-3 text-left"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#8E7AB5]/10 text-[#8E7AB5]">
-                        {section.icon}
-                      </span>
-
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#5B4B8A]">
-                        {section.title}
-                      </span>
-
-                      <ChevronDown
-                        className={`h-4 w-4 shrink-0 text-[#8E7AB5] transition-transform ${
-                          isOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2, ease: "easeOut" }}
-                          className="overflow-hidden"
-                        >
-                          <div className="border-t border-[#E8E0FF] px-3 pb-3 pt-2">
-                            {section.id === "contact" ? (
-                              <p className="text-xs leading-relaxed text-[#666]">
-                                Pour toute question liée aux cookies ou à la
-                                confidentialité :{" "}
-                                <a
-                                  href="mailto:contact@sferaluna.com"
-                                  className="font-medium text-[#8E7AB5] underline underline-offset-2"
-                                >
-                                  contact@sferaluna.com
-                                </a>
-                              </p>
-                            ) : (
-                              <p className="text-xs leading-relaxed text-[#666]">
-                                {section.content}
-                              </p>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Liens bas de page */}
-        <nav className="mt-5 rounded-2xl border border-[#E8E0FF] bg-white/70 px-3 py-3 text-center text-xs text-[#999] shadow-sm sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0 sm:text-sm sm:shadow-none">
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
-            <Link
-              href="/confidentialite"
-              className="transition hover:text-[#8E7AB5]"
+            <p className="mt-3 text-sm leading-relaxed text-white/75">
+              Un cookie est un petit fichier texte déposé sur ton appareil lors de ta visite sur SferaLuna. Il permet de mémoriser certaines informations, comme ta session ou tes préférences,
+              afin de sécuriser ta connexion et de simplifier ta navigation.
+            </p>
+            <a
+              href="https://www.cnil.fr/fr/cookies-et-autres-traceurs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex h-10 items-center gap-2 rounded-full border border-violet-300/30 px-4 text-sm text-white transition hover:border-fuchsia-300/60"
             >
-              Confidentialité
-            </Link>
+              En savoir plus (CNIL) <ArrowRight className="h-4 w-4" />
+            </a>
+          </article>
 
-            <span className="text-[#D9B8FF]">·</span>
+          <article id="gestion" className={cn(PANEL, "scroll-mt-28 p-5")}>
+            <h2 className="flex items-center gap-3 text-lg font-bold text-white">
+              <Settings className="h-6 w-6 text-fuchsia-300" /> Gestion des cookies
+            </h2>
+            <p className="mt-1.5 text-sm text-white/70">Ton choix est enregistré dès que tu modifies un réglage.</p>
+            <ul className="mt-4 space-y-2">
+              <li className={cn(TILE, "flex items-center gap-3 px-4 py-3")}>
+                <ShieldCheck className="h-5 w-5 shrink-0 text-fuchsia-300" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-white">Cookies essentiels</span>
+                  <span className="block text-xs text-white/55">Toujours actifs (nécessaires au fonctionnement)</span>
+                </span>
+                <Switch checked disabled label="Cookies essentiels" />
+              </li>
+              <li className={cn(TILE, "flex items-center gap-3 px-4 py-3")}>
+                <SlidersHorizontal className="h-5 w-5 shrink-0 text-fuchsia-300" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-white">Préférences</span>
+                  <span className="block text-xs text-white/55">Améliorent ton expérience</span>
+                </span>
+                <Switch checked={isOn("personalization")} onChange={(v) => set("personalization", v)} label="Préférences" />
+              </li>
+              <li className={cn(TILE, "flex items-center gap-3 px-4 py-3")}>
+                <BarChart3 className="h-5 w-5 shrink-0 text-fuchsia-300" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-white">Mesure d’audience</span>
+                  <span className="block text-xs text-white/55">Nous aide à améliorer la plateforme</span>
+                </span>
+                <Switch checked={isOn("analytics")} onChange={(v) => set("analytics", v)} label="Mesure d’audience" />
+              </li>
+            </ul>
+          </article>
 
-            <Link
-              href="/conditions"
-              className="transition hover:text-[#8E7AB5]"
-            >
-              CGU
-            </Link>
+          <article className={cn(PANEL, "p-5")}>
+            <h2 className="flex items-center gap-3 text-lg font-bold text-white">
+              <Globe className="h-6 w-6 text-fuchsia-300" /> Réglages navigateur
+            </h2>
+            <p className="mt-1.5 text-sm text-white/70">Tu peux aussi gérer ou effacer les cookies directement depuis ton navigateur.</p>
+            <ul className="mt-4 space-y-2">
+              {BROWSERS.map(({ name, href }) => (
+                <li key={name}>
+                  <a href={href} target="_blank" rel="noopener noreferrer" className={cn(TILE, "flex items-center gap-3 px-4 py-3 transition hover:border-fuchsia-300/45")}>
+                    <Globe className="h-5 w-5 shrink-0 text-white/70" />
+                    <span className="min-w-0 flex-1 text-sm font-medium text-white">{name}</span>
+                    <span className="flex items-center gap-1.5 text-xs text-pink-300">
+                      Accéder au guide <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </article>
+        </div>
 
-            <span className="text-[#D9B8FF]">·</span>
-
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 transition hover:text-[#8E7AB5]"
-            >
-              <Moon size={13} />
-              Accueil
-            </Link>
-          </div>
-        </nav>
-      </div>
-    </main>
+        <CtaBand title="Une question sur notre utilisation des cookies ?" text="Notre équipe est là pour t’aider et répondre à toutes tes questions.">
+          <a href={`mailto:${CONTACT}`} className={BAND_GHOST}>
+            <Mail className="h-5 w-5 text-fuchsia-300" /> {CONTACT}
+          </a>
+          <a href="#gestion" className={BAND_PRIMARY}>
+            Gérer mes préférences <ArrowRight className="h-4 w-4" />
+          </a>
+          <Link href="/" className={BAND_GHOST}>
+            Retour à l’accueil
+          </Link>
+        </CtaBand>
+      </PageBody>
+    </SiteShell>
   );
 }

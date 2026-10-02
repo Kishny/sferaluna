@@ -28,23 +28,12 @@ export default function StarRating({
   const active = hover ?? value;
 
   return (
-    <div
-      className={`flex items-center gap-0.5 ${className}`}
-      role={readOnly ? "img" : "radiogroup"}
-      aria-label={`Note : ${value} sur 5`}
-    >
+    <div className={`flex items-center gap-0.5 ${className}`} role={readOnly ? "img" : "radiogroup"} aria-label={`Note : ${value} sur 5`}>
       {stars.map((star) => {
         const filled = star <= active;
 
         if (readOnly) {
-          return (
-            <Star
-              key={star}
-              size={size}
-              className={filled ? "text-amber-400" : "text-[#E0D8F0]"}
-              fill={filled ? "currentColor" : "none"}
-            />
-          );
+          return <Star key={star} size={size} className={filled ? "text-amber-300" : "text-violet-300/30"} fill={filled ? "currentColor" : "none"} />;
         }
 
         return (
@@ -57,11 +46,7 @@ export default function StarRating({
             className="rounded p-0.5 transition-transform hover:scale-110"
             aria-label={`${star} étoile${star > 1 ? "s" : ""}`}
           >
-            <Star
-              size={size}
-              className={filled ? "text-amber-400" : "text-[#D8CEEC]"}
-              fill={filled ? "currentColor" : "none"}
-            />
+            <Star size={size} className={filled ? "text-amber-300" : "text-violet-300/40"} fill={filled ? "currentColor" : "none"} />
           </button>
         );
       })}

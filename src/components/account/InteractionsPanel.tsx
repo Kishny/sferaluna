@@ -504,7 +504,7 @@ export default function InteractionsPanel({
               <button
                 type="button"
                 onClick={() => setTestimonialOpen(false)}
-                className="absolute right-3 top-3 z-10 rounded-full bg-white/90 p-1.5 text-[#5B4B8A] shadow hover:bg-white"
+                className="absolute right-3 top-3 z-10 rounded-full bg-white/10 p-1.5 text-white/80 hover:bg-white/20 hover:text-white"
                 aria-label="Fermer"
               >
                 <X className="h-4 w-4" />

@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     const posts = await CommunityPost.find(query)
       .sort({ isPinned: -1, createdAt: -1 })
       .populate("userId", "pseudonyme image")
+      .populate("comments.userId", "pseudonyme image")
       .lean();
 
     const enriched = posts.map((post) => ({

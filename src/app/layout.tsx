@@ -2,13 +2,13 @@
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
 
 import "./globals.css";
 
 import ClientProvider from "./ClientProvider";
 import JsonLd from "@/components/JsonLd";
 import CookieConsent from "@/components/CookieConsent";
+import ConsentAnalytics from "@/components/ConsentAnalytics";
 
 /**
  * Police principale du site.
@@ -190,7 +190,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ClientProvider>{children}</ClientProvider>
         <CookieConsent />
-        <Analytics />
+        <ConsentAnalytics />
       </body>
     </html>
   );
