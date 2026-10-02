@@ -278,7 +278,7 @@ function ProfilContent() {
                             key={item.url}
                             type="button"
                             onClick={() => setViewer(i)}
-                            className="group relative aspect-square w-full overflow-hidden rounded-xl ring-1 ring-white/10 transition hover:ring-fuchsia-300/60"
+                            className="group relative aspect-[1/1] w-full overflow-hidden rounded-xl ring-1 ring-white/10 transition hover:ring-fuchsia-300/60"
                             aria-label={item.kind === "video" ? `Voir la vidéo ${i + 1}` : `Voir la photo ${i + 1}`}
                           >
                             {item.kind === "video" ? (

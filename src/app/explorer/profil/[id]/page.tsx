@@ -312,7 +312,7 @@ function ProfileDetailContent() {
                         type="button"
                         onClick={() => setPhotoIndex(i)}
                         className={cn(
-                          "aspect-square overflow-hidden rounded-xl ring-2 transition",
+                          "aspect-[1/1] overflow-hidden rounded-xl ring-2 transition",
                           i === photoIndex ? "ring-fuchsia-400" : "ring-transparent opacity-80 hover:opacity-100",
                           i === 0 && "col-span-2 row-span-2"
                         )}
