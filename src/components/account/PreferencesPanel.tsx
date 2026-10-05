@@ -227,9 +227,9 @@ export default function PreferencesPanel({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">Mode Fantôme</p>
-                    {ghost && <span className="rounded-full bg-violet-400/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-100">Actif</span>}
+                    {ghost && <span className="rounded-full bg-violet-400/25 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-violet-100">Actif</span>}
                     {!canGhost && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-200">
                         <Crown className="h-3 w-3" /> Premium ou Elite
                       </span>
                     )}

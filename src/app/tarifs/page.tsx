@@ -24,6 +24,7 @@ import {
 import { SceneArt } from '@/components/site/art';
 import { COMPARISON, PRICING_FAQ, PUBLIC_PLANS, type PublicPlan } from '@/components/site/plans';
 import { Container, FinalCta, SiteShell, reveal, useIsLoggedIn } from '@/components/site/sections';
+import MobileFold from '@/components/site/MobileFold';
 import {
   GLASS,
   GhostButton,
@@ -255,7 +256,9 @@ export default function TarifsPage() {
       {/* Comparatif */}
       <section className="relative pb-12">
         <Container>
-          <ComparisonTable />
+          <MobileFold label="Comparer les formules en détail" hideLabel="Masquer le comparatif" buttonClassName="!mt-0" className="mt-3 sm:mt-0">
+            <ComparisonTable />
+          </MobileFold>
         </Container>
       </section>
 

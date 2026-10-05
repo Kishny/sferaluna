@@ -43,9 +43,9 @@ const baseUrl = rawBaseUrl.replace(/\/$/, "");
  * Image Open Graph par défaut.
  *
  * Elle doit exister dans :
- * public/og-image.png
+ * public/og-image.jpg
  */
-const defaultOgImage = "/og-image.png";
+const defaultOgImage = "/og-image.jpg";
 
 /**
  * Nom officiel du site.

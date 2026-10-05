@@ -313,7 +313,7 @@ export default function PremiumPanel({
                   )}
                 >
                   {current && (
-                    <span className="absolute -top-2.5 left-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    <span className="absolute -top-2.5 left-4 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
                       Votre offre
                     </span>
                   )}

@@ -94,7 +94,7 @@ export const metadata: Metadata = {
     siteName: "SferaLuna",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "SferaLuna — Site de rencontres premium",
@@ -109,7 +109,7 @@ export const metadata: Metadata = {
     title: "SferaLuna — Site de rencontres premium pour femmes",
     description:
       "Rejoignez SferaLuna, la communauté de rencontres premium pensée pour les femmes françaises.",
-    images: ["/og-image.png"],
+    images: ["/og-image.jpg"],
     creator: "@sferaluna",
   },
 

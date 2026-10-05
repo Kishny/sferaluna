@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useConfirm } from "@/components/ConfirmDialog";
 import Link from "next/link";
 import { Playfair_Display } from "next/font/google";
 
@@ -82,15 +83,6 @@ const moodEmojiMap: Record<MoodName, string> = {
   Amoureux: "💖",
   Pensif: "💭",
   Heureux: "🌞",
-};
-
-const moodSoundMap: Record<MoodName, string> = {
-  Apaisé: "/sounds/apaisé.mp3",
-  Énergique: "/sounds/energie.mp3",
-  Triste: "/sounds/triste.mp3",
-  Amoureux: "/sounds/amour.mp3",
-  Pensif: "/sounds/pensif.mp3",
-  Heureux: "/sounds/heureux.mp3",
 };
 
 const moodSuggestions: MoodName[] = [
@@ -335,6 +327,7 @@ function HeroDecor({ isDay }: { isDay: boolean }) {
 const NOTE_MAX = 500;
 
 export default function JournalPage() {
+  const [confirm, confirmDialog] = useConfirm();
   const [entries, setEntries] = useState<Entry[]>([]);
 
   const [mood, setMood] = useState("");
@@ -395,17 +388,6 @@ export default function JournalPage() {
   }, [loadEntries]);
 
   // ── Actions ──
-  const playMoodSound = (selected: string) => {
-    if (!isMoodName(selected)) return;
-    try {
-      const audio = new Audio(moodSoundMap[selected]);
-      audio.volume = 0.35;
-      audio.play().catch(() => {});
-    } catch {
-      /* son indisponible */
-    }
-  };
-
   const handleMoodSelect = (selected: MoodName) => {
     setMood(selected);
     setSelectedMood(selected);
@@ -419,7 +401,6 @@ export default function JournalPage() {
     }
     setError("");
     setIsAnalyzing(true);
-    if (mood) playMoodSound(mood);
 
     const analysis = mood ? simulateAiAnalysis(mood) : "Ta note est précieuse, même sans humeur associée 💫";
 
@@ -470,7 +451,7 @@ export default function JournalPage() {
   };
 
   const deleteEntry = async (id: string) => {
-    if (!window.confirm("Supprimer cette entrée ?")) return;
+    if (!(await confirm({ title: "Supprimer cette entrée ?", text: "Elle sera effacée de ton journal pour de bon.", confirmLabel: "Supprimer" }))) return;
     setEntries((prev) => prev.filter((e) => e.id !== id));
     try {
       await fetch(`/api/journal/${id}`, { method: "DELETE" });
@@ -488,7 +469,7 @@ export default function JournalPage() {
   };
 
   const resetJournal = async () => {
-    if (!window.confirm("Voulez-vous vraiment supprimer tout votre journal ?")) return;
+    if (!(await confirm({ title: "Supprimer tout ton journal ?", text: "Toutes tes entrées seront effacées. Cette action est irréversible.", confirmLabel: "Tout supprimer" }))) return;
     setEntries([]);
     clearCurrentInput();
     try {
@@ -766,6 +747,7 @@ export default function JournalPage() {
       <div className="hidden sm:block">
         <Footer />
       </div>
+      {confirmDialog}
 
       <MoodPlayer track={playingTrack} onClose={() => setPlayingTrack(null)} />
 

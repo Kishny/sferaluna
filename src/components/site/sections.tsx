@@ -249,12 +249,12 @@ export function StepsRow({ steps }: { steps: Step[] }) {
           key={step.title}
           {...reveal}
           transition={{ ...reveal.transition, delay: i * 0.08 }}
-          className="relative flex items-center gap-4 rounded-2xl border border-violet-300/[0.12] bg-[#170b30]/70 p-4 backdrop-blur"
+          className="relative flex items-center gap-3 rounded-2xl border border-violet-300/[0.12] bg-[#170b30]/70 p-3 backdrop-blur sm:gap-4 sm:p-4"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-sm font-bold shadow-[0_0_18px_-2px_rgba(217,70,239,0.7)]">
             {i + 1}
           </span>
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-violet-300/25 bg-violet-500/10">
+          <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full border border-violet-300/25 bg-violet-500/10 sm:flex">
             <step.icon className="h-6 w-6 text-violet-100" />
           </span>
           <div className="min-w-0">

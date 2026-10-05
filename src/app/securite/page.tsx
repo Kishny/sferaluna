@@ -48,6 +48,7 @@ import {
   cn,
 } from '@/components/site/ui';
 import { useIsLoggedIn } from '@/components/site/sections';
+import MobileFold from '@/components/site/MobileFold';
 import { ModerationSection, ReportBlockSection } from '@/components/site/SafetyGuide';
 
 // ─────────────────────────────────────────────
@@ -107,7 +108,8 @@ function HeroVisual() {
         <ShieldArt />
       </div>
 
-      <div className="space-y-2.5">
+      {/* Sur téléphone, ces rappels doublonnent les cartes juste en dessous. */}
+      <div className="hidden space-y-2.5 sm:block">
         {side.map((item) => (
           <div key={item.title} className={cn(GLASS, 'flex items-center gap-3 rounded-2xl p-3')}>
             <IconBadge icon={item.icon} size="sm" />
@@ -148,10 +150,11 @@ function SafetyCard({
         <div className="flex items-center gap-3">
           <IconBadge icon={icon} tone="violet" />
           <h3 className="flex-1 text-lg font-semibold leading-tight text-white">{title}</h3>
+          <ArrowCircle className="h-8 w-8 sm:hidden" />
         </div>
         <p className="mt-3 text-sm leading-relaxed text-white/70">{text}</p>
         <div className="mt-auto hidden pt-4 sm:block">{children}</div>
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 hidden justify-end sm:flex">
           <ArrowCircle className="h-8 w-8" />
         </div>
       </Link>
@@ -211,7 +214,7 @@ export default function SecuritePage() {
                 Comment nous vous protégeons
               </GhostButton>
             </div>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-4">
               {[
                 { icon: ShieldCheck, title: 'Profils vérifiés', text: 'pour plus d’authenticité' },
                 { icon: Lock, title: 'Données protégées', text: 'en toutes circonstances' },
@@ -339,7 +342,7 @@ export default function SecuritePage() {
             title="Comment nous protégeons votre expérience ?"
             subtitle="Une approche complète pour des rencontres plus sûres et plus authentiques."
           />
-          <div className="mt-7">
+          <MobileFold label="Voir les 4 étapes" hideLabel="Masquer les étapes" className="mt-4 sm:mt-7">
             <StepsRow
               steps={[
                 { icon: Search, title: 'Vérification des profils', text: 'Pièce d’identité + selfie en direct avant l’accès au compte.' },
@@ -348,7 +351,7 @@ export default function SecuritePage() {
                 { icon: UsersRound, title: 'Une communauté bienveillante', text: 'Des outils simples pour signaler ou bloquer.' },
               ]}
             />
-          </div>
+          </MobileFold>
         </Container>
       </section>
 

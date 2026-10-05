@@ -339,7 +339,7 @@ export default function FonctionnalitesPage() {
                 </span>
                 <div>
                   <p className="text-[11px] font-semibold text-white">Apéro au coucher du soleil</p>
-                  <p className="text-[10px] text-emerald-300">Idée acceptée ✓</p>
+                  <p className="text-[11px] text-emerald-300">Idée acceptée ✓</p>
                 </div>
               </div>
             </div>
@@ -407,7 +407,7 @@ export default function FonctionnalitesPage() {
             }
             subtitle="De la découverte à la rencontre, chaque étape est pensée pour être simple, naturelle et agréable."
           />
-          <div className="mt-7">
+          <MobileFold label="Voir les 4 étapes" hideLabel="Masquer les étapes" className="mt-4 sm:mt-7">
             <StepsRow
               steps={[
                 { icon: Search, title: 'Découvrir', text: 'Explorez des profils authentiques et des événements près de chez vous.' },
@@ -416,7 +416,7 @@ export default function FonctionnalitesPage() {
                 { icon: Users, title: 'Se rencontrer', text: 'Un événement LunaGather ou une idée VibePlanner, et c’est parti.' },
               ]}
             />
-          </div>
+          </MobileFold>
         </Container>
       </section>
 

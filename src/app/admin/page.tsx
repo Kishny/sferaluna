@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   Activity,
   AlertCircle,
@@ -509,6 +510,7 @@ function PlanDonut({
 export default function AdminPage() {
   const router = useRouter();
   const { status } = useSession();
+  const [confirm, confirmDialog] = useConfirm();
   const [quickSearch, setQuickSearch] = useState("");
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
@@ -784,7 +786,7 @@ export default function AdminPage() {
   };
 
   const handleBan = async (userId: string, pseudonyme: string) => {
-    if (!confirm(`Bannir ${pseudonyme} ? Cette action désactivera son compte.`)) {
+    if (!(await confirm({ title: `Bannir ${pseudonyme} ?`, text: "Cette action désactivera son compte.", confirmLabel: "Bannir" }))) {
       return;
     }
 
@@ -800,9 +802,11 @@ export default function AdminPage() {
 
   const handleDeleteUser = async (userId: string, pseudonyme: string) => {
     if (
-      !confirm(
-        `Supprimer définitivement ${pseudonyme} ? Cette action est irréversible : son profil, ses likes, matchs, messages, visites, vibes, posts et son abonnement seront supprimés. Les statistiques du site se mettront à jour automatiquement.`
-      )
+      !(await confirm({
+        title: `Supprimer définitivement ${pseudonyme} ?`,
+        text: "Cette action est irréversible : son profil, ses likes, matchs, messages, visites, vibes, posts et son abonnement seront supprimés. Les statistiques du site se mettront à jour automatiquement.",
+        confirmLabel: "Supprimer le compte",
+      }))
     ) {
       return;
     }
@@ -830,7 +834,8 @@ export default function AdminPage() {
   };
 
   const handleResetData = async (target: ResetTarget, confirmMessage: string) => {
-    if (!confirm(confirmMessage)) return;
+    const [title, ...rest] = confirmMessage.split(" ? ");
+    if (!(await confirm({ title: `${title} ?`, text: rest.join(" ? ") || undefined, confirmLabel: "Supprimer" }))) return;
 
     setActionLoading("reset-" + target);
     setResetMessage(null);
@@ -977,7 +982,7 @@ export default function AdminPage() {
               <p className="text-base font-bold leading-none tracking-tight">
                 Sfera<span className="text-amber-300">Luna</span>
               </p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/35">
+              <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/35">
                 Admin
               </p>
             </div>
@@ -1007,7 +1012,7 @@ export default function AdminPage() {
                   />
                   {item.label}
                   {badge ? (
-                    <span className="ml-auto rounded-full bg-red-500/25 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
+                    <span className="ml-auto rounded-full bg-red-500/25 px-1.5 py-0.5 text-[11px] font-bold text-red-300">
                       {badge}
                     </span>
                   ) : isActive ? (
@@ -1111,7 +1116,7 @@ export default function AdminPage() {
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-sm font-semibold leading-none">Admin</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[10px] text-amber-300">
+                  <p className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-300">
                     <Crown className="h-2.5 w-2.5" /> Super Admin
                   </p>
                 </div>
@@ -1324,7 +1329,7 @@ export default function AdminPage() {
                       Revenu du mois
                     </span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
                         stats.revenue.source === "stripe"
                           ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
                           : "border-white/15 bg-white/5 text-white/40"
@@ -1520,7 +1525,7 @@ export default function AdminPage() {
                       Activités récentes
                     </h3>
                     {pendingReports.length > 0 && (
-                      <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                      <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[11px] font-bold text-red-300">
                         {pendingReports.length} à traiter
                       </span>
                     )}
@@ -1550,7 +1555,7 @@ export default function AdminPage() {
                               {r.targetId?.pseudonyme || r.targetType}
                             </p>
                           </div>
-                          <span className="shrink-0 text-[10px] text-white/30">
+                          <span className="shrink-0 text-[11px] text-white/30">
                             {formatDate(r.createdAt)}
                           </span>
                         </button>
@@ -1589,7 +1594,7 @@ export default function AdminPage() {
                         <div className="flex items-center justify-between">
                           <p className="truncate font-medium">{c.pseudonyme}</p>
                           <span
-                            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                            className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                               planBadgeColor[c.plan] || planBadgeColor.free
                             }`}
                           >
@@ -2469,6 +2474,7 @@ export default function AdminPage() {
           </p>
         </main>
       </div>
+      {confirmDialog}
     </div>
   );
 }

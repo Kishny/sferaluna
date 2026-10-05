@@ -421,8 +421,8 @@ function AvatarButton({
             <Pencil className="h-3 w-3" />
           </button>
         </div>
-        <span className="mt-1 block truncate text-center text-[10px] font-medium text-fuchsia-100/80">Photo principale</span>
-        {message && <span className={cn("mt-1 block text-center text-[10px]", message.ok ? "text-emerald-300" : "text-red-300")}>{message.text}</span>}
+        <span className="mt-1 block truncate text-center text-[11px] font-medium text-fuchsia-100/80">Photo principale</span>
+        {message && <span className={cn("mt-1 block text-center text-[11px]", message.ok ? "text-emerald-300" : "text-red-300")}>{message.text}</span>}
         {input}
         {modal}
       </div>
@@ -634,7 +634,7 @@ function PhotosCard({
               ) : (
                 <>
                   <Upload className="h-4 w-4" />
-                  <span className="text-[10px]">Ajouter</span>
+                  <span className="text-[11px]">Ajouter</span>
                 </>
               )}
             </button>

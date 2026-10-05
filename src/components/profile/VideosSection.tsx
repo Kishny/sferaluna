@@ -195,7 +195,7 @@ export default function VideosSection({
                       <Play className="h-4 w-4 fill-white" />
                     </span>
                     {!!video.duration && (
-                      <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">{Math.round(video.duration)} s</span>
+                      <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[11px] text-white">{Math.round(video.duration)} s</span>
                     )}
                   </button>
                 )}
@@ -225,7 +225,7 @@ export default function VideosSection({
               {isActive ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin text-fuchsia-200" />
-                  <span className="px-2 text-center text-[10px] text-white/70">
+                  <span className="px-2 text-center text-[11px] text-white/70">
                     {step === "upload" ? `Envoi… ${progress ?? 0} %` : "Vérification…"}
                   </span>
                   {step === "upload" && (

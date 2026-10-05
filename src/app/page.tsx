@@ -206,7 +206,7 @@ export default function Home() {
               </Link>
             }
           />
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-4 lg:grid-cols-4">
             {PUBLIC_PLANS.map((plan, i) => {
               const Icon = PLAN_ICONS[plan.tone];
               return (
@@ -214,29 +214,29 @@ export default function Home() {
                   <Link
                     href="/tarifs"
                     className={cn(
-                      'group relative flex h-full flex-col rounded-3xl p-5 transition hover:-translate-y-1',
+                      'group relative flex h-full flex-col rounded-3xl p-4 transition hover:-translate-y-1 sm:p-5',
                       plan.recommended
                         ? 'border border-fuchsia-300/60 bg-gradient-to-b from-fuchsia-600/25 to-[#1b0d38]/80 shadow-[0_20px_60px_-20px_rgba(217,70,239,0.7)]'
                         : GLASS
                     )}
                   >
                     {plan.recommended && (
-                      <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full border border-fuchsia-300/50 bg-[#2a0f4f] px-3 py-1 text-[11px] font-semibold text-fuchsia-100">
+                      <span className="absolute -top-3 left-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-fuchsia-300/50 bg-[#2a0f4f] px-2 py-1 text-[11px] font-semibold text-fuchsia-100 sm:left-5 sm:px-3">
                         <Crown className="h-3 w-3 text-amber-200" /> Notre recommandation
                       </span>
                     )}
-                    <div className="flex items-center gap-3">
-                      <Icon className={cn('h-7 w-7', plan.tone === 'heart' ? 'fill-pink-400 text-pink-400' : plan.tone === 'star' ? 'fill-amber-300 text-amber-300' : plan.tone === 'diamond' ? 'text-violet-300' : 'fill-violet-200/40 text-violet-200')} />
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Icon className={cn('h-6 w-6 shrink-0 sm:h-7 sm:w-7', plan.tone === 'heart' ? 'fill-pink-400 text-pink-400' : plan.tone === 'star' ? 'fill-amber-300 text-amber-300' : plan.tone === 'diamond' ? 'text-violet-300' : 'fill-violet-200/40 text-violet-200')} />
                       <div>
                         <p className="text-lg font-semibold text-white">{plan.name}</p>
-                        <p className="text-xs text-white/60">{plan.tagline}</p>
+                        <p className="hidden text-xs text-white/60 sm:block">{plan.tagline}</p>
                       </div>
                     </div>
-                    <p className="mt-4 text-3xl font-bold text-white">
+                    <p className="mt-3 whitespace-nowrap text-2xl font-bold text-white sm:mt-4 sm:text-3xl">
                       {plan.price}
-                      <span className="ml-1 text-sm font-normal text-white/55">/ mois</span>
+                      <span className="ml-1 text-xs font-normal text-white/55 sm:text-sm">/ mois</span>
                     </p>
-                    <p className="mt-3 text-sm text-white/70">{plan.highlight}</p>
+                    <p className="mt-2 text-[13px] leading-snug text-white/70 sm:mt-3 sm:text-sm">{plan.highlight}</p>
                   </Link>
                 </motion.div>
               );
@@ -255,13 +255,15 @@ export default function Home() {
             />
 
             {statItems.length > 0 && (
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid grid-cols-3 gap-2.5 sm:gap-4">
                 {statItems.map((item) => (
-                  <motion.div key={item.label} {...reveal} className={cn(GLASS, 'flex items-center gap-4 p-5')}>
-                    <IconBadge icon={item.icon} tone="pink" size="lg" />
+                  <motion.div key={item.label} {...reveal} className={cn(GLASS, 'flex items-center gap-4 p-3 sm:p-5')}>
+                    <span className="hidden sm:block">
+                      <IconBadge icon={item.icon} tone="pink" size="lg" />
+                    </span>
                     <div>
-                      <p className="text-3xl font-bold text-white">{formatCount(item.value)}</p>
-                      <p className="text-sm text-white/65">{item.label}</p>
+                      <p className="text-2xl font-bold text-white sm:text-3xl">{formatCount(item.value)}</p>
+                      <p className="text-xs leading-snug text-white/65 sm:text-sm">{item.label}</p>
                     </div>
                   </motion.div>
                 ))}
