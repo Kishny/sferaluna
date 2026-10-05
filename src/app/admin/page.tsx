@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import {
   Activity,
   AlertCircle,
+  ArchiveRestore,
   ArrowLeft,
   BadgeCheck,
   Bell,
@@ -17,6 +18,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Crown,
   Flag,
   Heart,
@@ -50,6 +52,20 @@ import {
  * Signalements, Témoignages, Newsletter, Outils. Toute la logique de gestion
  * existante est conservée (actions users, bannissement, reset, etc.).
  */
+
+interface TrashedAccount {
+  id: string;
+  email: string;
+  pseudonyme: string;
+  image: string | null;
+  plan: string | null;
+  memberSince: string | null;
+  deletedAt: string;
+  purgeAt: string;
+  daysLeft: number;
+  deletedByAdminEmail: string | null;
+  counts: Record<string, number>;
+}
 
 interface AdminStats {
   users: {
@@ -111,6 +127,7 @@ interface AdminUser {
 type TabId =
   | "dashboard"
   | "users"
+  | "trash"
   | "reports"
   | "testimonials"
   | "newsletter"
@@ -121,6 +138,7 @@ type ResetTarget = "messages" | "matches" | "visits" | "posts" | "journal";
 const nav: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", label: "Utilisatrices", icon: Users },
+  { id: "trash", label: "Corbeille", icon: ArchiveRestore },
   { id: "reports", label: "Signalements", icon: Flag },
   { id: "testimonials", label: "Témoignages", icon: MessageCircle },
   { id: "newsletter", label: "Newsletter", icon: Mail },
@@ -130,6 +148,7 @@ const nav: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
 const sectionTitle: Record<TabId, { title: string; sub: string }> = {
   dashboard: { title: "Dashboard Admin", sub: "Vue d'ensemble de la plateforme" },
   users: { title: "Utilisatrices", sub: "Gestion des membres" },
+  trash: { title: "Corbeille", sub: "Comptes supprimés, récupérables 60 jours" },
   reports: { title: "Signalements", sub: "Modération de la communauté" },
   testimonials: { title: "Témoignages", sub: "Validation des avis" },
   newsletter: { title: "Newsletter", sub: "Communication aux abonnées" },
@@ -523,6 +542,9 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [trash, setTrash] = useState<TrashedAccount[]>([]);
+  const [isLoadingTrash, setIsLoadingTrash] = useState(false);
+  const [trashMessage, setTrashMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
@@ -734,6 +756,86 @@ export default function AdminPage() {
     if (status === "authenticated" && activeTab === "users") fetchUsers();
   }, [status, activeTab, fetchUsers]);
 
+  const fetchTrash = useCallback(async () => {
+    setIsLoadingTrash(true);
+    try {
+      const res = await fetch("/api/admin/deleted-users", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) setTrash(data.accounts);
+      else setTrashMessage({ ok: false, text: data.error || "Impossible de charger la corbeille." });
+    } catch {
+      setTrashMessage({ ok: false, text: "Impossible de charger la corbeille." });
+    } finally {
+      setIsLoadingTrash(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated" && activeTab === "trash") fetchTrash();
+  }, [status, activeTab, fetchTrash]);
+
+  const handleRestoreAccount = async (account: TrashedAccount) => {
+    const name = account.pseudonyme || account.email;
+    if (
+      !(await confirm({
+        title: `Restaurer ${name} ?`,
+        text: "Son profil, ses matchs, ses conversations et ses publications reviennent sur le site, et elle peut de nouveau se connecter. Si son abonnement est encore en cours, il reprend normalement.",
+        confirmLabel: "Restaurer",
+        danger: false,
+      }))
+    ) {
+      return;
+    }
+
+    setActionLoading("restore-" + account.id);
+    setTrashMessage(null);
+    try {
+      const res = await fetch(`/api/admin/deleted-users/${account.id}`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setTrash((prev) => prev.filter((a) => a.id !== account.id));
+        setTrashMessage({ ok: true, text: data.message });
+        fetchStats();
+      } else {
+        setTrashMessage({ ok: false, text: data.error || "Restauration échouée." });
+      }
+    } catch {
+      setTrashMessage({ ok: false, text: "Erreur lors de la restauration." });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handlePurgeAccount = async (account: TrashedAccount) => {
+    const name = account.pseudonyme || account.email;
+    if (
+      !(await confirm({
+        title: `Effacer définitivement ${name} ?`,
+        text: "Le compte, ses données et ses photos sont effacés pour de bon, sans attendre la fin du délai. Cette action est irréversible.",
+        confirmLabel: "Effacer définitivement",
+      }))
+    ) {
+      return;
+    }
+
+    setActionLoading("purge-" + account.id);
+    setTrashMessage(null);
+    try {
+      const res = await fetch(`/api/admin/deleted-users/${account.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setTrash((prev) => prev.filter((a) => a.id !== account.id));
+        setTrashMessage({ ok: true, text: `${name} a été effacée définitivement.` });
+      } else {
+        setTrashMessage({ ok: false, text: data.error || "Effacement échoué." });
+      }
+    } catch {
+      setTrashMessage({ ok: false, text: "Erreur lors de l'effacement." });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   useEffect(() => {
     if (status === "authenticated" && activeTab === "testimonials") {
       fetchTestimonials();
@@ -754,6 +856,7 @@ export default function AdminPage() {
     fetchStats();
     fetchRecentUsers();
     if (activeTab === "users") fetchUsers();
+    if (activeTab === "trash") fetchTrash();
     if (activeTab === "reports") fetchReports();
     if (activeTab === "testimonials") fetchTestimonials();
     if (activeTab === "newsletter") fetchNewsletterStats();
@@ -803,8 +906,8 @@ export default function AdminPage() {
   const handleDeleteUser = async (userId: string, pseudonyme: string) => {
     if (
       !(await confirm({
-        title: `Supprimer définitivement ${pseudonyme} ?`,
-        text: "Cette action est irréversible : son profil, ses likes, matchs, messages, visites, vibes, posts et son abonnement seront supprimés. Les statistiques du site se mettront à jour automatiquement.",
+        title: `Supprimer ${pseudonyme} ?`,
+        text: "Son profil, ses likes, matchs, messages, visites et publications disparaissent du site tout de suite, et son abonnement ne sera pas renouvelé. Le compte reste récupérable 60 jours dans la Corbeille, puis il est effacé définitivement.",
         confirmLabel: "Supprimer le compte",
       }))
     ) {
@@ -2404,6 +2507,143 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
+            </motion.section>
+          )}
+
+          {/* ================= CORBEILLE ================= */}
+          {activeTab === "trash" && (
+            <motion.section
+              key="trash"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <ArchiveRestore className="h-4 w-4 text-fuchsia-300" />
+                  Comptes supprimés par l&apos;équipe
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-white/50">
+                  Un compte supprimé depuis l&apos;onglet Utilisatrices disparaît du site
+                  mais reste ici 60 jours : vous pouvez le restaurer tel qu&apos;il était.
+                  Passé ce délai, il est effacé définitivement, photos comprises. Les
+                  comptes supprimés par les membres elles-mêmes sont effacés
+                  immédiatement et n&apos;apparaissent pas ici.
+                </p>
+              </div>
+
+              {trashMessage && (
+                <div
+                  role="status"
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm ${
+                    trashMessage.ok
+                      ? "border-green-400/20 bg-green-500/10 text-green-200"
+                      : "border-red-400/25 bg-red-500/10 text-red-200"
+                  }`}
+                >
+                  {trashMessage.ok ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="flex-1">{trashMessage.text}</span>
+                  <button
+                    onClick={() => setTrashMessage(null)}
+                    aria-label="Fermer le message"
+                    className="opacity-70 hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {isLoadingTrash ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+                </div>
+              ) : trash.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-12 text-center">
+                  <ArchiveRestore className="mx-auto h-8 w-8 text-white/25" />
+                  <p className="mt-3 text-sm font-medium text-white/70">La corbeille est vide</p>
+                  <p className="mt-1 text-xs text-white/40">Aucun compte supprimé ces 60 derniers jours.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {trash.map((account) => {
+                    const urgent = account.daysLeft <= 7;
+                    const details = [
+                      account.counts.Match ? `${account.counts.Match} match${account.counts.Match > 1 ? "s" : ""}` : null,
+                      account.counts.Message ? `${account.counts.Message} message${account.counts.Message > 1 ? "s" : ""}` : null,
+                      account.plan && account.plan !== "free" ? `formule ${account.plan.replace("-monthly", "")}` : null,
+                    ].filter(Boolean);
+
+                    return (
+                      <div
+                        key={account.id}
+                        className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 lg:flex-row lg:items-center"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          {account.image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={account.image} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover opacity-70" />
+                          ) : (
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white/60">
+                              {(account.pseudonyme || account.email).charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">{account.pseudonyme || "Sans pseudonyme"}</p>
+                            <p className="truncate text-xs text-white/50">{account.email}</p>
+                            <p className="mt-1 text-xs text-white/40">
+                              Supprimée le {formatDate(account.deletedAt)}
+                              {account.deletedByAdminEmail ? ` par ${account.deletedByAdminEmail}` : ""}
+                              {details.length > 0 ? ` · ${details.join(" · ")}` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border px-3 py-1 text-xs font-medium lg:self-center ${
+                            urgent
+                              ? "border-amber-400/30 bg-amber-500/10 text-amber-200"
+                              : "border-white/10 bg-white/5 text-white/60"
+                          }`}
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          {account.daysLeft <= 1 ? "Effacée sous 24 h" : `Effacée dans ${account.daysLeft} jours`}
+                        </span>
+
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => handleRestoreAccount(account)}
+                            disabled={actionLoading !== null}
+                            className="flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-xl border border-fuchsia-300/30 bg-fuchsia-500/15 px-4 text-xs font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/25 disabled:opacity-50 lg:flex-none"
+                          >
+                            {actionLoading === "restore-" + account.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ArchiveRestore className="h-3.5 w-3.5" />
+                            )}
+                            Restaurer
+                          </button>
+                          <button
+                            onClick={() => handlePurgeAccount(account)}
+                            disabled={actionLoading !== null}
+                            className="flex min-h-[40px] flex-1 items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-600/15 px-4 text-xs font-semibold text-red-200 transition hover:bg-red-600/25 disabled:opacity-50 lg:flex-none"
+                          >
+                            {actionLoading === "purge-" + account.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                            Effacer
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </motion.section>
           )}
 

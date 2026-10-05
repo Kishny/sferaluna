@@ -126,6 +126,10 @@ export default function ConfidentialitePage() {
                 Vos données sont conservées tant que votre compte existe. Vous pouvez supprimer votre compte à tout moment depuis <B>Mon compte → Sécurité</B> : votre profil, vos photos et vidéos,
                 vos matchs, les messages que vous avez envoyés, vos publications, votre journal et votre selfie de vérification sont alors effacés. Un abonnement en cours n’est pas renouvelé.
               </p>
+              <p>
+                Si c’est SferaLuna qui ferme un compte (non-respect des conditions, compte de test), ses données sont retirées du site immédiatement et conservées 60 jours, le temps de pouvoir
+                rétablir le compte en cas d’erreur ou de contestation, puis effacées définitivement. Le selfie de vérification, lui, est effacé tout de suite.
+              </p>
               <p>Les données de facturation sont conservées par Stripe pendant la durée imposée par la loi.</p>
             </Section>
 

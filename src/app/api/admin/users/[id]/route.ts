@@ -2,59 +2,31 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { v2 as cloudinary } from "cloudinary";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { moveAccountToTrash } from "@/lib/account-trash";
 import { connectDB } from "@/lib/db";
-import { PhotoVerification } from "@/models/PhotoVerification";
-import { User } from "@/models/User";
-import { Like } from "@/models/Like";
-import { Match } from "@/models/Match";
-import { Message } from "@/models/Message";
-import { ProfileVisit } from "@/models/ProfileVisit";
-import { VibePost } from "@/models/VibePost";
-import { CommunityPost } from "@/models/CommunityPost";
-import { MentorPost } from "@/models/MentorPost";
-import { JournalEntry } from "@/models/JournalEntry";
-import { Boost } from "@/models/Boost";
-import { Testimonial } from "@/models/Testimonial";
-import { LunaEvent } from "@/models/LunaEvent";
 import { stripe } from "@/lib/stripe";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-/** Extrait le public_id Cloudinary depuis une URL. */
-function extractPublicId(url: string): string | null {
-  try {
-    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
+import { RETENTION_DAYS } from "@/models/DeletedAccount";
+import { User } from "@/models/User";
 
 /**
  * DELETE /api/admin/users/[id]
  *
- * Suppression définitive d'une utilisatrice par un admin.
- * Utile notamment pour nettoyer les comptes de test, afin que les
- * statistiques publiques (/api/stats) et les compteurs (matchs, messages,
- * événements) restent cohérents.
+ * Suppression d'une utilisatrice par un admin.
  *
- * Étapes (même logique que la suppression "self" dans /api/users/me) :
+ * Le compte et toutes ses données quittent le site immédiatement (les
+ * statistiques publiques et les compteurs restent donc cohérents), mais ils
+ * sont conservés RETENTION_DAYS jours dans la corbeille admin, d'où ils
+ * peuvent être restaurés. Passé ce délai, ils sont effacés définitivement,
+ * photos comprises (voir src/lib/account-trash.ts).
+ *
+ * Étapes :
  * 1. Vérifier que l'appelant est bien admin.
  * 2. Empêcher la suppression de soi-même ou d'un autre admin.
- * 3. Annuler l'abonnement Stripe actif (fin de période, sans remboursement).
- * 4. Supprimer les photos Cloudinary (avatar + galerie).
- * 5. Supprimer toutes les données liées : likes, matches, messages, visites
- *    de profil, vibes, posts communauté, questions/réponses VibeMentor,
- *    journal émotionnel, boosts, témoignage, et retrait des listes
- *    d'inscrits aux événements Luna.
- * 6. Supprimer le document User.
+ * 3. Programmer l'arrêt de l'abonnement Stripe en fin de période (sans
+ *    remboursement) ; annulé si le compte est restauré à temps.
+ * 4. Mettre le compte en corbeille.
  */
 export async function DELETE(
   req: NextRequest,
@@ -93,7 +65,7 @@ export async function DELETE(
     }
 
     const target = await User.findById(id).select(
-      "_id email role stripeSubscriptionId image photos"
+      "_id email role stripeSubscriptionId"
     );
 
     if (!target) {
@@ -123,39 +95,17 @@ export async function DELETE(
       }
     }
 
-    // ── 2. Supprimer les photos Cloudinary ──────────────────────────────────
-    const allPhotos = [target.image, ...(target.photos ?? [])].filter(
-      Boolean
-    ) as string[];
-
-    await Promise.allSettled(
-      allPhotos.map((url) => {
-        const publicId = extractPublicId(url);
-        return publicId ? cloudinary.uploader.destroy(publicId) : Promise.resolve();
-      })
-    );
-
-    // ── 3. Supprimer toutes les données liées ───────────────────────────────
-    await Promise.allSettled([
-      Like.deleteMany({ $or: [{ fromUserId: userId }, { toUserId: userId }] }),
-      Match.deleteMany({ $or: [{ user1Id: userId }, { user2Id: userId }] }),
-      Message.deleteMany({ senderId: userId }),
-      ProfileVisit.deleteMany({ $or: [{ visitorId: userId }, { visitedId: userId }] }),
-      VibePost.deleteMany({ userId }),
-      CommunityPost.deleteMany({ userId }),
-      MentorPost.deleteMany({ userId }),
-      JournalEntry.deleteMany({ userId }),
-      PhotoVerification.deleteMany({ userId }),
-      Boost.deleteMany({ userId }),
-      Testimonial.deleteMany({ userId }),
-      LunaEvent.updateMany({ attendees: userId }, { $pull: { attendees: userId } }),
-    ]);
-
-    // ── 4. Supprimer le document User ───────────────────────────────────────
-    await User.findByIdAndDelete(userId);
+    // ── 2. Mettre le compte et ses données en corbeille ─────────────────────
+    await moveAccountToTrash(userId, {
+      id: adminUser._id.toString(),
+      email: session.user.email.toLowerCase().trim(),
+    });
 
     return NextResponse.json(
-      { success: true, message: `${target.email} a été supprimée définitivement.` },
+      {
+        success: true,
+        message: `${target.email} a été supprimée. Le compte reste récupérable ${RETENTION_DAYS} jours dans la corbeille.`,
+      },
       { status: 200 }
     );
   } catch (error: unknown) {
