@@ -39,23 +39,32 @@ export const LIVENESS_THRESHOLD = 80;
 /** Nombre maximal de selfies par 24 h (chaque contrôle est facturé). */
 export const MAX_ATTEMPTS_PER_DAY = 5;
 
-export const isPhotoVerificationConfigured = () =>
-  Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_REGION);
+/**
+ * Identifiants AWS. Vercel réserve les noms AWS_ACCESS_KEY_ID,
+ * AWS_SECRET_ACCESS_KEY et AWS_REGION pour sa propre infrastructure : en
+ * production on lit donc les variables SFL_AWS_*, avec repli sur les noms AWS_*
+ * habituels pour le développement local.
+ */
+const awsKeyId = () => process.env.SFL_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "";
+const awsSecret = () => process.env.SFL_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "";
+const awsCredentials = () => ({ accessKeyId: awsKeyId(), secretAccessKey: awsSecret() });
+
+export const isPhotoVerificationConfigured = () => Boolean(awsKeyId() && awsSecret());
 
 export const isPhotoVerificationEnforced = () => process.env.PHOTO_VERIFICATION_ENFORCED === "true";
 
-export const awsRegion = () => process.env.AWS_REGION || "eu-west-1";
+export const awsRegion = () => process.env.SFL_AWS_REGION || (process.env.VERCEL ? "" : process.env.AWS_REGION) || "eu-west-1";
 
 let rekognition: RekognitionClient | null = null;
 let sts: STSClient | null = null;
 
 function rk() {
-  if (!rekognition) rekognition = new RekognitionClient({ region: awsRegion() });
+  if (!rekognition) rekognition = new RekognitionClient({ region: awsRegion(), credentials: awsCredentials() });
   return rekognition;
 }
 
 function stsClient() {
-  if (!sts) sts = new STSClient({ region: awsRegion() });
+  if (!sts) sts = new STSClient({ region: awsRegion(), credentials: awsCredentials() });
   return sts;
 }
 

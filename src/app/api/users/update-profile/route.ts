@@ -241,9 +241,69 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    /**
+     * Pseudonyme et orientation : mêmes règles que /api/users/profile.
+     *
+     * Cette route sert à finaliser l'inscription, mais elle reste appelable
+     * par un compte déjà complété. Sans ce contrôle, elle permettait de
+     * contourner la limite d'une modification par an, et de prendre un
+     * pseudonyme déjà utilisé. La première saisie (profil pas encore
+     * complété) reste libre et ne déclenche pas le délai.
+     */
+    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+    const pseudonymeChanged = data.pseudonyme !== undefined && data.pseudonyme !== user.pseudonyme;
+    const orientationChanged = data.orientation !== undefined && data.orientation !== user.orientation;
+
+    if (user.hasCompletedProfile) {
+      const guarded = [
+        { changed: pseudonymeChanged, field: "pseudonyme", last: user.pseudonymeChangedAt },
+        { changed: orientationChanged, field: "orientation", last: user.orientationChangedAt },
+      ];
+
+      for (const { changed, field, last } of guarded) {
+        const lastChanged = last ? new Date(last).getTime() : null;
+
+        if (changed && lastChanged && Date.now() - lastChanged < ONE_YEAR_MS) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Vous ne pouvez modifier votre ${field} qu'une fois par an.`,
+              code: "COOLDOWN_ACTIVE",
+              field,
+              nextAllowedDate: new Date(lastChanged + ONE_YEAR_MS).toISOString(),
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    if (pseudonymeChanged && data.pseudonyme) {
+      const existingPseudo = await User.findOne({
+        pseudonyme: new RegExp(`^${data.pseudonyme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        _id: { $ne: user._id },
+      }).select("_id");
+
+      if (existingPseudo) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Ce pseudonyme est déjà utilisé. Choisissez-en un autre.",
+            code: "PSEUDO_TAKEN",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
 
     if (data.pseudonyme !== undefined) updateData.pseudonyme = data.pseudonyme;
+
+    if (user.hasCompletedProfile) {
+      if (pseudonymeChanged) updateData.pseudonymeChangedAt = new Date();
+      if (orientationChanged) updateData.orientationChangedAt = new Date();
+    }
 
     /**
      * L'email envoyé par le frontend est ignoré volontairement.
