@@ -84,18 +84,31 @@ export default function Home() {
     : [];
 
   return (
-    <SiteShell>
+    <SiteShell moon={false}>
       {/* ───────────── Hero ───────────── */}
-      <section className="relative pb-14 pt-28 sm:pt-32 lg:pb-20 lg:pt-40">
-        <Container className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-10">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+      <section className="relative pb-12 pt-[320px] sm:pt-[380px] xl:flex xl:min-h-[780px] xl:items-center xl:pb-24 xl:pt-36">
+        {/* Illustration : bandeau en haut sur téléphone et tablette, fond de toute la zone sur grand écran. */}
+        <div className="pointer-events-none absolute inset-x-0 top-12 -z-10 h-[430px] sm:h-[520px] xl:top-0 xl:h-full" aria-hidden>
+          <div
+            className="absolute inset-0 bg-cover bg-[position:80%_22%] xl:bg-[position:right_30%]"
+            style={{
+              backgroundImage: 'url(/images/home-bg.webp)',
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)',
+            }}
+          />
+          <div className="absolute inset-0 hidden bg-gradient-to-r from-[#12081f]/80 via-[#12081f]/25 to-transparent xl:block" />
+        </div>
+
+        <Container>
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="xl:max-w-[600px]">
             <div className="relative">
-              <h1 className="text-[42px] font-extrabold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-[72px]">
+              <h1 className="text-[42px] font-extrabold leading-[1.02] tracking-tight text-white sm:text-6xl xl:text-[68px]">
                 Rencontrer au <Glow>féminin,</Glow>
                 <br />
                 librement.
               </h1>
-              <ScriptNote className="mt-4 -rotate-3 lg:absolute lg:-right-4 lg:bottom-1 lg:mt-0 xl:right-6">
+              <ScriptNote className="mt-4 -rotate-3">
                 ✦ Des rencontres qui
                 <br />
                 <span className="ml-8">font du bien, vraiment. ♡</span>
@@ -123,7 +136,7 @@ export default function Home() {
               </GhostButton>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-3 lg:gap-3">
               {[
                 { icon: Heart, title: 'Bienveillance', text: 'au cœur de notre communauté' },
                 { icon: Sparkles, title: 'Rencontres', text: 'sérieuses ou spontanées' },
@@ -140,14 +153,6 @@ export default function Home() {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30, rotateY: -8 }}
-            animate={{ opacity: 1, y: 0, rotateY: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
-            className="relative [perspective:1600px]"
-          >
-            <AppPreview className="lg:[transform:rotateY(-10deg)_rotateX(3deg)]" />
-          </motion.div>
         </Container>
       </section>
 
@@ -165,7 +170,11 @@ export default function Home() {
               </ScriptNote>
             }
           />
-          <div className="mt-8">
+          {/* Aperçu de l'application (ordinateur et tablette ; les cartes ci-dessous suffisent sur téléphone). */}
+          <motion.div {...reveal} className="mx-auto mt-10 hidden max-w-4xl md:block">
+            <AppPreview />
+          </motion.div>
+          <div className="mt-8 md:mt-10">
             <DiscoverGrid />
           </div>
         </Container>
