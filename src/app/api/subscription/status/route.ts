@@ -100,6 +100,8 @@ export async function GET() {
         "premiumExpiresAt",
         "stripeCustomerId",
         "stripeSubscriptionId",
+        "subscriptionSource",
+        "subscriptionCancelAtPeriodEnd",
         "lastPaymentAt",
         "banned",
       ].join(" ")
@@ -161,6 +163,7 @@ const limits = getLimits(plan);
 
           // "apple" = abonnement pris dans l'app iPhone, géré depuis l'App Store.
           source: user.subscriptionSource === "apple" ? "apple" : user.stripeSubscriptionId ? "stripe" : null,
+          cancelAtPeriodEnd: user.subscriptionCancelAtPeriodEnd === true,
 
           stripeCustomerId: user.stripeCustomerId ?? "",
           stripeSubscriptionId: user.stripeSubscriptionId ?? "",
