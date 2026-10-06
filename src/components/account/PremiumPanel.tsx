@@ -44,6 +44,7 @@ export type PremiumUser = {
   lastPaymentAt?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   subscriptionPaused?: boolean;
+  subscriptionSource?: "apple" | null;
 };
 
 const TONE: Record<PublicPlan["tone"], { icon: LucideIcon; badge: string; ring: string; text: string }> = {
@@ -140,7 +141,9 @@ export default function PremiumPanel({
     { icon: CalendarCheck, label: "Abonnée depuis", value: formatDate(user.premiumStartedAt) },
   ].filter((d) => d.value);
 
-  const canManage = active && !user.subscriptionCancelAtPeriodEnd && !user.subscriptionPaused;
+  // Abonnement pris dans l'app iPhone : Apple le gère, aucun bouton Stripe ici.
+  const viaApple = user.subscriptionSource === "apple";
+  const canManage = active && !viaApple && !user.subscriptionCancelAtPeriodEnd && !user.subscriptionPaused;
 
   return (
     <div className="pb-4">
@@ -191,7 +194,7 @@ export default function PremiumPanel({
                   <Sparkles className="h-4 w-4" /> Changer d’offre
                 </Link>
               )}
-              {(user.subscriptionCancelAtPeriodEnd || user.subscriptionPaused) && (
+              {!viaApple && (user.subscriptionCancelAtPeriodEnd || user.subscriptionPaused) && (
                 <button type="button" onClick={() => call("/api/stripe/reactivate", "reactivate")} disabled={!!busy} className={cn(BTN_GRADIENT, "h-11 px-5 text-sm")}>
                   {busy === "reactivate" ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
                   Réactiver l’abonnement
@@ -207,8 +210,13 @@ export default function PremiumPanel({
           </div>
 
           {/* Alertes */}
-          {(user.subscriptionCancelAtPeriodEnd || user.subscriptionPaused || (!active && paid) || message) && (
+          {(viaApple || user.subscriptionCancelAtPeriodEnd || user.subscriptionPaused || (!active && paid) || message) && (
             <div className="relative mt-5 space-y-2">
+              {viaApple && (
+                <Alert tone="sky">
+                  Cet abonnement a été pris dans l’app iPhone. Pour changer de formule ou le résilier, ouvrez les Réglages de votre iPhone, touchez votre nom, puis « Abonnements ».
+                </Alert>
+              )}
               {user.subscriptionCancelAtPeriodEnd && (
                 <Alert tone="orange">
                   Votre abonnement s’arrêtera {formatDate(user.premiumExpiresAt) ? `le ${formatDate(user.premiumExpiresAt)}` : "à la fin de la période payée"}. Vous gardez vos avantages jusqu’à cette date.
@@ -330,7 +338,7 @@ export default function PremiumPanel({
                     </div>
                   </div>
                   <p className="mt-3 flex-1 text-xs leading-relaxed text-white/65">{p.highlight}</p>
-                  {!current && p.id !== "free" && (
+                  {!current && !viaApple && p.id !== "free" && (
                     <Link href="/paiement" className={cn(BTN_OUTLINE, "mt-3 h-9 rounded-xl px-3 text-xs")}>
                       Choisir {p.name}
                     </Link>

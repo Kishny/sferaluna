@@ -130,6 +130,17 @@ export interface IUser extends Document {
   stripeSubscriptionId?: string;
   stripeCheckoutSessionId?: string;
 
+  subscriptionCancelAtPeriodEnd?: boolean;
+  subscriptionPaused?: boolean;
+
+  // Achat intégré Apple (app iPhone) — voir src/lib/apple/iap.ts
+  subscriptionSource?: "apple" | null;
+  appleAccountToken?: string;
+  appleOriginalTransactionId?: string;
+  appleProductId?: string;
+  appleEnvironment?: string;
+  appleLastEventAt?: Date | null;
+
   // Vérification email
   emailVerified: boolean;
   emailVerificationToken?: string | null;
@@ -589,6 +600,48 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
+     * Achat intégré Apple (app iPhone).
+     *
+     * subscriptionSource = "apple" tant qu'un abonnement Apple est actif ;
+     * absent ou null = Stripe, ou aucun abonnement.
+     * appleAccountToken : identifiant joint à l'achat pour le lier au compte.
+     * appleOriginalTransactionId : identifiant de l'abonnement côté Apple.
+     * Pas de valeur par défaut "" : ces deux champs portent un index unique
+     * « sparse », qui ignore seulement les champs absents.
+     */
+    subscriptionSource: {
+      type: String,
+      enum: ["apple", null],
+      default: null,
+    },
+
+    appleAccountToken: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+
+    appleOriginalTransactionId: {
+      type: String,
+      trim: true,
+    },
+
+    appleProductId: {
+      type: String,
+      trim: true,
+    },
+
+    appleEnvironment: {
+      type: String,
+      trim: true,
+    },
+
+    appleLastEventAt: {
+      type: Date,
+      default: null,
+    },
+
+    /**
      * Annulation programmée en fin de période.
      * true = l'abonnement sera annulé à premiumExpiresAt.
      */
@@ -914,6 +967,8 @@ UserSchema.pre<IUser>("save", function () {
  * Ne pas l'ajouter ici pour éviter le warning Mongoose "Duplicate schema index".
  */
 UserSchema.index({ plan: 1, subscriptionStatus: 1 });
+UserSchema.index({ appleAccountToken: 1 }, { unique: true, sparse: true });
+UserSchema.index({ appleOriginalTransactionId: 1 }, { unique: true, sparse: true });
 UserSchema.index({ isPremium: 1, hasCompletedProfile: 1 });
 UserSchema.index({ visibilite: 1, hasCompletedProfile: 1 });
 UserSchema.index({ localisation: 1 });

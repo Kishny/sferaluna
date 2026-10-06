@@ -27,6 +27,18 @@ export async function POST() {
     return NextResponse.json({ success: false, error: "Utilisatrice introuvable." }, { status: 404 });
   }
 
+  // Abonnement pris dans l'app iPhone : c'est Apple qui le gère, pas Stripe.
+  if (user.subscriptionSource === "apple") {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Votre abonnement est géré depuis l'App Store : ouvrez les réglages d'abonnement de votre iPhone.",
+        code: "APPLE_SUBSCRIPTION",
+      },
+      { status: 409 }
+    );
+  }
+
   if (!user.stripeSubscriptionId) {
     return NextResponse.json({ success: false, error: "Aucun abonnement trouvé." }, { status: 400 });
   }

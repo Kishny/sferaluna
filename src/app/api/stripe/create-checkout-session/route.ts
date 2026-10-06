@@ -225,6 +225,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Déjà abonnée depuis l'app iPhone : un second abonnement par Stripe
+    // la ferait payer deux fois pour la même formule.
+    if (user.subscriptionSource === "apple" && user.isPremium) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Vous êtes déjà abonnée depuis l'app iPhone. Pour changer de formule, passez par les réglages d'abonnement de votre iPhone.",
+          code: "APPLE_SUBSCRIPTION_ACTIVE",
+        },
+        { status: 409 }
+      );
+    }
+
     // ─────────────────────────────────────────────
     // 6. Créer ou réutiliser le customer Stripe
     // ─────────────────────────────────────────────

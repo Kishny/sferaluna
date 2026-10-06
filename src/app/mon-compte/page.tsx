@@ -169,6 +169,7 @@ interface LunaUser {
   lastPaymentAt?: string | null;
   subscriptionCancelAtPeriodEnd?: boolean;
   subscriptionPaused?: boolean;
+  subscriptionSource?: "apple" | null;
 
   // Cooldowns annuels
   pseudonymeChangedAt?: string | null;
@@ -562,6 +563,7 @@ function normalizeUser(rawUser: any, sessionUser?: any): LunaUser {
     lastPaymentAt: rawUser?.lastPaymentAt || null,
     subscriptionCancelAtPeriodEnd: Boolean(rawUser?.subscriptionCancelAtPeriodEnd),
     subscriptionPaused: Boolean(rawUser?.subscriptionPaused),
+    subscriptionSource: rawUser?.subscriptionSource === "apple" ? "apple" : null,
 
     emailVerified: rawUser?.emailVerified === true,
     lastLoginAt: rawUser?.lastLoginAt || null,

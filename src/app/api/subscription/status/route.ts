@@ -159,6 +159,9 @@ const limits = getLimits(plan);
           premiumExpiresAt: user.premiumExpiresAt ?? null,
           lastPaymentAt: user.lastPaymentAt ?? null,
 
+          // "apple" = abonnement pris dans l'app iPhone, géré depuis l'App Store.
+          source: user.subscriptionSource === "apple" ? "apple" : user.stripeSubscriptionId ? "stripe" : null,
+
           stripeCustomerId: user.stripeCustomerId ?? "",
           stripeSubscriptionId: user.stripeSubscriptionId ?? "",
 
