@@ -55,7 +55,7 @@ export function AuthShell({ children, label, wide = true }: { children: ReactNod
             <br />
             <span className="bg-gradient-to-r from-violet-300 via-fuchsia-300 to-pink-300 bg-clip-text text-transparent">SferaLuna</span>
           </p>
-          <p className="mt-5 max-w-md text-lg leading-relaxed text-white/80">Une expérience de rencontre élégante, sûre et authentique pour des connexions plus profondes.</p>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-white/80">Un réseau social élégant, sûr et authentique, pour des liens plus profonds.</p>
 
           <ul className="mt-9 space-y-7">
             {BENEFITS.map(({ icon: Icon, title, text }) => (

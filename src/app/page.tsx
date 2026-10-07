@@ -116,9 +116,9 @@ export default function Home() {
             </div>
 
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
-              SferaLuna est la plateforme de rencontres pensée par et pour les femmes qui aiment les
-              femmes. Des connexions authentiques, sûres et profondes, dans un espace bienveillant et
-              inclusif.
+              SferaLuna est le réseau social pensé par et pour les femmes qui aiment les femmes. Une
+              communauté, de l’entraide, des événements et des connexions authentiques, dans un
+              espace sûr, bienveillant et inclusif.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">

@@ -2,7 +2,7 @@ import { buildMeta } from '@/app/layout-meta';
 
 export const metadata = buildMeta(
   'Notre histoire — Comment SferaLuna est née',
-  "L'histoire de SferaLuna : pourquoi nous avons créé un site de rencontres premium pensé exclusivement pour les femmes françaises.",
+  "L'histoire de SferaLuna : pourquoi nous avons créé un réseau social premium pensé exclusivement pour les femmes françaises.",
   '/histoire'
 );
 

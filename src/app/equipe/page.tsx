@@ -82,7 +82,7 @@ export default function EquipePage() {
               se dévoilera <Pink>bientôt</Pink>
             </>
           }
-          text="Nous construisons une expérience de rencontres plus sûre, plus humaine et plus élégante pour les femmes."
+          text="Nous construisons un réseau social plus sûr, plus humain et plus élégant pour les femmes."
           note={
             <>
               Des personnes vraies,
@@ -143,7 +143,7 @@ export default function EquipePage() {
             </span>
             <div>
               <h2 className="text-lg font-bold text-white">Une équipe pensée pour une communauté plus sûre</h2>
-              <p className="mt-0.5 text-sm text-white/70">Nous travaillons pour offrir un espace de rencontres de qualité, avec des outils modernes et une approche profondément humaine.</p>
+              <p className="mt-0.5 text-sm text-white/70">Nous travaillons pour offrir un espace d’échange de qualité, avec des outils modernes et une approche profondément humaine.</p>
             </div>
           </div>
           <ul className="grid gap-4 sm:grid-cols-3 xl:flex xl:shrink-0 xl:gap-6">

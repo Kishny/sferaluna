@@ -17,7 +17,7 @@ import type { Metadata } from "next";
  *
  * export const metadata = buildMeta(
  *   "Notre histoire — Comment SferaLuna est née",
- *   "Découvre l'histoire de SferaLuna, le site de rencontres premium pensé pour les femmes.",
+ *   "Découvre l'histoire de SferaLuna, le réseau social premium pensé pour les femmes.",
  *   "/histoire"
  * );
  */

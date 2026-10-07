@@ -171,7 +171,7 @@ export default function Footer() {
               </Link>
 
               <p className="mt-6 hidden max-w-md text-base leading-relaxed text-white/75 sm:block">
-                Une plateforme pensée pour les femmes qui veulent des rencontres sincères, sûres et alignées avec leur vibe.
+                Un réseau social pensé pour les femmes qui veulent des liens sincères, sûrs et alignés avec leur vibe.
               </p>
 
               <ul className="mt-5 hidden w-fit flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-violet-300/20 bg-white/[0.04] px-5 py-3 sm:flex">
