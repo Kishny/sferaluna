@@ -26,7 +26,7 @@ import { IllustratedAvatar, cn } from "./ui";
 
 const SIDEBAR = [
   { icon: Home, label: "Explorer", active: true },
-  { icon: ShieldCheck, label: "Circle of Six" },
+  { icon: ShieldCheck, label: "Affinités" },
   { icon: MessageSquareText, label: "Messages", badge: 3 },
   { icon: CalendarDays, label: "LunaGather" },
   { icon: Sparkles, label: "VibePlanner" },
@@ -78,7 +78,7 @@ function MiniTopbar() {
 
 /**
  * Aperçu du Tableau de bord : Explorer librement en vedette,
- * Circle of Six et Messages à côté. Utilisé dans le hero de l'accueil.
+ * Affinités et Messages à côté. Utilisé dans le hero de l'accueil.
  */
 export function AppPreview({ className = "" }: { className?: string }) {
   return (
@@ -112,7 +112,7 @@ export function AppPreview({ className = "" }: { className?: string }) {
               </div>
             </div>
 
-            {/* Circle of Six */}
+            {/* Affinités de la semaine */}
             <div className="rounded-2xl border border-violet-300/15 bg-[#1b0d38] p-2.5">
               <div className="flex -space-x-2">
                 {[0, 1, 2].map((i) => (
@@ -122,7 +122,7 @@ export function AppPreview({ className = "" }: { className?: string }) {
                   +3
                 </span>
               </div>
-              <p className="mt-2 text-[12px] font-semibold text-white">Circle of Six</p>
+              <p className="mt-2 text-[12px] font-semibold text-white">Affinités de la semaine</p>
               <p className="text-[8.5px] leading-snug text-white/60">Des profils sélectionnés selon vos affinités.</p>
             </div>
 

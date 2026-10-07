@@ -74,7 +74,7 @@ export default function DashboardSidebar({
     },
     {
       key: "circle",
-      label: "Circle of Six",
+      label: "Affinités",
       icon: CircleIcon,
       href: "/circle",
       locked: features ? !features.circleOfSix : false,

@@ -147,7 +147,7 @@ function labelFor(path: string | null, fallbackLabel: string) {
   if (path === "/explorer") return "Retour aux découvertes";
   if (path.startsWith("/mon-compte")) return "Retour au compte";
   if (path.startsWith("/matches") || path.startsWith("/messages")) return "Retour à mes matchs";
-  if (path.startsWith("/circle")) return "Retour à Circle of Six";
+  if (path.startsWith("/circle")) return "Retour aux Affinités de la semaine";
   if (path === "/") return "Retour à l’accueil";
   return "Retour";
 }

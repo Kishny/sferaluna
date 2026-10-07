@@ -50,7 +50,7 @@ const STYLE: Record<PaidPlanId, { icon: LucideIcon; badge: string; check: string
 
 const BENEFITS = [
   { icon: Heart, title: "Plus de connexions", text: "Likes et messages illimités dès l’offre Essentiel." },
-  { icon: Users, title: "Circle of Six", text: "Une sélection de profils compatibles chaque semaine." },
+  { icon: Users, title: "Affinités de la semaine", text: "Une sélection de profils compatibles chaque semaine." },
   { icon: Ghost, title: "Plus de discrétion", text: "Mode Fantôme et visiteuses de votre profil (Premium)." },
 ];
 

@@ -68,9 +68,9 @@ const STEPS: Step[] = [
     appHref: "/mon-compte",
   },
   {
-    short: "Circle of Six",
+    short: "Affinités",
     duration: "À ton rythme",
-    title: "Découvre ton Circle of Six",
+    title: "Découvre tes Affinités de la semaine",
     text: "Chaque semaine, nous te proposons 6 profils soigneusement sélectionnés en fonction de tes affinités, de tes intentions et de ta vibe.",
     points: ["6 suggestions personnalisées", "Profils compatibles", "Renouvellement chaque semaine", "Aucun swipe, plus de sens"],
     icon: UsersRound,
@@ -120,7 +120,7 @@ const STEPS: Step[] = [
 /** Questions du guide : l'intitulé est propre au guide, la réponse vient de la FAQ. */
 const QUESTIONS: { question: string; faq: string }[] = [
   { question: "SferaLuna est-il gratuit ?", faq: "gratuit" },
-  { question: "Comment fonctionne le Circle of Six ?", faq: "circle" },
+  { question: "Comment fonctionnent les Affinités de la semaine ?", faq: "circle" },
   { question: "Mes données sont-elles sécurisées ?", faq: "donnees" },
   { question: "Puis-je utiliser SferaLuna de manière discrète ?", faq: "anonyme" },
   { question: "Comment participer aux événements ?", faq: "lunagather" },

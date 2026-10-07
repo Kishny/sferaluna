@@ -123,7 +123,7 @@ export const DISCOVER_ITEMS: DiscoverItem[] = [
   },
   {
     key: "circle",
-    title: "Circle of Six",
+    title: "Affinités de la semaine",
     text: "Des profils sélectionnés selon vos affinités pour des rencontres plus justes.",
     appHref: "/circle",
     infoHref: "/fonctionnalites#circle",

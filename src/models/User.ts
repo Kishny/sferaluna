@@ -87,7 +87,7 @@ export interface IUser extends Document {
   // Courtes vidéos de profil (≤ 15 s, max 2), hébergées sur Cloudinary
   videos: { url: string; publicId: string; posterUrl: string; duration: number; createdAt: Date }[];
 
-  // Circle of Six — contacts de confiance du réseau de sécurité personnel
+  // L'Hexade (ex-Circle of Six) — contacts de confiance du réseau de sécurité personnel
   // (max 6). Stockés côté serveur pour synchro multi-appareils (app mobile).
   trustedContacts: { name: string; phone: string; addedAt: Date }[];
 
@@ -284,7 +284,7 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
-     * Circle of Six — contacts de confiance (réseau de sécurité personnel).
+     * L'Hexade (ex-Circle of Six) — contacts de confiance (réseau de sécurité personnel).
      * Max 6. Chaque sous-document reçoit un _id Mongoose (utilisé côté client
      * pour la suppression).
      */
@@ -299,7 +299,7 @@ const UserSchema = new Schema<IUser>(
       default: [],
       validate: {
         validator: (arr: unknown[]) => arr.length <= 6,
-        message: "Maximum 6 contacts de confiance (Circle of Six).",
+        message: "Maximum 6 contacts de confiance (l’Hexade).",
       },
     },
 

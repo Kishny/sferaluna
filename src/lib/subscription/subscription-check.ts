@@ -59,7 +59,7 @@ import {
  * - super likes quotidiens ;
  * - boosts mensuels ;
  * - visites de profils ;
- * - accès Circle of Six ;
+ * - accès aux Affinités de la semaine ;
  * - accès VibePlanner.
  */
 export type SubscriptionAction =
@@ -565,7 +565,7 @@ export class SubscriptionChecker {
             allowed: false,
             currentPlan,
             feature: "circleOfSix",
-            reason: "Circle of Six n'est pas disponible avec votre plan actuel.",
+            reason: "Les Affinités de la semaine ne sont pas disponibles avec votre plan actuel.",
             upgradeUrl: getUpgradeUrl(),
           };
         }

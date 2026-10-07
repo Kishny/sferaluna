@@ -4,7 +4,7 @@
 
 /**
  * Kit d'interface des pages connectées SferaLuna
- * (Mes matches, Circle of Six, Événements Luna, VibePlanner, VibeMentor,
+ * (Mes matches, Affinités de la semaine, Événements Luna, VibePlanner, VibeMentor,
  * VibeSphere). Même langage visuel que le parcours Explorer :
  * nuit violette, rose/lilas lumineux, verre dépoli, cartes arrondies.
  */

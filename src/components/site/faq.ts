@@ -23,9 +23,9 @@ export const FAQS: Faq[] = [
   {
     id: "circle",
     icon: UsersRound,
-    question: "Comment fonctionne le Circle of Six ?",
+    question: "Comment fonctionnent les Affinités de la semaine ?",
     answer:
-      "Chaque semaine, le Circle of Six te présente une sélection de 6 profils choisis selon tes affinités, tes intentions et tes préférences. Tu prends le temps de les découvrir, sans la pression du swipe. Il est inclus à partir de l’offre Essentiel.",
+      "Chaque semaine, les Affinités de la semaine te présentent une sélection de 6 profils choisis selon tes centres d’intérêt, tes intentions et tes préférences. Tu prends le temps de les découvrir, sans la pression du swipe. Elles sont incluses à partir de l’offre Essentiel.",
     category: "matching",
     popular: true,
   },
@@ -83,7 +83,7 @@ export const FAQS: Faq[] = [
     icon: Star,
     question: "Quelle est la différence entre le compte gratuit et les offres payantes ?",
     answer:
-      "Le compte gratuit permet de créer ton profil et d’explorer, avec 5 likes et 10 messages par jour. L’offre Essentiel lève ces limites et ajoute le Circle of Six et le VibePlanner. L’offre Premium ajoute notamment le Mode Fantôme, la liste de tes visiteuses et les filtres avancés. Le détail est sur la page Tarifs.",
+      "Le compte gratuit permet de créer ton profil et d’explorer, avec 5 likes et 10 messages par jour. L’offre Essentiel lève ces limites et ajoute les Affinités de la semaine et le VibePlanner. L’offre Premium ajoute notamment le Mode Fantôme, la liste de tes visiteuses et les filtres avancés. Le détail est sur la page Tarifs.",
     category: "premium",
   },
   {

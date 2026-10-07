@@ -8,7 +8,7 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 
 /**
- * Circle of Six — contacts de confiance du réseau de sécurité personnel.
+ * L'Hexade (ex-Circle of Six) — contacts de confiance du réseau de sécurité personnel.
  *
  * GET    → liste des contacts de confiance de l'utilisatrice connectée
  * POST   → ajoute un contact { name, phone } (max 6)

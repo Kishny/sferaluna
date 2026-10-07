@@ -152,7 +152,7 @@ export default function FonctionnalitesPage() {
             <div className="mt-6 flex flex-wrap gap-2">
               {[
                 { name: 'Explorer librement', id: 'explorer' },
-                { name: 'Circle of Six', id: 'circle' },
+                { name: 'Affinités', id: 'circle' },
                 { name: 'Messages', id: 'messages' },
                 { name: 'LunaGather', id: 'lunagather' },
                 { name: 'VibePlanner', id: 'vibeplanner' },
@@ -207,12 +207,12 @@ export default function FonctionnalitesPage() {
         </FeatureBlock>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          {/* 02 — Circle of Six */}
+          {/* 02 — Affinités de la semaine */}
           <FeatureBlock
             id="circle"
             num="02"
             icon={Users}
-            title="Circle of Six"
+            title="Affinités de la semaine"
             subtitle="Des profils sélectionnés selon vos affinités."
             text="Chaque semaine, une sélection personnalisée de 6 profils, choisis pour leur réelle compatibilité avec vous."
             cta="Comment ça marche ?"
@@ -222,7 +222,7 @@ export default function FonctionnalitesPage() {
             <div className="relative">
               <div className={cn(GLASS_INNER, 'p-4')}>
                 <AvatarStack count={4} size={46} extra="+2" />
-                <p className="mt-3 text-lg font-semibold text-white">Circle of Six</p>
+                <p className="mt-3 text-lg font-semibold text-white">Affinités de la semaine</p>
                 <ul className="mt-2 space-y-1.5">
                   {['Des profils triés par affinités', 'Une sélection chaque semaine', 'Moins de choix, plus de sens', 'Des rencontres plus justes'].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-[13px] text-white/80">

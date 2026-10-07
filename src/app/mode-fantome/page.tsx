@@ -7,7 +7,7 @@
  *
  * Ce que fait réellement le Mode Fantôme (visibilite = "invisible") :
  * - le profil disparaît des découvertes, d'Explorer, de la recherche et de
- *   Circle of Six ;
+ *   Affinités de la semaine ;
  * - les visites de profil ne sont pas enregistrées (aucune trace, aucune
  *   notification chez la personne visitée) ;
  * - les conversations en cours continuent.
@@ -187,7 +187,7 @@ export default function ModeFantomePage() {
               </span>
               <div>
                 <h2 className="font-semibold">Contrôle de visibilité</h2>
-                <p className="mt-1 text-sm text-white/65">Votre profil disparaît des découvertes, de la recherche et de Circle of Six. Vous revenez quand vous voulez.</p>
+                <p className="mt-1 text-sm text-white/65">Votre profil disparaît des découvertes, de la recherche et des Affinités de la semaine. Vous revenez quand vous voulez.</p>
               </div>
             </div>
             <div className="mt-auto space-y-2 pt-4" role="radiogroup" aria-label="Visibilité">

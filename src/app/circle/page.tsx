@@ -3,7 +3,9 @@
 "use client";
 
 /**
- * Circle of Six — les 6 affinités de la semaine.
+ * Affinités de la semaine — les 6 profils sélectionnés chaque lundi
+ * (anciennement « Circle of Six » ; « l'Hexade » désigne désormais les proches
+ * de confiance, dans l'app).
  *
  * Même sélection hebdomadaire que « Vos découvertes du jour » (/explorer),
  * via GET /api/explorer/selection : les deux pages montrent toujours les
@@ -135,7 +137,7 @@ function CircleContent() {
       }
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        setError(data?.error || "Impossible de charger votre cercle.");
+        setError(data?.error || "Impossible de charger votre sélection.");
         return;
       }
       setProfiles(data.profiles ?? []);
@@ -192,7 +194,7 @@ function CircleContent() {
             <Eyebrow icon={Sparkles}>Sélection hebdomadaire</Eyebrow>
             <h1 className="mt-4 flex items-center gap-3 text-[38px] font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
               <HexagonSix size={52} className="shrink-0" />
-              Circle of Six
+              Affinités de la semaine
             </h1>
             <p className="mt-3 text-lg text-white/85 sm:text-xl">Vos 6 affinités les plus alignées de la semaine.</p>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
@@ -232,13 +234,13 @@ function CircleContent() {
         {likeError && <p className="mt-4 text-center text-sm text-rose-300">{likeError}</p>}
 
         {loading ? (
-          <LoadingBlock label="Préparation de votre cercle…" />
+          <LoadingBlock label="Préparation de votre sélection…" />
         ) : !featured ? (
           !error && (
             <div className="mt-10">
               <EmptyState
                 icon={Users}
-                title="Votre cercle se prépare"
+                title="Votre sélection se prépare"
                 text="Aucun profil compatible n’est disponible pour le moment. Complétez votre profil pour de meilleures affinités, ou explorez librement."
                 action={
                   <Link href="/explorer/libre" className={cn(BTN_PRIMARY, "h-12")}>
@@ -260,7 +262,7 @@ function CircleContent() {
                 <Link href={openHref(featured)} onClick={remember} className="relative block aspect-[4/5] overflow-hidden rounded-2xl md:aspect-auto md:min-h-[280px]">
                   <ProfilePhoto src={featured.image || featured.gallery?.[0]} name={featured.pseudonyme} className="absolute inset-0 h-full w-full" />
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white">
-                    <Star className="h-3.5 w-3.5 fill-white" /> N°1 de votre cercle
+                    <Star className="h-3.5 w-3.5 fill-white" /> N°1 de votre sélection
                   </span>
                 </Link>
 

@@ -1,5 +1,5 @@
 // src/components/icons/HexagonSix.tsx
-// Icône custom Circle of Six — hexagone avec 6 points aux sommets
+// Icône des Affinités de la semaine (ex-Circle of Six) — hexagone avec 6 points aux sommets
 
 interface HexagonSixProps {
   size?: number;

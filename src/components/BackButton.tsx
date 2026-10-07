@@ -29,7 +29,7 @@ const LABELS: [RegExp, string][] = [
   [/^\/explorer/, "Retour aux découvertes"],
   [/^\/messages/, "Retour aux messages"],
   [/^\/matches/, "Retour à mes matchs"],
-  [/^\/circle/, "Retour à Circle of Six"],
+  [/^\/circle/, "Retour aux Affinités de la semaine"],
   [/^\/evenements/, "Retour aux événements"],
   [/^\/vibesphere/, "Retour à VibeSphere"],
   [/^\/vibeplanner/, "Retour à VibePlanner"],

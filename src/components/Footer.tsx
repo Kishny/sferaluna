@@ -56,7 +56,7 @@ const GROUPS: FooterGroup[] = [
     icon: '✨',
     links: [
       { label: 'Explorer librement', href: '/explorer' },
-      { label: 'Circle of Six', href: '/circle' },
+      { label: 'Affinités de la semaine', href: '/circle' },
       { label: 'VibeSphere', href: '/vibesphere' },
       { label: 'VibePlanner', href: '/vibeplanner' },
     ],

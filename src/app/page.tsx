@@ -192,7 +192,7 @@ export default function Home() {
             <StepsRow
               steps={[
                 { icon: UserRound, title: 'Créez votre profil', text: 'En quelques minutes, partagez qui vous êtes et ce que vous recherchez.' },
-                { icon: Heart, title: 'Découvrez vos affinités', text: 'Explorez des profils inspirants et recevez votre Circle of Six.' },
+                { icon: Heart, title: 'Découvrez vos affinités', text: 'Explorez des profils inspirants et recevez vos Affinités de la semaine.' },
                 { icon: MessageSquareText, title: 'Échangez en confiance', text: 'Faites connaissance dans un espace sûr et bienveillant.' },
               ]}
             />

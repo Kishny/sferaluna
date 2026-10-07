@@ -210,7 +210,7 @@ function ProfileDetailContent() {
   const FALLBACKS: Record<string, [string, string]> = {
     decouvertes: ["/explorer", "Retour aux découvertes"],
     matches: ["/matches", "Retour à mes matchs"],
-    circle: ["/circle", "Retour à Circle of Six"],
+    circle: ["/circle", "Retour aux Affinités de la semaine"],
     libre: ["/explorer/libre", "Retour à Explorer librement"],
   };
   const [fallbackHref, fallbackLabel] = FALLBACKS[from ?? ""] ?? FALLBACKS.libre;

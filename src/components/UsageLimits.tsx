@@ -42,7 +42,7 @@ export default function UsageLimits() {
     {
       key: "circleOfSix",
       icon: Users,
-      label: "Circle of Six",
+      label: "Affinités de la semaine",
       description: "Affinités de la semaine",
       limit: null,
       period: null,
