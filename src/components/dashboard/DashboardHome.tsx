@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import { DailyInsightBlock } from "@/components/insights/DailyInsight";
 import { useRouter } from "next/navigation";
 import { useState, type ElementType, type ReactNode } from "react";
 import { motion, type Variants } from "framer-motion";
@@ -122,6 +123,8 @@ export default function DashboardHome({
   return (
     <div className="space-y-5 lg:space-y-6">
       <Hero user={user} />
+
+      <DailyInsightBlock />
 
       <QuickActions user={user} onNavigateTab={onNavigateTab} />
 

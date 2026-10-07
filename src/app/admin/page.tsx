@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirm } from "@/components/ConfirmDialog";
+import InsightsAdmin from "@/components/admin/InsightsAdmin";
 import {
   Activity,
   AlertCircle,
@@ -42,6 +43,7 @@ import {
   Users,
   UserX,
   Wrench,
+  Lightbulb,
 } from "lucide-react";
 
 /**
@@ -131,6 +133,7 @@ type TabId =
   | "reports"
   | "testimonials"
   | "newsletter"
+  | "insights"
   | "tools";
 
 type ResetTarget = "messages" | "matches" | "visits" | "posts" | "journal";
@@ -142,6 +145,7 @@ const nav: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "reports", label: "Signalements", icon: Flag },
   { id: "testimonials", label: "Témoignages", icon: MessageCircle },
   { id: "newsletter", label: "Newsletter", icon: Mail },
+  { id: "insights", label: "Connaissance du jour", icon: Lightbulb },
   { id: "tools", label: "Outils", icon: Wrench },
 ];
 
@@ -152,6 +156,7 @@ const sectionTitle: Record<TabId, { title: string; sub: string }> = {
   reports: { title: "Signalements", sub: "Modération de la communauté" },
   testimonials: { title: "Témoignages", sub: "Validation des avis" },
   newsletter: { title: "Newsletter", sub: "Communication aux abonnées" },
+  insights: { title: "Connaissance du jour", sub: "Une connaissance par jour, sur le site et dans l’application" },
   tools: { title: "Outils", sub: "Maintenance & données" },
 };
 
@@ -2644,6 +2649,13 @@ export default function AdminPage() {
                   })}
                 </div>
               )}
+            </motion.section>
+          )}
+
+          {/* ================= CONNAISSANCE DU JOUR ================= */}
+          {activeTab === "insights" && (
+            <motion.section key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <InsightsAdmin />
             </motion.section>
           )}
 

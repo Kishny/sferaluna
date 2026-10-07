@@ -27,6 +27,7 @@ const PROTECTED_PREFIXES = [
   "/vibesphere",
   "/vibementor",
   "/vibeplanner",
+  "/connaissance",
   "/admin",
 ];
 
@@ -110,6 +111,7 @@ export const config = {
     "/inscription/:path*",
     "/paiement/:path*",
     "/vibesphere/:path*",
+    "/connaissance/:path*",
     "/vibementor/:path*",
     "/vibeplanner/:path*",
     "/admin/:path*",
