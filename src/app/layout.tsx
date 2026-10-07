@@ -44,23 +44,23 @@ export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
 
   title: {
-    default: "SferaLuna — Le réseau social premium entre femmes",
+    default: "SferaLuna — Site de rencontres premium pour femmes",
     template: "%s | SferaLuna",
   },
 
   description:
-    "SferaLuna est le réseau social premium pensé pour les femmes françaises : communauté, entraide, événements et affinités, dans un espace vérifié et bienveillant.",
+    "SferaLuna est le site de rencontres premium pensé pour les femmes françaises. Sécurité, authenticité et affinités profondes. Rejoignez une communauté bienveillante.",
 
   keywords: [
-    "réseau social femmes",
-    "communauté de femmes",
-    "communauté lesbienne",
-    "communauté WLW",
-    "réseau social premium",
-    "événements entre femmes",
+    "site de rencontres",
+    "rencontres femmes",
+    "rencontres lesbiennes",
+    "rencontres WLW",
+    "site de rencontres premium",
+    "rencontres authentiques",
     "SferaLuna",
-    "entraide entre femmes",
-    "communauté vérifiée",
+    "rencontres sécurisées",
+    "rencontres France",
   ],
 
   authors: [{ name: "SferaLuna", url: baseUrl }],
@@ -87,9 +87,9 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 
   openGraph: {
-    title: "SferaLuna — Le réseau social premium entre femmes",
+    title: "SferaLuna — Site de rencontres premium pour femmes",
     description:
-      "SferaLuna est le réseau social premium pensé pour les femmes françaises : communauté, entraide, événements et affinités, dans un espace vérifié et bienveillant.",
+      "SferaLuna est le site de rencontres premium pensé pour les femmes françaises. Sécurité, authenticité et affinités profondes.",
     url: baseUrl,
     siteName: "SferaLuna",
     images: [
@@ -97,7 +97,7 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "SferaLuna — Le réseau social premium entre femmes",
+        alt: "SferaLuna — Site de rencontres premium",
       },
     ],
     locale: "fr_FR",
@@ -106,9 +106,9 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "SferaLuna — Le réseau social premium entre femmes",
+    title: "SferaLuna — Site de rencontres premium pour femmes",
     description:
-      "Rejoignez SferaLuna, le réseau social premium pensé pour les femmes françaises.",
+      "Rejoignez SferaLuna, la communauté de rencontres premium pensée pour les femmes françaises.",
     images: ["/og-image.jpg"],
     creator: "@sferaluna",
   },
@@ -124,7 +124,7 @@ export const metadata: Metadata = {
     google: process.env.GOOGLE_SITE_VERIFICATION || "",
   },
 
-  category: "social networking",
+  category: "dating",
 };
 
 /**
@@ -139,7 +139,7 @@ const organizationJsonLd = {
   url: baseUrl,
   logo: `${baseUrl}/logo-sferaluna.png`,
   description:
-    "Réseau social premium pensé pour les femmes françaises : communauté, entraide, événements et affinités.",
+    "Site de rencontres premium pensé pour les femmes françaises. Sécurité, authenticité et affinités profondes.",
   foundingDate: "2024",
   address: {
     "@type": "PostalAddress",
@@ -156,7 +156,7 @@ const websiteJsonLd = {
   "@type": "WebSite",
   name: "SferaLuna",
   url: baseUrl,
-  description: "Réseau social premium entre femmes — France",
+  description: "Site de rencontres premium pour femmes — France",
   inLanguage: "fr-FR",
   potentialAction: {
     "@type": "SearchAction",

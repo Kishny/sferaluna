@@ -78,7 +78,7 @@ export default async function TemoignagesPage() {
     name: "SferaLuna",
     url: baseUrl,
     description:
-      "Réseau social premium français pensé pour les femmes qui aiment les femmes.",
+      "Site de rencontre premium français pensé pour les femmes qui aiment les femmes.",
     ...(avgRating && count > 0
       ? {
           aggregateRating: {
